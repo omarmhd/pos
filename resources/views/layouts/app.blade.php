@@ -352,8 +352,8 @@
 
                 {{-- ── Sales & Inventory ── --}}
                 @canany(['products.view','categories.view','sales.view','inventory.view'])
-                @php $s1 = request()->routeIs('products.*','categories.*','sales.*')
-                         || request()->is('products*','categories*','sales*'); @endphp
+                @php $s1 = request()->routeIs('products.*','categories.*','sales.*','inventory.*')
+                         || request()->is('products*','categories*','sales*','inventory*'); @endphp
                 <li class="nav-item">
                     <button class="nav-section-toggle {{ !$s1 ? 'collapsed' : '' }}"
                             data-bs-toggle="collapse" data-bs-target="#ns1"
@@ -394,6 +394,22 @@
                             <a class="nav-link {{ request()->routeIs('products.low-stock','products.expiring') ? 'active' : '' }}"
                                href="{{ route('products.low-stock') }}">
                                 <i class="bi bi-exclamation-triangle"></i> تنبيهات المخزون
+                            </a>
+                        </li>
+                        @endcan
+                        @can('inventory.adjust')
+                        <li class="nav-item">
+                            <a class="nav-link {{ request()->routeIs('inventory.adjustments.*') ? 'active' : '' }}"
+                               href="{{ route('inventory.adjustments.index') }}">
+                                <i class="bi bi-box-seam"></i> تعديلات المخزون
+                            </a>
+                        </li>
+                        @endcan
+                        @can('inventory.count')
+                        <li class="nav-item">
+                            <a class="nav-link {{ request()->routeIs('inventory.sessions.*') ? 'active' : '' }}"
+                               href="{{ route('inventory.sessions.index') }}">
+                                <i class="bi bi-clipboard-check"></i> الجرد الدوري
                             </a>
                         </li>
                         @endcan
@@ -866,7 +882,7 @@
     (function () {
         var p = window.location.pathname;
         var map = [
-            { id: 'ns1', paths: ['/products', '/categories', '/sales'] },
+            { id: 'ns1', paths: ['/products', '/categories', '/sales', '/inventory'] },
             { id: 'ns2', paths: ['/purchases', '/suppliers'] },
             { id: 'ns3', paths: ['/customers'] },
             { id: 'ns4', paths: ['/hr'] },

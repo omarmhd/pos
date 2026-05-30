@@ -50,8 +50,8 @@ class PermissionSeeder extends Seeder
             // Products & Categories
             'products.view', 'products.create', 'products.edit', 'products.delete',
             'categories.view', 'categories.create', 'categories.edit', 'categories.delete',
-            // Inventory
-            'inventory.view',
+            // Inventory & Stocktaking
+            'inventory.view', 'inventory.adjust', 'inventory.count',
             // Accounting (read + basic)
             'accounts.view',
             'journal_entries.view',

@@ -65,6 +65,8 @@ class DatabaseSeeder extends Seeder
             ['code' => '6300', 'name' => 'مصروفات الخدمات',               'type' => 'expense', 'sub_type' => null,                  'is_header' => false],
             ['code' => '6400', 'name' => 'مصروفات الاستهلاك',             'type' => 'expense', 'sub_type' => null,                  'is_header' => false],
             ['code' => '6500', 'name' => 'مصروفات متنوعة',                'type' => 'expense', 'sub_type' => null,                  'is_header' => false],
+            // Inventory adjustment accounts
+            ['code' => '6510', 'name' => 'مصروف عجز وخسائر المخزون',       'type' => 'expense', 'sub_type' => null,                  'is_header' => false],
         ];
 
         foreach ($accounts as $account) {
@@ -91,7 +93,7 @@ class DatabaseSeeder extends Seeder
 
         if ($id6000) {
             DB::table('accounts')
-                ->whereIn('code', ['6100', '6200', '6300', '6400', '6500'])
+                ->whereIn('code', ['6100', '6200', '6300', '6400', '6500', '6510'])
                 ->update(['parent_id' => $id6000]);
         }
 
@@ -112,6 +114,9 @@ class DatabaseSeeder extends Seeder
             'account_retained_earnings_code'  => '3100',
             'account_salaries_payable_code'   => '2100',
             'account_input_vat_code'          => '1150',
+            // Inventory adjustment GL accounts
+            'account_inventory_shortage_code' => '6510',  // DR on negative adjustment
+            'account_inventory_surplus_code'  => '4100',  // CR on positive adjustment
         ];
 
         foreach ($settings as $key => $value) {

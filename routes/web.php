@@ -63,6 +63,25 @@ Route::middleware(['auth'])->group(function () {
     Route::get('products-expiring',
         [ProductController::class, 'expiring'])->name('products.expiring');
 
+    // ── Inventory Adjustments & Sessions (Stocktaking) ───────────────────────
+    Route::prefix('inventory')->name('inventory.')->group(function () {
+        // Level 1: Manual adjustments
+        Route::get('adjustments',               [App\Http\Controllers\InventoryAdjustmentController::class, 'index']) ->name('adjustments.index');
+        Route::get('adjustments/create',        [App\Http\Controllers\InventoryAdjustmentController::class, 'create'])->name('adjustments.create');
+        Route::get('adjustments/search',        [App\Http\Controllers\InventoryAdjustmentController::class, 'searchProducts'])->name('adjustments.search');
+        Route::post('adjustments',              [App\Http\Controllers\InventoryAdjustmentController::class, 'store']) ->name('adjustments.store');
+        Route::get('adjustments/{adjustment}',  [App\Http\Controllers\InventoryAdjustmentController::class, 'show'])  ->name('adjustments.show');
+        // Level 2: Periodic stocktake sessions
+        Route::get('sessions',                  [App\Http\Controllers\InventorySessionController::class, 'index'])   ->name('sessions.index');
+        Route::get('sessions/create',           [App\Http\Controllers\InventorySessionController::class, 'create'])  ->name('sessions.create');
+        Route::post('sessions',                 [App\Http\Controllers\InventorySessionController::class, 'store'])   ->name('sessions.store');
+        Route::get('sessions/{session}',        [App\Http\Controllers\InventorySessionController::class, 'show'])    ->name('sessions.show');
+        Route::patch('sessions/{session}/item', [App\Http\Controllers\InventorySessionController::class, 'updateItem'])->name('sessions.update-item');
+        Route::post('sessions/{session}/scan',  [App\Http\Controllers\InventorySessionController::class, 'scanBarcode'])->name('sessions.scan');
+        Route::post('sessions/{session}/approve',[App\Http\Controllers\InventorySessionController::class, 'approve']) ->name('sessions.approve');
+        Route::delete('sessions/{session}',     [App\Http\Controllers\InventorySessionController::class, 'cancel'])  ->name('sessions.cancel');
+    });
+
     // ── HR ────────────────────────────────────────────────────────────────────
     Route::prefix('hr')->name('hr.')->group(function () {
         Route::resource('employees', EmployeeController::class)->names([

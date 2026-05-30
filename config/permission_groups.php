@@ -78,10 +78,12 @@ return [
         ],
     ],
     'inventory' => [
-        'label' => 'المخزون',
+        'label' => 'المخزون والجرد',
         'icon'  => 'bi-archive',
         'permissions' => [
-            'inventory.view' => 'عرض تقارير المخزون',
+            'inventory.view'   => 'عرض تقارير المخزون',
+            'inventory.adjust' => 'تعديل المخزون يدوياً وإنشاء قيود التسوية',
+            'inventory.count'  => 'إنشاء جلسات الجرد الدوري واعتمادها',
         ],
     ],
     'accounts' => [
