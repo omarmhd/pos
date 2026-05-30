@@ -13,154 +13,389 @@
 
     @vite(['resources/css/theme.css', 'resources/css/auth.css', 'resources/js/app.js'])
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        * {
+            box-sizing: border-box;
+        }
+
+        html,
         body {
+            margin: 0;
+            min-height: 100%;
+        }
+
+        body.auth-page {
             font-family: 'Cairo', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100dvh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            color: #0f172a;
+            background:
+                radial-gradient(circle at top right, rgba(217, 119, 6, 0.16), transparent 28%),
+                radial-gradient(circle at bottom left, rgba(15, 23, 42, 0.2), transparent 32%),
+                linear-gradient(135deg, #f8fafc 0%, #eef2ff 100%);
         }
+
         .auth-shell {
-            width: 100%;
-            max-width: 420px;
-            padding: 20px;
+            min-height: 100vh;
+            display: grid;
+            grid-template-columns: 1.05fr 0.95fr;
         }
-        .auth-card {
-            background: white;
-            border-radius: 16px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.15);
-            padding: 40px 30px;
+
+        .auth-hero {
+            position: relative;
+            overflow: hidden;
+            padding: 56px;
+            color: #fff;
+            background:
+                linear-gradient(135deg, rgba(15, 23, 42, 0.96), rgba(30, 41, 59, 0.93)),
+                linear-gradient(160deg, #0f172a 0%, #1e293b 100%);
         }
-        .auth-header {
-            text-align: center;
-            margin-bottom: 32px;
+
+        .auth-hero::before,
+        .auth-hero::after {
+            content: '';
+            position: absolute;
+            border-radius: 999px;
+            background: rgba(251, 191, 36, 0.12);
         }
-        .auth-logo {
-            width: 60px;
-            height: 60px;
-            margin: 0 auto 16px;
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            color: white;
-            border-radius: 12px;
+
+        .auth-hero::before {
+            width: 260px;
+            height: 260px;
+            top: -80px;
+            left: -80px;
+        }
+
+        .auth-hero::after {
+            width: 180px;
+            height: 180px;
+            bottom: -60px;
+            right: 12%;
+        }
+
+        .auth-brand,
+        .auth-hero-copy,
+        .auth-stats {
+            position: relative;
+            z-index: 1;
+        }
+
+        .auth-brand {
             display: flex;
             align-items: center;
-            justify-content: center;
-            font-size: 28px;
+            gap: 16px;
+        }
+
+        .auth-logo {
+            width: 64px;
+            height: 64px;
+            border-radius: 18px;
+            display: grid;
+            place-items: center;
+            font-size: 1.1rem;
             font-weight: 800;
+            color: #0f172a;
+            background: linear-gradient(135deg, #fbbf24, #fde68a);
+            box-shadow: 0 16px 40px rgba(251, 191, 36, 0.3);
         }
-        .auth-title {
-            font-size: 24px;
-            font-weight: 700;
-            color: #1a1a1a;
+
+        .auth-kicker {
+            margin: 0 0 4px;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 0.95rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        .auth-brand h1 {
+            margin: 0;
+            font-size: 1.9rem;
+            line-height: 1.2;
+        }
+
+        .auth-hero-copy {
+            margin-top: 64px;
+            max-width: 520px;
+        }
+
+        .auth-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 10px 16px;
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.08);
+            color: #f8fafc;
+            font-size: 0.95rem;
+            margin-bottom: 22px;
+        }
+
+        .auth-hero-copy h2 {
+            margin: 0;
+            font-size: clamp(2.3rem, 4vw, 4.15rem);
+            line-height: 1.1;
+            letter-spacing: -0.03em;
+        }
+
+        .auth-hero-copy p {
+            margin: 20px 0 0;
+            max-width: 520px;
+            color: rgba(226, 232, 240, 0.86);
+            font-size: 1.1rem;
+            line-height: 1.9;
+        }
+
+        .auth-stats {
+            margin-top: 48px;
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 16px;
+        }
+
+        .auth-stat {
+            padding: 18px 16px;
+            border-radius: 18px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            backdrop-filter: blur(10px);
+        }
+
+        .auth-stat strong {
+            display: block;
             margin-bottom: 8px;
+            font-size: 1.3rem;
+            color: #fbbf24;
         }
+
+        .auth-stat span {
+            color: rgba(226, 232, 240, 0.82);
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+
+        .auth-panel {
+            display: grid;
+            place-items: center;
+            padding: 32px;
+        }
+
+        .auth-card {
+            width: 100%;
+            max-width: 520px;
+            padding: 42px;
+            border-radius: 28px;
+            background: rgba(255, 255, 255, 0.88);
+            border: 1px solid rgba(148, 163, 184, 0.18);
+            box-shadow: 0 24px 70px rgba(15, 23, 42, 0.12);
+            backdrop-filter: blur(18px);
+        }
+
+        .auth-title {
+            margin: 0 0 10px;
+            font-size: 2rem;
+            line-height: 1.2;
+            color: #0f172a;
+        }
+
         .auth-subtitle {
-            font-size: 13px;
-            color: #888;
-            line-height: 1.6;
+            margin: 0 0 28px;
+            color: #64748b;
+            line-height: 1.8;
         }
+
         .field {
             margin-bottom: 18px;
         }
+
         .field label {
             display: block;
-            font-size: 13px;
-            font-weight: 600;
-            color: #333;
-            margin-bottom: 6px;
+            margin-bottom: 8px;
+            font-size: 0.98rem;
+            font-weight: 700;
+            color: #334155;
         }
+
         .field input {
             width: 100%;
-            padding: 10px 12px;
-            border: 1px solid #e0e0e0;
-            border-radius: 8px;
-            font-size: 14px;
-            font-family: inherit;
-            transition: all 0.2s;
-        }
-        .field input:focus {
+            height: 52px;
+            padding: 0 16px;
+            border: 1px solid #dbe4f0;
+            border-radius: 16px;
+            background: #fff;
+            color: #0f172a;
+            font: inherit;
             outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
         }
+
+        .field input::placeholder {
+            color: #94a3b8;
+        }
+
+        .field input:focus {
+            border-color: #d97706;
+            box-shadow: 0 0 0 4px rgba(217, 119, 6, 0.14);
+            transform: translateY(-1px);
+        }
+
         .checkbox-row {
+            margin: 18px 0 22px;
             display: flex;
+            align-items: center;
             justify-content: space-between;
-            align-items: center;
-            margin-bottom: 22px;
-            font-size: 13px;
+            gap: 16px;
         }
+
         .remember {
-            display: flex;
+            display: inline-flex;
             align-items: center;
-            gap: 6px;
-            cursor: pointer;
-            color: #666;
+            gap: 10px;
+            color: #475569;
+            font-size: 0.95rem;
         }
+
         .remember input {
-            cursor: pointer;
+            width: 18px;
+            height: 18px;
+            accent-color: #d97706;
         }
+
         .checkbox-row a {
-            color: #667eea;
+            color: #d97706;
             text-decoration: none;
-            font-weight: 500;
+            font-weight: 700;
         }
+
         .checkbox-row a:hover {
             text-decoration: underline;
         }
+
         .auth-button {
             width: 100%;
-            padding: 11px;
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-size: 14px;
-            font-weight: 600;
+            min-height: 54px;
+            border: 0;
+            border-radius: 16px;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 45%, #d97706 100%);
+            color: #fff;
+            font: inherit;
+            font-size: 1.05rem;
+            font-weight: 800;
             cursor: pointer;
-            transition: all 0.3s;
-            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+            box-shadow: 0 14px 30px rgba(15, 23, 42, 0.16);
+            transition: transform 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease;
         }
+
         .auth-button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+            transform: translateY(-1px);
+            box-shadow: 0 18px 34px rgba(15, 23, 42, 0.2);
         }
+
         .auth-button:active {
             transform: translateY(0);
         }
+
         .auth-error {
             display: block;
-            color: #e74c3c;
-            font-size: 12px;
-            margin-top: 4px;
+            margin-top: 8px;
+            color: #b91c1c;
+            font-size: 0.9rem;
         }
+
         .auth-footer {
+            margin-top: 18px;
             text-align: center;
-            margin-top: 20px;
-            font-size: 13px;
-            color: #888;
+            color: #64748b;
+            line-height: 1.8;
         }
+
         .auth-footer a {
-            color: #667eea;
+            color: #0f172a;
+            font-weight: 700;
             text-decoration: none;
-            font-weight: 600;
         }
+
         .auth-footer a:hover {
             text-decoration: underline;
         }
+
+        @media (max-width: 1024px) {
+            .auth-shell {
+                grid-template-columns: 1fr;
+            }
+
+            .auth-hero {
+                padding: 36px 28px;
+            }
+
+            .auth-hero-copy {
+                margin-top: 40px;
+            }
+
+            .auth-panel {
+                padding-top: 0;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .auth-hero,
+            .auth-panel {
+                padding-left: 18px;
+                padding-right: 18px;
+            }
+
+            .auth-card {
+                padding: 28px 22px;
+                border-radius: 22px;
+            }
+
+            .auth-stats {
+                grid-template-columns: 1fr;
+            }
+
+            .checkbox-row {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+        }
     </style>
 </head>
-<body>
+<body class="auth-page">
     <main class="auth-shell">
-        <section class="auth-card">
-            <div class="auth-header">
+        <section class="auth-hero" aria-hidden="true">
+            <div class="auth-brand">
                 <div class="auth-logo">⚖</div>
-                <h1 class="auth-title">{{ \App\Models\Setting::get('system_name', 'الميّزان') }}</h1>
-                <p class="auth-subtitle">نظام إدارة المحاسبة والمبيعات</p>
+                <div>
+                    <p class="auth-kicker">Premium POS</p>
+                    <h1>{{ \App\Models\Setting::get('system_name', 'الميّزان') }}</h1>
+                </div>
             </div>
-            @yield('content')
+
+            <div class="auth-hero-copy">
+                <span class="auth-badge">إدارة متكاملة للمحاسبة والمبيعات والمخزون</span>
+                <h2>لوحة دخول أوضح، أسرع، وأكثر ثباتًا على الشاشات الكبيرة والصغيرة</h2>
+                <p>
+                    واجهة تسجيل دخول مصممة لتظهر بشكل متوازن على اللايف، مع مساحات أوسع للنصوص العربية
+                    وتباين أعلى بين بطاقة الدخول والخلفية.
+                </p>
+            </div>
+
+            <div class="auth-stats">
+                <div class="auth-stat">
+                    <strong>01</strong>
+                    <span>تجربة دخول مركزة بدون تشتيت</span>
+                </div>
+                <div class="auth-stat">
+                    <strong>02</strong>
+                    <span>توافق أفضل مع العربية RTL</span>
+                </div>
+                <div class="auth-stat">
+                    <strong>03</strong>
+                    <span>عرض أكثر وضوحًا على الهواتف والكمبيوتر</span>
+                </div>
+            </div>
+        </section>
+
+        <section class="auth-panel">
+            <div class="auth-card">
+                @yield('content')
+            </div>
         </section>
     </main>
 </body>
