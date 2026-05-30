@@ -41,12 +41,12 @@
                 <table class="table table-hover mb-0 align-middle small">
                     <thead class="table-dark">
                         <tr>
-                            <th class="ps-3" style="width:200px">الموظف</th>
-                            <th style="width:130px">الوردية</th>
-                            <th style="width:110px">وقت الدخول</th>
-                            <th style="width:110px">وقت الخروج</th>
-                            <th style="width:140px">الحالة</th>
-                            <th>ملاحظات</th>
+                            <th class="ps-3">الموظف</th>
+                            <th class="d-none d-md-table-cell">الوردية</th>
+                            <th>وقت الدخول</th>
+                            <th>وقت الخروج</th>
+                            <th>الحالة</th>
+                            <th class="d-none d-lg-table-cell">ملاحظات</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -54,7 +54,7 @@
                         @php $rec = $existing[$emp->id] ?? null; @endphp
                         <tr>
                             <td class="ps-3 fw-semibold">{{ $emp->name }}</td>
-                            <td>
+                            <td class="d-none d-md-table-cell">
                                 <select name="records[{{ $emp->id }}][shift_id]" class="form-select form-select-sm">
                                     <option value="">—</option>
                                     @foreach($shifts as $shift)
@@ -84,7 +84,7 @@
                                     @endforeach
                                 </select>
                             </td>
-                            <td>
+                            <td class="d-none d-lg-table-cell">
                                 <input type="text" name="records[{{ $emp->id }}][notes]"
                                        class="form-control form-control-sm"
                                        value="{{ $rec?->notes ?? '' }}"
