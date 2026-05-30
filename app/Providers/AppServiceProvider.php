@@ -6,6 +6,7 @@ use Illuminate\Support\ServiceProvider;
 use App\Models\Reversal;
 use App\Policies\ReversalPolicy;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Schema;
 
 class AppServiceProvider extends ServiceProvider
 {
