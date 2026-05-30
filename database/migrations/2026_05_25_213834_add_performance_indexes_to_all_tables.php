@@ -59,9 +59,11 @@ return new class extends Migration
         });
 
         // ── ATTENDANCE ────────────────────────────────────────────────
-        Schema::table('attendance', function (Blueprint $table) {
-            $table->index('work_date',     'idx_att_work_date');
-        });
+        if (Schema::hasTable('attendance')) {
+            Schema::table('attendance', function (Blueprint $table) {
+                $table->index('work_date', 'idx_att_work_date');
+            });
+        }
 
         // ── EMPLOYEES ─────────────────────────────────────────────────
         Schema::table('employees', function (Blueprint $table) {
@@ -117,7 +119,9 @@ return new class extends Migration
         Schema::table('customer_payments', fn($t) => $t->dropIndex('idx_cpay_received_at'));
         Schema::table('journal_entries',   fn($t) => collect(['idx_je_entry_date','idx_je_posted_at'])->each(fn($i) => $t->dropIndex($i)));
         Schema::table('journal_entry_lines', fn($t) => $t->dropIndex('idx_jel_account_id'));
-        Schema::table('attendance',        fn($t) => $t->dropIndex('idx_att_work_date'));
+        if (Schema::hasTable('attendance')) {
+            Schema::table('attendance', fn($t) => $t->dropIndex('idx_att_work_date'));
+        }
         Schema::table('employees',         fn($t) => collect(['idx_emp_is_active','idx_emp_department'])->each(fn($i) => $t->dropIndex($i)));
         Schema::table('shifts',            fn($t) => $t->dropIndex('idx_shifts_is_active'));
         Schema::table('accounts',          fn($t) => collect(['idx_accounts_type','idx_accounts_is_active','idx_accounts_parent_id'])->each(fn($i) => $t->dropIndex($i)));

@@ -22,6 +22,7 @@ return new class extends Migration
             $table->foreignId('recorded_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
 
+            $table->index('work_date', 'idx_att_work_date');
             $table->unique(['employee_id', 'work_date']);
         });
     }
