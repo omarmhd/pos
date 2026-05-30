@@ -1,0 +1,29 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-ChildItem -Recurse \"d:\\\\2026\\\\supermarket-pos\" -Depth 2)",
+      "Bash(Select-Object FullName, Length, LastWriteTime)",
+      "Bash(Format-Table -AutoSize)",
+      "PowerShell(Get-ChildItem -Recurse \"d:\\\\2026\\\\supermarket-pos\" -Depth 3 | Select-Object FullName, @{N='Size';E={if\\($_.PSIsContainer\\){'[DIR]'}else{$_.Length}}} | Format-Table -AutoSize)",
+      "Bash(Get-ChildItem -Path \"D:\\\\2026\\\\supermarket-pos\" -Directory)",
+      "Bash(Select-Object Name)",
+      "PowerShell(php -l \"d:\\\\2026\\\\supermarket-pos\\\\app\\\\Services\\\\FinancialStatementService.php\")",
+      "PowerShell(php -l \"d:\\\\2026\\\\supermarket-pos\\\\app\\\\Http\\\\Controllers\\\\FinancialStatementController.php\")",
+      "PowerShell(php -l \"d:\\\\2026\\\\supermarket-pos\\\\app\\\\Models\\\\Customer.php\")",
+      "PowerShell(php -l \"d:\\\\2026\\\\supermarket-pos\\\\app\\\\Models\\\\CustomerPayment.php\")",
+      "PowerShell(php -l \"d:\\\\2026\\\\supermarket-pos\\\\app\\\\Http\\\\Controllers\\\\CustomerController.php\")",
+      "PowerShell(php -l \"d:\\\\2026\\\\supermarket-pos\\\\app\\\\Http\\\\Controllers\\\\CustomerPaymentController.php\")",
+      "PowerShell(cd \"d:\\\\2026\\\\supermarket-pos\"; php artisan tinker --execute=\"DB::table\\('model_has_roles'\\)->join\\('roles','roles.id','=','model_has_roles.role_id'\\)->join\\('users','users.id','=','model_has_roles.model_id'\\)->select\\('users.email','roles.name'\\)->get\\(\\)->each\\(function\\(\\\\$r\\){echo \\\\$r->email.' => '.\\\\$r->name.PHP_EOL;}\\);\" 2>&1)",
+      "Bash(composer require *)",
+      "Bash(php artisan *)",
+      "Bash(Get-ChildItem -Path . -Directory)",
+      "Bash(Get-ChildItem -Path \"d:\\\\2026\\\\supermarket-pos\\\\resources\\\\views\" -Recurse -File)",
+      "Bash(Select-Object FullName)",
+      "Bash(Get-ChildItem -Path \"d:\\\\2026\\\\supermarket-pos\" -Directory)",
+      "PowerShell(Set-Location \"d:\\\\2026\\\\supermarket-pos\"; php artisan tinker --execute=\"echo 'Permissions: ' . \\\\Spatie\\\\Permission\\\\Models\\\\Permission::count\\(\\) . PHP_EOL; \\\\Spatie\\\\Permission\\\\Models\\\\Role::withCount\\('permissions'\\)->get\\(\\)->each\\(fn\\(\\\\$r\\) => print\\(\\\\$r->name . ': ' . \\\\$r->permissions_count . ' permissions' . PHP_EOL\\)\\);\" 2>&1)",
+      "Bash(php -r ' *)",
+      "Bash(php -r 'require '\\\\''vendor/autoload.php'\\\\''; $app = require '\\\\''bootstrap/app.php'\\\\''; $kernel = $app->make\\(Illuminate\\\\Contracts\\\\Http\\\\Kernel::class\\); echo '\\\\''OK'\\\\'';')",
+      "Bash(Select-Object -First 20)"
+    ]
+  }
+}

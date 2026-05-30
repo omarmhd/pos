@@ -1,0 +1,63 @@
+:root {
+    --app-bg: #f8fafc;
+    --app-surface: #ffffff;
+    --app-surface-soft: #f1f5f9;
+    --app-border: #dbe4f0;
+    --app-text: #0f172a;
+    --app-muted: #64748b;
+    --app-primary: #0f172a;
+    --app-accent: #d97706;
+    --app-success: #16a34a;
+    --app-shadow: 0 16px 40px rgba(15, 23, 42, 0.08);
+}
+
+html, body {
+    min-height: 100%;
+}
+
+body {
+    font-family: 'Cairo', sans-serif;
+    color: var(--app-text);
+    background: var(--app-bg);
+}
+
+.card {
+    border: 1px solid rgba(148, 163, 184, 0.16);
+    box-shadow: var(--app-shadow);
+    border-radius: 1rem;
+}
+
+.card-header {
+    background: transparent;
+}
+
+.navbar {
+    border: 1px solid rgba(148, 163, 184, 0.16);
+    box-shadow: var(--app-shadow);
+}
+
+.btn {
+    border-radius: 0.9rem;
+}
+
+.form-control {
+    border-radius: 0.9rem;
+    border-color: var(--app-border);
+}
+
+.badge {
+    border-radius: 999px;
+}
+
+.table thead th {
+    color: var(--app-muted);
+    font-weight: 700;
+}
+
+.surface-soft {
+    background: var(--app-surface-soft);
+}
+
+.text-muted {
+    color: var(--app-muted) !important;
+}

@@ -1,0 +1,191 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Product;
+use App\Models\Purchase;
+use App\Models\PurchaseItem;
+use App\Models\Setting;
+use App\Models\Supplier;
+use App\Services\LedgerPostingService;
+use App\Services\PdfService;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Yajra\DataTables\Facades\DataTables;
+
+class PurchaseController extends Controller
+{
+    public function __construct()
+    {
+        $this->middleware('can:purchases.view')->only(['index', 'show', 'pdf']);
+        $this->middleware('can:purchases.create')->only(['create', 'store']);
+        $this->middleware('can:purchases.delete')->only(['destroy']);
+    }
+
+    public function index(Request $request)
+    {
+        if ($request->ajax()) {
+            $query = Purchase::with('supplier', 'user')->select('purchases.*');
+
+            return DataTables::eloquent($query)
+                ->addColumn('supplier_name', fn($p) => e($p->supplier?->name ?? '—'))
+                ->addColumn('user_name',     fn($p) => e($p->user?->name ?? '—'))
+                ->addColumn('total_fmt',     fn($p) => number_format($p->total_amount, 2))
+                ->addColumn('paid_fmt',      fn($p) => number_format($p->paid_amount, 2))
+                ->addColumn('remaining_fmt', fn($p) => number_format($p->remainingAmount(), 2))
+                ->addColumn('status_badge',  fn($p) => $this->statusBadge($p->payment_status))
+                ->addColumn('date',          fn($p) => $p->created_at->format('Y-m-d'))
+                ->addColumn('action',        fn($p) => $this->actionButtons($p))
+                ->filterColumn('supplier_name', fn($q, $k) =>
+                    $q->whereHas('supplier', fn($s) => $s->where('name', 'like', "%$k%")))
+                ->filterColumn('user_name', fn($q, $k) =>
+                    $q->whereHas('user', fn($u) => $u->where('name', 'like', "%$k%")))
+                ->rawColumns(['status_badge', 'action'])
+                ->make(true);
+        }
+
+        return view('purchases.index');
+    }
+
+    public function create()
+    {
+        $suppliers = Supplier::orderBy('name')->get();
+        $products  = Product::with('category')->orderBy('name')->get();
+        $currency  = Setting::get('currency_symbol', 'ج.م');
+
+        return view('purchases.create', compact('suppliers', 'products', 'currency'));
+    }
+
+    public function store(Request $request)
+    {
+        $validated = $request->validate([
+            'supplier_id' => 'required|exists:suppliers,id',
+            'payment_status' => 'required|in:paid,partial,unpaid',
+            'paid_amount' => 'required|numeric|min:0',
+            'notes' => 'nullable|string',
+            'items' => 'required|array|min:1',
+            'items.*.product_id' => 'required|exists:products,id',
+            'items.*.quantity' => 'required|integer|min:1',
+            'items.*.unit_price' => 'required|numeric|min:0'
+        ]);
+
+        DB::beginTransaction();
+        try {
+            $totalAmount = 0;
+            foreach ($request->items as $item) {
+                $totalAmount += $item['quantity'] * $item['unit_price'];
+            }
+
+            $purchase = Purchase::create([
+                'supplier_id' => $request->supplier_id,
+                'user_id' => auth()->id(),
+                'total_amount' => $totalAmount,
+                'payment_status' => $request->payment_status,
+                'paid_amount' => $request->paid_amount,
+                'notes' => $request->notes
+            ]);
+
+            foreach ($request->items as $item) {
+                PurchaseItem::create([
+                    'purchase_id' => $purchase->id,
+                    'product_id'  => $item['product_id'],
+                    'quantity'    => $item['quantity'],
+                    'unit_price'  => $item['unit_price'],
+                    'total_price' => $item['quantity'] * $item['unit_price'],
+                ]);
+            }
+
+            // Post to GL — inside the transaction so it rolls back on failure
+            (new LedgerPostingService())->postPurchase($purchase->load('supplier'));
+
+            DB::commit();
+
+            return redirect()->route('purchases.show', $purchase)
+                ->with('success', 'تم إضافة فاتورة الشراء بنجاح');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->with('error', 'حدث خطأ أثناء حفظ الفاتورة: ' . $e->getMessage());
+        }
+    }
+
+    public function show(Purchase $purchase)
+    {
+        $purchase->load('supplier', 'user', 'items.product');
+        $currency = Setting::get('currency_symbol', 'ج.م');
+        return view('purchases.show', compact('purchase', 'currency'));
+    }
+
+    public function pdf(Purchase $purchase): \Illuminate\Http\Response
+    {
+        $purchase->load('supplier', 'user', 'items.product');
+        $currency = Setting::get('currency_symbol', 'ج.م');
+        return PdfService::arabic('pdf.purchase', compact('purchase', 'currency'))
+            ->download('purchase-' . $purchase->invoice_number . '.pdf');
+    }
+
+    public function destroy(Purchase $purchase)
+    {
+        if ($purchase->is_posted) {
+            return redirect()->route('purchases.index')
+                ->with('error', 'لا يمكن حذف فاتورة الشراء بعد ترحيلها. استخدم قيد تصحيح.');
+        }
+
+        DB::beginTransaction();
+        try {
+            foreach ($purchase->items as $item) {
+                Product::where('id', $item->product_id)->decrement('quantity', $item->quantity);
+            }
+
+            $purchase->delete();
+
+            \App\Models\AuditLog::create([
+                'user_id'        => auth()->id(),
+                'auditable_type' => Purchase::class,
+                'auditable_id'   => $purchase->id,
+                'action'         => 'deleted',
+                'ip_address'     => request()->ip(),
+            ]);
+
+            DB::commit();
+
+            return redirect()->route('purchases.index')
+                ->with('success', 'تم حذف فاتورة الشراء بنجاح');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->with('error', 'حدث خطأ أثناء حذف الفاتورة');
+        }
+    }
+
+    // ── private helpers ──────────────────────────────────────────────────────
+
+    private function statusBadge(string $status): string
+    {
+        $map = [
+            'paid'    => ['success', 'مدفوع'],
+            'partial' => ['warning', 'جزئي'],
+            'unpaid'  => ['danger',  'غير مدفوع'],
+        ];
+        [$color, $label] = $map[$status] ?? ['secondary', $status];
+        return "<span class='badge bg-{$color}'>{$label}</span>";
+    }
+
+    private function actionButtons(Purchase $p): string
+    {
+        $show = '<a href="'.route('purchases.show', $p).'" class="btn btn-sm btn-info btn-action" title="عرض"><i class="bi bi-eye"></i></a>';
+        $pdf  = '<a href="'.route('purchases.pdf', $p).'" class="btn btn-sm btn-outline-danger btn-action" title="PDF" target="_blank"><i class="bi bi-file-earmark-pdf"></i></a>';
+        $del  = '';
+        /** @var \App\Models\User $user */
+        $user = auth()->user();
+        if ($user->can('purchases.delete') && !$p->is_posted) {
+            $token = csrf_token();
+            $del = '<form action="'.route('purchases.destroy', $p).'" method="POST" class="d-inline"'
+                 . ' onsubmit="return confirm(\'هل أنت متأكد؟ سيتم استرجاع المنتجات من المخزون.\')">'
+                 . '<input type="hidden" name="_token" value="'.$token.'">'
+                 . '<input type="hidden" name="_method" value="DELETE">'
+                 . '<button class="btn btn-sm btn-outline-secondary btn-action" title="حذف"><i class="bi bi-trash"></i></button></form>';
+        }
+        return '<div class="d-flex gap-1 flex-nowrap">'.$show.$pdf.$del.'</div>';
+    }
+}

@@ -1,0 +1,195 @@
+<?php
+
+use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Auth;
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\AuditLogController;
+use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\SupplierController;
+use App\Http\Controllers\ProductController;
+use App\Http\Controllers\PurchaseController;
+use App\Http\Controllers\PosController;
+use App\Http\Controllers\SaleController;
+use App\Http\Controllers\ReportController;
+use App\Http\Controllers\AccountingController;
+use App\Http\Controllers\AttendanceController;
+use App\Http\Controllers\PayrollController;
+use App\Http\Controllers\ShiftController;
+use App\Http\Controllers\CustomerController;
+use App\Http\Controllers\CustomerPaymentController;
+use App\Http\Controllers\EmployeeController;
+use App\Http\Controllers\FinancialStatementController;
+use App\Http\Controllers\SupplierPaymentController;
+use App\Http\Controllers\UserController;
+use App\Http\Controllers\YearEndClosingController;
+use App\Http\Controllers\RoleController;
+
+Route::get('/', function () {
+    return redirect()->route('login');
+});
+
+Route::get('/home', function () {
+    return redirect()->route('dashboard');
+})->middleware('auth')->name('home');
+
+Auth::routes();
+
+Route::middleware(['auth'])->group(function () {
+
+    // ── Dashboard & Help ──────────────────────────────────────────────────────
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/help', fn() => view('help.index'))->name('help');
+
+    // ── Categories ────────────────────────────────────────────────────────────
+    Route::resource('categories', CategoryController::class);
+
+    // ── Suppliers ─────────────────────────────────────────────────────────────
+    Route::resource('suppliers', SupplierController::class);
+    Route::get('suppliers/{supplier}/payments/create',
+        [SupplierPaymentController::class, 'create'])->name('supplier-payments.create');
+    Route::post('suppliers/{supplier}/payments',
+        [SupplierPaymentController::class, 'store'])->name('supplier-payments.store');
+
+    // ── Products ──────────────────────────────────────────────────────────────
+    Route::get('products/barcode/{barcode}',
+        [ProductController::class, 'getByBarcode'])->name('products.barcode');
+    Route::get('products/import-template',
+        [ProductController::class, 'importTemplate'])->name('products.import-template');
+    Route::post('products/import',
+        [ProductController::class, 'import'])->name('products.import');
+    Route::resource('products', ProductController::class);
+    Route::get('products-low-stock',
+        [ProductController::class, 'lowStock'])->name('products.low-stock');
+    Route::get('products-expiring',
+        [ProductController::class, 'expiring'])->name('products.expiring');
+
+    // ── HR ────────────────────────────────────────────────────────────────────
+    Route::prefix('hr')->name('hr.')->group(function () {
+        Route::resource('employees', EmployeeController::class)->names([
+            'index'  => 'employees.index',
+            'create' => 'employees.create',
+            'store'  => 'employees.store',
+            'show'   => 'employees.show',
+            'edit'   => 'employees.edit',
+            'update' => 'employees.update',
+        ]);
+        Route::resource('shifts', ShiftController::class)->except(['show']);
+        Route::get('attendance/daily',   [AttendanceController::class, 'daily'])    ->name('attendance.daily');
+        Route::post('attendance/daily',  [AttendanceController::class, 'saveDaily'])->name('attendance.save-daily');
+        Route::get('attendance/monthly', [AttendanceController::class, 'monthly'])  ->name('attendance.monthly');
+        Route::get('attendance/sync',    [AttendanceController::class, 'syncIndex'])->name('attendance.sync');
+        Route::post('attendance/sync/now', [AttendanceController::class, 'syncNow'])->name('attendance.sync-now');
+        Route::get('attendance/sync/preview', [AttendanceController::class, 'syncPreview'])->name('attendance.sync-preview');
+        Route::get('payroll',            [PayrollController::class, 'index'])       ->name('payroll.index');
+        Route::get('payroll/preview',    [PayrollController::class, 'preview'])     ->name('payroll.preview');
+        Route::post('payroll',           [PayrollController::class, 'store'])       ->name('payroll.store');
+        Route::get('payroll/{payrollRun}',           [PayrollController::class, 'show'])   ->name('payroll.show');
+        Route::patch('payroll/{payrollRun}/approve', [PayrollController::class, 'approve'])->name('payroll.approve');
+        Route::get('payroll/{payrollRun}/items/{item}/payslip',
+            [PayrollController::class, 'payslip'])->name('payroll.payslip');
+    });
+
+    // ── Customers ─────────────────────────────────────────────────────────────
+    Route::resource('customers', CustomerController::class);
+    Route::get('customers/{customer}/payments/create',
+        [CustomerPaymentController::class, 'create'])->name('customer-payments.create');
+    Route::post('customers/{customer}/payments',
+        [CustomerPaymentController::class, 'store'])->name('customer-payments.store');
+
+    // ── Purchases ─────────────────────────────────────────────────────────────
+    Route::resource('purchases', PurchaseController::class)->except(['edit', 'update']);
+    Route::get('purchases/{purchase}/pdf',
+        [PurchaseController::class, 'pdf'])->name('purchases.pdf');
+
+    // ── POS ───────────────────────────────────────────────────────────────────
+    Route::get('/pos',              [PosController::class, 'index'])  ->name('pos.index');
+    Route::post('/pos',             [PosController::class, 'store'])  ->name('pos.store');
+    Route::get('/pos/receipt/{id}', [PosController::class, 'receipt'])->name('pos.receipt');
+    Route::get('/pos/customers/search', [PosController::class, 'searchCustomers'])->name('pos.customers.search');
+
+    // ── Sales ─────────────────────────────────────────────────────────────────
+    Route::resource('sales', SaleController::class)->only(['index', 'show']);
+    Route::get('sales/{sale}/pdf',    [SaleController::class, 'pdf'])    ->name('sales.pdf');
+    Route::delete('sales/{sale}',     [SaleController::class, 'destroy'])->name('sales.destroy');
+
+    // ── Reports ───────────────────────────────────────────────────────────────
+    Route::prefix('reports')->name('reports.')->group(function () {
+        Route::get('/',             [ReportController::class, 'index'])      ->name('index');
+        Route::get('/sales',        [ReportController::class, 'sales'])      ->name('sales');
+        Route::get('/purchases',    [ReportController::class, 'purchases'])  ->name('purchases');
+        Route::get('/profit',       [ReportController::class, 'profit'])     ->name('profit');
+        Route::get('/inventory',    [ReportController::class, 'inventory'])  ->name('inventory');
+        Route::get('/top-products', [ReportController::class, 'topProducts'])->name('top-products');
+        Route::get('/ar-aging',     [ReportController::class, 'arAging'])   ->name('ar-aging');
+        Route::get('/ap-aging',     [ReportController::class, 'apAging'])   ->name('ap-aging');
+    });
+
+    // ── Accounting ────────────────────────────────────────────────────────────
+    Route::get('/accounting', [AccountingController::class, 'index'])->name('accounting.index');
+
+    Route::prefix('accounting')->name('accounting.')->group(function () {
+        Route::get('/ledger',
+            [App\Http\Controllers\LedgerController::class, 'index'])->name('ledger.index');
+        Route::get('/ledger/{account}',
+            [App\Http\Controllers\LedgerController::class, 'show'])->name('ledger.show');
+        Route::get('/trial-balance',
+            [App\Http\Controllers\TrialBalanceController::class, 'index'])->name('trial-balance');
+        Route::get('/income-statement',
+            [FinancialStatementController::class, 'incomeStatement'])->name('income-statement');
+        Route::get('/balance-sheet',
+            [FinancialStatementController::class, 'balanceSheet'])->name('balance-sheet');
+        Route::get('/year-end-closing',
+            [YearEndClosingController::class, 'index'])->name('year-end-closing');
+        Route::post('/year-end-closing',
+            [YearEndClosingController::class, 'store'])->name('year-end-closing.store');
+    });
+
+    // ── Users ─────────────────────────────────────────────────────────────────
+    Route::resource('users', UserController::class);
+
+    // ── Roles & Permissions (RBAC) ────────────────────────────────────────────
+    Route::resource('roles', RoleController::class);
+    Route::get('roles/{role}/permissions-of',
+        [RoleController::class, 'permissionsOf'])->name('roles.permissions-of');
+
+    // ── Chart of Accounts ─────────────────────────────────────────────────────
+    Route::resource('accounts', App\Http\Controllers\AccountController::class);
+    Route::get('accounts-import',
+        [App\Http\Controllers\AccountController::class, 'importForm'])->name('accounts.import.form');
+    Route::post('accounts-import',
+        [App\Http\Controllers\AccountController::class, 'importCsv'])->name('accounts.import');
+    Route::get('accounts-export',
+        [App\Http\Controllers\AccountController::class, 'exportCsv'])->name('accounts.export');
+
+    // ── Settings ──────────────────────────────────────────────────────────────
+    Route::get('settings/accounting',
+        [App\Http\Controllers\SettingController::class, 'edit'])->name('settings.edit');
+    Route::post('settings/accounting',
+        [App\Http\Controllers\SettingController::class, 'update'])->name('settings.update');
+
+    // ── Audit Logs ────────────────────────────────────────────────────────────
+    Route::get('audit-logs', [AuditLogController::class, 'index'])->name('audit.logs.index');
+
+    // ── Reversals ─────────────────────────────────────────────────────────────
+    Route::get('reversals/create',
+        [App\Http\Controllers\ReversalController::class, 'create'])->name('reversals.create');
+    Route::get('reversals',
+        [App\Http\Controllers\ReversalController::class, 'index'])->name('reversals.index');
+    Route::get('reversals/{id}',
+        [App\Http\Controllers\ReversalController::class, 'show'])->name('reversals.show');
+    Route::post('reversals',
+        [App\Http\Controllers\ReversalController::class, 'store'])->name('reversals.store');
+
+    // ── Journal Entries ───────────────────────────────────────────────────────
+    Route::resource('journal-entries', App\Http\Controllers\JournalEntryController::class)
+        ->only(['index', 'create', 'store', 'show', 'destroy'])
+        ->names('journal_entries');
+    Route::get('journal-entries/{journal_entry}/pdf',
+        [App\Http\Controllers\JournalEntryController::class, 'pdf'])->name('journal_entries.pdf');
+
+    // ── Permissions (legacy redirect → new roles UI) ──────────────────────────
+    Route::get('permissions',
+        fn() => redirect()->route('roles.index'))->name('permissions.index');
+    Route::post('permissions/toggle/{user}',
+        [App\Http\Controllers\PermissionController::class, 'toggle'])->name('permissions.toggle');
+});
