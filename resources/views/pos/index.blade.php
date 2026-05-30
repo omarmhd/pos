@@ -311,15 +311,11 @@
 }
 
 @media print {
-    /* Mobile print: hide POS, show only receipt */
+    /* Hide everything except the receipt overlay */
     .pos-shell, .cart-fab, .cart-overlay,
     .toast-container, #_rcptActions { display: none !important; }
-    #_rcptContent {
-        display: block !important;
-        position: static !important;
-        padding: 0 !important;
-        overflow: visible !important;
-    }
+    /* Do NOT change position/layout of #_rcptContent to avoid post-print reflow bugs */
+    #_rcptContent { overflow: visible !important; padding: 0 !important; }
 }
 
 /* ── Responsive ─────────────────────────────────────────────── */
@@ -1013,14 +1009,26 @@ function printReceipt(r) {
         // Extract <style> and <body> from the receipt HTML
         const parser  = new DOMParser();
         const doc     = parser.parseFromString(html, 'text/html');
-        const style   = doc.querySelector('style')?.outerHTML ?? '';
-        // Remove the auto-print script (user taps the button instead)
+        const rawStyle = doc.querySelector('style')?.textContent ?? '';
+        // Remove auto-print script (user taps the button instead)
         doc.querySelectorAll('script').forEach(s => s.remove());
-        content.innerHTML = style + doc.body.innerHTML;
+
+        // CRITICAL: scope receipt styles to @media print ONLY.
+        // Injecting "body { width:80mm }" directly would break the POS layout
+        // even after the overlay is closed, because <style> tags stay in DOM.
+        const scopedStyle = rawStyle
+            ? `<style>@media print{${rawStyle}}</style>`
+            : '';
+        content.innerHTML = scopedStyle + doc.body.innerHTML;
 
         overlay.classList.add('show');
-        // Prevent POS scroll-through
         document.querySelector('.pos-shell').style.overflow = 'hidden';
+
+        // Auto-close overlay after print dialog is dismissed (afterprint event)
+        window.addEventListener('afterprint', function onAfterPrint() {
+            window.removeEventListener('afterprint', onAfterPrint);
+            closeMobileReceipt();
+        });
         return;
     }
 
@@ -1044,6 +1052,9 @@ function printReceipt(r) {
 function closeMobileReceipt() {
     document.getElementById('_rcptOverlay').classList.remove('show');
     document.querySelector('.pos-shell').style.overflow = '';
+    // Clear injected content — removes the <style> tag from DOM entirely
+    // so no receipt CSS bleeds into the main page after closing.
+    document.getElementById('_rcptContent').innerHTML = '';
 }
 
 function rePrint() { if (lastReceipt) printReceipt(lastReceipt); }
