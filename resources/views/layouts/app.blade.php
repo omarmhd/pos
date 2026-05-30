@@ -158,6 +158,141 @@
         .collapse, .collapsing { visibility: visible !important; }
         .collapse:not(.show) { display: none !important; }
 
+        /* ══════════════════════════════════════════
+           RESPONSIVE — Mobile / Tablet / Desktop
+           ══════════════════════════════════════════ */
+
+        /* ── Sidebar overlay (mobile backdrop) ── */
+        .sidebar-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.48);
+            z-index: 1054;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.28s, visibility 0.28s;
+            backdrop-filter: blur(2px);
+        }
+        .sidebar-overlay.show { opacity: 1; visibility: visible; }
+
+        /* ── Mobile sidebar close button ── */
+        .sidebar-close-btn {
+            display: none;
+            position: absolute;
+            top: 14px;
+            left: 14px;
+            background: rgba(255,255,255,0.12);
+            border: none;
+            color: #fff;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 1rem;
+            line-height: 1;
+            z-index: 2;
+            transition: background 0.18s;
+        }
+        .sidebar-close-btn:hover { background: rgba(255,255,255,0.22); }
+
+        /* ── Mobile breakpoint (< 768px) ── */
+        @media (max-width: 767.98px) {
+            /* Sidebar becomes a fixed right-drawer (RTL) */
+            nav.sidebar {
+                position: fixed !important;
+                top: 0;
+                right: 0;
+                height: 100dvh;
+                width: 272px;
+                z-index: 1055;
+                display: flex !important;          /* override d-md-block */
+                transform: translateX(110%);        /* hide off-screen right */
+                transition: transform 0.28s cubic-bezier(0.4,0,0.2,1);
+                box-shadow: none;
+            }
+            nav.sidebar.sidebar-open {
+                transform: translateX(0);
+                box-shadow: -6px 0 28px rgba(0,0,0,0.32);
+            }
+            /* Close btn visible on mobile */
+            .sidebar-close-btn { display: flex; }
+            /* Extra padding so brand doesn't overlap close btn */
+            .sidebar-brand { padding-left: 44px; }
+
+            /* Main content: full width */
+            main.col-md-9 {
+                width: 100% !important;
+                max-width: 100% !important;
+                padding-left: 12px !important;
+                padding-right: 12px !important;
+            }
+
+            /* Top navbar: tighter on mobile */
+            .navbar { padding: 6px 10px !important; border-radius: 8px !important; }
+            .navbar .navbar-brand { font-size: 0.88rem !important; }
+
+            /* Hide clock on very small screens */
+            .topbar-clock { display: none !important; }
+
+            /* Cards */
+            .card-body { padding: 0.8rem !important; }
+            .card-header { padding: 0.65rem 0.8rem !important; }
+            .stat-card { padding: 14px !important; }
+
+            /* Buttons */
+            .btn-action { padding: 3px 7px !important; font-size: 0.8rem !important; }
+
+            /* Page headings */
+            h4.page-title { font-size: 1rem !important; }
+
+            /* Fix row overflow */
+            .container-fluid { overflow-x: hidden; }
+        }
+
+        /* ── Tablet breakpoint (768px – 991px) ── */
+        @media (min-width: 768px) and (max-width: 991.98px) {
+            nav.sidebar { width: 220px; }
+            .sidebar .nav-link { font-size: 0.82rem; padding: 7px 10px; }
+            .nav-section-toggle { font-size: 0.78rem; }
+            main.col-md-9 { padding-left: 14px !important; padding-right: 14px !important; }
+        }
+
+        /* ── Tables: always scrollable ── */
+        .table-responsive { -webkit-overflow-scrolling: touch; }
+        /* Wrap any card-body table not already in .table-responsive */
+        .card-body > .table { overflow-x: auto; display: block; white-space: nowrap; }
+        .card-body > .table-responsive > .table { display: table; white-space: normal; }
+
+        /* ── DataTables responsive ── */
+        @media (max-width: 575.98px) {
+            .dataTables_wrapper .row.mb-2 { flex-direction: column; gap: 6px; }
+            .dataTables_wrapper .row.mb-2 > div { width: 100% !important; max-width: 100% !important; }
+            .dt-buttons { flex-wrap: wrap; gap: 4px; }
+            .dt-buttons .btn { font-size: 0.72rem; padding: 3px 7px; }
+            .dataTables_filter input { width: 100% !important; }
+        }
+
+        /* ── Forms: full-width inputs on mobile ── */
+        @media (max-width: 575.98px) {
+            .row.g-3 > [class*="col-"], .row.mb-3 > [class*="col-"] { flex: 0 0 100%; max-width: 100%; }
+        }
+
+        /* ── Hamburger button (only on mobile) ── */
+        .sidebar-toggle-btn {
+            display: none;
+            background: #1a2535;
+            border: none;
+            color: #fff;
+            border-radius: 7px;
+            padding: 5px 10px;
+            font-size: 1.15rem;
+            line-height: 1;
+            cursor: pointer;
+        }
+        @media (max-width: 767.98px) { .sidebar-toggle-btn { display: inline-flex; align-items: center; } }
+
         /* ── Print ── */
         @media print {
             nav.sidebar, nav.navbar, .no-print,
@@ -176,12 +311,18 @@
     @stack('styles')
 </head>
 <body>
+<!-- Mobile sidebar overlay -->
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+
 <div class="container-fluid">
     <div class="row">
 
         <!-- ═══════════════ SIDEBAR ═══════════════ -->
         <nav class="col-md-3 col-lg-2 d-md-block sidebar p-0">
-            <div class="position-sticky pt-0" style="top:0; overflow-y:auto; max-height:100vh;">
+            <div class="position-sticky pt-0" style="top:0; overflow-y:auto; max-height:100dvh;">
+
+                <!-- Mobile close button -->
+                <button class="sidebar-close-btn" onclick="closeSidebar()" aria-label="إغلاق">✕</button>
 
                 <!-- Brand -->
                 <div class="sidebar-brand">
@@ -591,14 +732,18 @@
         <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
 
             <!-- Top bar -->
-            <nav class="navbar navbar-expand-lg navbar-light bg-light mb-4 mt-3 rounded">
-                <div class="container-fluid">
-                    <span class="navbar-brand fw-semibold">@yield('page-title', 'لوحة التحكم')</span>
+            <nav class="navbar navbar-light bg-light mb-4 mt-3 rounded">
+                <div class="container-fluid gap-2">
+                    <!-- Hamburger (mobile only) -->
+                    <button class="sidebar-toggle-btn" onclick="openSidebar()" aria-label="القائمة">
+                        <i class="bi bi-list"></i>
+                    </button>
+                    <span class="navbar-brand fw-semibold mb-0 me-auto">@yield('page-title', 'لوحة التحكم')</span>
                     <div class="d-flex align-items-center gap-2">
                         @auth
                             <span class="badge bg-primary">{{ auth()->user()->getRoleNames()->first() ?? auth()->user()->role }}</span>
                         @endauth
-                        <span class="text-muted small"><i class="bi bi-clock"></i> {{ now()->format('Y-m-d H:i') }}</span>
+                        <span class="text-muted small topbar-clock"><i class="bi bi-clock"></i> {{ now()->format('Y-m-d H:i') }}</span>
                     </div>
                 </div>
             </nav>
@@ -650,6 +795,29 @@
 <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.print.min.js"></script>
 
 <script>
+    // ── Mobile sidebar ──────────────────────────────────────
+    function openSidebar() {
+        document.querySelector('nav.sidebar').classList.add('sidebar-open');
+        document.getElementById('sidebarOverlay').classList.add('show');
+        document.body.style.overflow = 'hidden';
+    }
+    function closeSidebar() {
+        document.querySelector('nav.sidebar').classList.remove('sidebar-open');
+        document.getElementById('sidebarOverlay').classList.remove('show');
+        document.body.style.overflow = '';
+    }
+    // Auto-close sidebar when a nav link is clicked on mobile
+    document.querySelectorAll('nav.sidebar a.nav-link').forEach(function(link) {
+        link.addEventListener('click', function() {
+            if (window.innerWidth < 768) closeSidebar();
+        });
+    });
+    // Close on resize to desktop
+    window.addEventListener('resize', function() {
+        if (window.innerWidth >= 768) closeSidebar();
+    });
+
+    // ── Auto-dismiss alerts ──────────────────────────────────
     // Auto-dismiss alerts
     setTimeout(function() { $('.alert').fadeOut('slow'); }, 5000);
 

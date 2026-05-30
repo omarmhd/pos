@@ -13,7 +13,13 @@
 
     @yield('styles')
 </head>
-<body style="font-family:'Cairo',sans-serif; background:#f0f2f5; height:100dvh; overflow:hidden;">
+<style>
+    body { font-family:'Cairo',sans-serif; background:#f0f2f5; height:100dvh; overflow:hidden; }
+    @media (max-width: 767.98px) {
+        body { height:auto; min-height:100dvh; overflow-y:auto; overflow-x:hidden; }
+    }
+</style>
+<body>
 
     @yield('content')
 
