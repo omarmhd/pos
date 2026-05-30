@@ -23,7 +23,8 @@
       "PowerShell(Set-Location \"d:\\\\2026\\\\supermarket-pos\"; php artisan tinker --execute=\"echo 'Permissions: ' . \\\\Spatie\\\\Permission\\\\Models\\\\Permission::count\\(\\) . PHP_EOL; \\\\Spatie\\\\Permission\\\\Models\\\\Role::withCount\\('permissions'\\)->get\\(\\)->each\\(fn\\(\\\\$r\\) => print\\(\\\\$r->name . ': ' . \\\\$r->permissions_count . ' permissions' . PHP_EOL\\)\\);\" 2>&1)",
       "Bash(php -r ' *)",
       "Bash(php -r 'require '\\\\''vendor/autoload.php'\\\\''; $app = require '\\\\''bootstrap/app.php'\\\\''; $kernel = $app->make\\(Illuminate\\\\Contracts\\\\Http\\\\Kernel::class\\); echo '\\\\''OK'\\\\'';')",
-      "Bash(Select-Object -First 20)"
+      "Bash(Select-Object -First 20)",
+      "Bash(composer show *)"
     ]
   }
 }

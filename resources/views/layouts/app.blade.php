@@ -151,6 +151,13 @@
         /* ── Page title ── */
         .page-title { color: #2c3e50; font-weight: 600; margin-bottom: 20px; }
 
+        /* ── Tailwind v4 conflict fix ──
+           Tailwind v4 generates .collapse { visibility: collapse } as a utility
+           which hides Bootstrap collapse panels. Override it here so the inline
+           style takes priority without needing a Vite rebuild on the server. */
+        .collapse, .collapsing { visibility: visible !important; }
+        .collapse:not(.show) { display: none !important; }
+
         /* ── Print ── */
         @media print {
             nav.sidebar, nav.navbar, .no-print,

@@ -34,7 +34,7 @@ class LedgerController extends Controller
                 'expense'   => ['مصروف',       'danger'],
             ];
 
-            return DataTables::queryBuilder($query)
+            return DataTables::of($query)
                 ->addColumn('type_badge', function ($row) use ($typeMap) {
                     [$label, $color] = $typeMap[$row->type] ?? [$row->type, 'secondary'];
                     return '<span class="badge bg-' . $color . '">' . $label . '</span>';
@@ -63,7 +63,7 @@ class LedgerController extends Controller
         return view('accounting.ledger_index');
     }
 
-    public function show(Request $request, $accountId)
+    public function show(Request $request, int $accountId)
     {
         $account = DB::table('accounts')->where('id', $accountId)->first();
         abort_if(!$account, 404);
