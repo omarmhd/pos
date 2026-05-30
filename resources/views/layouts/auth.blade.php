@@ -35,156 +35,25 @@
         .auth-shell {
             min-height: 100vh;
             display: grid;
-            grid-template-columns: 1.05fr 0.95fr;
-        }
-
-        .auth-hero {
-            position: relative;
-            overflow: hidden;
-            padding: 56px;
-            color: #fff;
-            background:
-                linear-gradient(135deg, rgba(15, 23, 42, 0.96), rgba(30, 41, 59, 0.93)),
-                linear-gradient(160deg, #0f172a 0%, #1e293b 100%);
-        }
-
-        .auth-hero::before,
-        .auth-hero::after {
-            content: '';
-            position: absolute;
-            border-radius: 999px;
-            background: rgba(251, 191, 36, 0.12);
-        }
-
-        .auth-hero::before {
-            width: 260px;
-            height: 260px;
-            top: -80px;
-            left: -80px;
-        }
-
-        .auth-hero::after {
-            width: 180px;
-            height: 180px;
-            bottom: -60px;
-            right: 12%;
-        }
-
-        .auth-brand,
-        .auth-hero-copy,
-        .auth-stats {
-            position: relative;
-            z-index: 1;
-        }
-
-        .auth-brand {
-            display: flex;
-            align-items: center;
-            gap: 16px;
-        }
-
-        .auth-logo {
-            width: 64px;
-            height: 64px;
-            border-radius: 18px;
-            display: grid;
             place-items: center;
-            font-size: 1.1rem;
-            font-weight: 800;
-            color: #0f172a;
-            background: linear-gradient(135deg, #fbbf24, #fde68a);
-            box-shadow: 0 16px 40px rgba(251, 191, 36, 0.3);
-        }
-
-        .auth-kicker {
-            margin: 0 0 4px;
-            color: rgba(255, 255, 255, 0.7);
-            font-size: 0.95rem;
-            letter-spacing: 0.08em;
-            text-transform: uppercase;
-        }
-
-        .auth-brand h1 {
-            margin: 0;
-            font-size: 1.9rem;
-            line-height: 1.2;
-        }
-
-        .auth-hero-copy {
-            margin-top: 64px;
-            max-width: 520px;
-        }
-
-        .auth-badge {
-            display: inline-flex;
-            align-items: center;
-            padding: 10px 16px;
-            border: 1px solid rgba(255, 255, 255, 0.16);
-            border-radius: 999px;
-            background: rgba(255, 255, 255, 0.08);
-            color: #f8fafc;
-            font-size: 0.95rem;
-            margin-bottom: 22px;
-        }
-
-        .auth-hero-copy h2 {
-            margin: 0;
-            font-size: clamp(2.3rem, 4vw, 4.15rem);
-            line-height: 1.1;
-            letter-spacing: -0.03em;
-        }
-
-        .auth-hero-copy p {
-            margin: 20px 0 0;
-            max-width: 520px;
-            color: rgba(226, 232, 240, 0.86);
-            font-size: 1.1rem;
-            line-height: 1.9;
-        }
-
-        .auth-stats {
-            margin-top: 48px;
-            display: grid;
-            grid-template-columns: repeat(3, minmax(0, 1fr));
-            gap: 16px;
-        }
-
-        .auth-stat {
-            padding: 18px 16px;
-            border-radius: 18px;
-            background: rgba(255, 255, 255, 0.08);
-            border: 1px solid rgba(255, 255, 255, 0.12);
-            backdrop-filter: blur(10px);
-        }
-
-        .auth-stat strong {
-            display: block;
-            margin-bottom: 8px;
-            font-size: 1.3rem;
-            color: #fbbf24;
-        }
-
-        .auth-stat span {
-            color: rgba(226, 232, 240, 0.82);
-            font-size: 0.95rem;
-            line-height: 1.5;
+            padding: 24px;
         }
 
         .auth-panel {
+            width: 100%;
             display: grid;
             place-items: center;
-            padding: 32px;
         }
 
         .auth-card {
             width: 100%;
-            max-width: 520px;
-            padding: 42px;
-            border-radius: 28px;
-            background: rgba(255, 255, 255, 0.88);
-            border: 1px solid rgba(148, 163, 184, 0.18);
+            max-width: 640px;
+            padding: 44px 36px;
+            border-radius: 24px;
+            background: rgba(255, 255, 255, 0.92);
+            border: 1px solid rgba(148, 163, 184, 0.16);
             box-shadow: 0 24px 70px rgba(15, 23, 42, 0.12);
-            backdrop-filter: blur(18px);
+            backdrop-filter: blur(16px);
         }
 
         .auth-title {
@@ -315,38 +184,10 @@
             text-decoration: underline;
         }
 
-        @media (max-width: 1024px) {
-            .auth-shell {
-                grid-template-columns: 1fr;
-            }
-
-            .auth-hero {
-                padding: 36px 28px;
-            }
-
-            .auth-hero-copy {
-                margin-top: 40px;
-            }
-
-            .auth-panel {
-                padding-top: 0;
-            }
-        }
-
         @media (max-width: 640px) {
-            .auth-hero,
-            .auth-panel {
-                padding-left: 18px;
-                padding-right: 18px;
-            }
-
             .auth-card {
-                padding: 28px 22px;
-                border-radius: 22px;
-            }
-
-            .auth-stats {
-                grid-template-columns: 1fr;
+                padding: 28px 20px;
+                border-radius: 20px;
             }
 
             .checkbox-row {
@@ -358,42 +199,13 @@
 </head>
 <body class="auth-page">
     <main class="auth-shell">
-        <section class="auth-hero" aria-hidden="true">
-            <div class="auth-brand">
-                <div class="auth-logo">⚖</div>
-                <div>
-                    <p class="auth-kicker">Premium POS</p>
-                    <h1>{{ \App\Models\Setting::get('system_name', 'الميّزان') }}</h1>
-                </div>
-            </div>
-
-            <div class="auth-hero-copy">
-                <span class="auth-badge">إدارة متكاملة للمحاسبة والمبيعات والمخزون</span>
-                <h2>لوحة دخول أوضح، أسرع، وأكثر ثباتًا على الشاشات الكبيرة والصغيرة</h2>
-                <p>
-                    واجهة تسجيل دخول مصممة لتظهر بشكل متوازن على اللايف، مع مساحات أوسع للنصوص العربية
-                    وتباين أعلى بين بطاقة الدخول والخلفية.
-                </p>
-            </div>
-
-            <div class="auth-stats">
-                <div class="auth-stat">
-                    <strong>01</strong>
-                    <span>تجربة دخول مركزة بدون تشتيت</span>
-                </div>
-                <div class="auth-stat">
-                    <strong>02</strong>
-                    <span>توافق أفضل مع العربية RTL</span>
-                </div>
-                <div class="auth-stat">
-                    <strong>03</strong>
-                    <span>عرض أكثر وضوحًا على الهواتف والكمبيوتر</span>
-                </div>
-            </div>
-        </section>
-
         <section class="auth-panel">
             <div class="auth-card">
+                <div class="auth-header" style="text-align:center; margin-bottom: 32px;">
+                    <div class="auth-logo" style="width: 60px; height: 60px; margin: 0 auto 16px; border-radius: 16px; display: grid; place-items: center; font-size: 28px; font-weight: 800; color: #0f172a; background: linear-gradient(135deg, #fbbf24, #fde68a); box-shadow: 0 16px 40px rgba(251, 191, 36, 0.3);">⚖</div>
+                    <h1 style="margin: 0; font-size: 1.9rem; line-height: 1.2; color: #0f172a;">{{ \App\Models\Setting::get('system_name', 'الميّزان') }}</h1>
+                    <p style="margin: 8px 0 0; color: #64748b; line-height: 1.8;">نظام إدارة المحاسبة والمبيعات</p>
+                </div>
                 @yield('content')
             </div>
         </section>
