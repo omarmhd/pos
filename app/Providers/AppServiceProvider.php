@@ -16,6 +16,8 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+            Schema::defaultStringLength(191);
+
         // Super-admin bypass: admin role passes every Gate check without needing
         // individual permissions. All other roles are checked against permissions.
         Gate::before(function ($user, $ability) {
