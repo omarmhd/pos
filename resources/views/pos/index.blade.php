@@ -1110,6 +1110,9 @@ function buildReceiptHTML(r) {
     <div class="ftr">
         <p>${esc(POS_SETTINGS.receiptFooter)}</p>
         <p style="margin-top:8px">* * * * * * * *</p>
+        @if(config('mizaan.print_footer'))
+        <p style="margin-top:6px;font-size:9px;color:#aaa;letter-spacing:0.3px;">{!! config('mizaan.print_footer') !!}</p>
+        @endif
     </div>
     <script>window.onload=function(){window.print();}<\/script>
     </body></html>`;

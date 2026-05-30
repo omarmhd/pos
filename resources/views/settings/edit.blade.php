@@ -40,7 +40,7 @@ $sections = [
         'items' => [
             ['key' => 'max_discount_percent',   'label' => 'أقصى نسبة خصم مسموح (%)',      'type' => 'number', 'min' => 0, 'max' => 100, 'col' => 3],
             ['key' => 'max_credit_days',         'label' => 'أقصى أيام ائتمان',             'type' => 'number', 'min' => 0, 'col' => 3],
-            ['key' => 'receipt_footer',          'label' => 'نص ذيل الفاتورة',              'type' => 'text',   'placeholder' => 'شكراً لزيارتكم'],
+            ['key' => 'receipt_footer',          'label' => 'نص ذيل إيصال البيع (POS)',     'type' => 'text',   'placeholder' => 'شكراً لزيارتكم'],
             ['key' => 'default_payment_method',  'label' => 'طريقة الدفع الافتراضية',       'type' => 'select',
              'options' => ['cash' => 'نقدي', 'card' => 'بطاقة بنكية', 'mobile_wallet' => 'محفظة إلكترونية'], 'col' => 3],
             ['key' => 'receipt_width_mm',        'label' => 'عرض الفاتورة',                'type' => 'select',

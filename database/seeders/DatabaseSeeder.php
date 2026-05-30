@@ -140,7 +140,7 @@ class DatabaseSeeder extends Seeder
 
         // ── Branding Settings ────────────────────────────────────
         $brandingSettings = [
-            'invoice_footer' => 'تم إنشاء هذه الفاتورة باستخدام نظام الميّزان - حل إدارة متكامل | للشراء والدعم: +970592676623',
+            'invoice_footer'      => 'تم إنشاء هذه الفاتورة باستخدام نظام الميّزان - حل إدارة متكامل | للشراء والدعم: +970592676623',
             'show_system_watermark' => '1',
         ];
 

@@ -230,6 +230,13 @@
                 {{ \App\Models\Setting::get('invoice_footer', '') }}
             </td>
         </tr>
+        @if(config('mizaan.print_footer'))
+        <tr>
+            <td colspan="3" style="text-align:center;font-size:7.5px;color:#bbb;padding-top:5px;letter-spacing:0.3px;">
+                {{ config('mizaan.print_footer') }}
+            </td>
+        </tr>
+        @endif
     </table>
 
 </div>
