@@ -40,7 +40,7 @@
                     </div>
                     <div class="col-md-6">
                         <label class="form-label"><strong>Port</strong></label>
-                        <input type="text" class="form-control" value="{{ \App\Models\Setting::get('zkteco_port', '23') }}" readonly>
+                        <input type="text" class="form-control" value="{{ \App\Models\Setting::get('zkteco_port', '4370') }}" readonly>
                     </div>
                 </div>
 
@@ -131,8 +131,8 @@
                         <input type="text" class="form-control" id="zkIpInput" value="{{ \App\Models\Setting::get('zkteco_ip', '192.168.1.100') }}">
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Port</label>
-                        <input type="text" class="form-control" id="zkPort" value="{{ \App\Models\Setting::get('zkteco_port', '23') }}">
+                        <label class="form-label">Port <small class="text-muted">(الافتراضي: 4370)</small></label>
+                        <input type="number" class="form-control" id="zkPort" value="{{ \App\Models\Setting::get('zkteco_port', '4370') }}" min="1" max="65535">
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Username (اختياري)</label>
@@ -173,8 +173,35 @@ function syncNow() {
 }
 
 function saveSettings() {
-    alert('سيتم حفظ الإعدادات قريباً');
-    bootstrap.Modal.getInstance(document.getElementById('settingsModal')).hide();
+    const btn = document.querySelector('#settingsModal .btn-primary');
+    btn.disabled = true;
+    btn.textContent = 'جاري الحفظ...';
+
+    fetch('{{ route("hr.attendance.sync-settings") }}', {
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            zkteco_mode:     document.getElementById('zkMode').value,
+            zkteco_ip:       document.getElementById('zkIpInput').value,
+            zkteco_port:     document.getElementById('zkPort').value,
+            zkteco_username: document.getElementById('zkUsername').value,
+            zkteco_password: document.getElementById('zkPassword').value,
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        bootstrap.Modal.getInstance(document.getElementById('settingsModal')).hide();
+        location.reload();
+    })
+    .catch(err => {
+        alert('خطأ في الحفظ: ' + err.message);
+        btn.disabled = false;
+        btn.textContent = 'حفظ الإعدادات';
+    });
 }
 </script>
 @endsection

@@ -18,12 +18,10 @@ class AttendanceService
         $this->demoMode = Setting::get('zkteco_mode', 'demo') === 'demo';
 
         if (!$this->demoMode) {
-            $this->zkteco = new ZKTeco([
-                'ip'       => Setting::get('zkteco_ip', '192.168.1.100'),
-                'port'     => Setting::get('zkteco_port', 23),
-                'username' => Setting::get('zkteco_username', ''),
-                'password' => Setting::get('zkteco_password', ''),
-            ]);
+            $this->zkteco = new ZKTeco(
+                Setting::get('zkteco_ip', '192.168.1.100'),
+                (int) Setting::get('zkteco_port', 4370)
+            );
         }
     }
 
@@ -51,7 +49,7 @@ class AttendanceService
     // توليد بيانات وهمية للتجريب
     private function generateDemoData()
     {
-        $employees = Employee::active()->get(['id', 'employee_code']);
+        $employees = Employee::where('is_active', true)->get(['id', 'employee_code']);
         $data = [];
 
         foreach ($employees as $emp) {

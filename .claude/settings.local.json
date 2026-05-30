@@ -24,7 +24,8 @@
       "Bash(php -r ' *)",
       "Bash(php -r 'require '\\\\''vendor/autoload.php'\\\\''; $app = require '\\\\''bootstrap/app.php'\\\\''; $kernel = $app->make\\(Illuminate\\\\Contracts\\\\Http\\\\Kernel::class\\); echo '\\\\''OK'\\\\'';')",
       "Bash(Select-Object -First 20)",
-      "Bash(composer show *)"
+      "Bash(composer show *)",
+      "Bash(Get-ChildItem -Path . -Force)"
     ]
   }
 }

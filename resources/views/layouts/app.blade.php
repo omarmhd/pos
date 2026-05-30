@@ -625,6 +625,16 @@
 
             @yield('content')
 
+            <div class="text-center text-muted small mt-4 pb-3 border-top pt-3">
+                <i class="bi bi-check2-circle text-success"></i>
+                <strong>الميزان</strong> — نظام إدارة متكامل للمحلات التجارية
+                &nbsp;|&nbsp; النسخة التجريبية
+                &nbsp;|&nbsp; للتواصل والدعم الفني عبر واتساب:
+                <a href="https://wa.me/970592676623" target="_blank" class="text-success text-decoration-none fw-semibold">
+                    <i class="bi bi-whatsapp"></i> ‎+970 592 676 623
+                </a>
+            </div>
+
         </main>
     </div>
 </div>

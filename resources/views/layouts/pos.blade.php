@@ -31,5 +31,17 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
     @yield('scripts')
+
+    <div style="position:fixed;bottom:0;left:0;right:0;text-align:center;font-size:0.72rem;
+                color:rgba(0,0,0,0.35);padding:3px 0;background:rgba(255,255,255,0.7);
+                backdrop-filter:blur(4px);z-index:100;border-top:1px solid rgba(0,0,0,0.07);">
+        <strong>الميزان</strong> — نظام إدارة متكامل للمحلات التجارية
+        &nbsp;|&nbsp; النسخة التجريبية
+        &nbsp;|&nbsp; للتواصل والدعم الفني عبر واتساب:
+        <a href="https://wa.me/970592676623" target="_blank"
+           style="color:#16a34a;text-decoration:none;font-weight:600;">
+            <i class="bi bi-whatsapp"></i> ‎+970 592 676 623
+        </a>
+    </div>
 </body>
 </html>

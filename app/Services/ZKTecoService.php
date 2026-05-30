@@ -16,12 +16,10 @@ class ZKTecoService
     public function __construct()
     {
         try {
-            $this->zkteco = new ZKTeco([
-                'ip'       => Setting::get('zkteco_ip', '192.168.1.100'),
-                'port'     => Setting::get('zkteco_port', 23),
-                'username' => Setting::get('zkteco_username', ''),
-                'password' => Setting::get('zkteco_password', ''),
-            ]);
+            $this->zkteco = new ZKTeco(
+                Setting::get('zkteco_ip', '192.168.1.100'),
+                (int) Setting::get('zkteco_port', 4370)
+            );
         } catch (\Exception $e) {
             \Log::error('ZKTeco Connection Error: ' . $e->getMessage());
         }

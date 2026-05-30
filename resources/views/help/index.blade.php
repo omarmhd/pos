@@ -76,6 +76,7 @@
                 <a class="nav-link" href="#sec-purchases">المشتريات والموردون</a>
                 <a class="nav-link" href="#sec-customers">العملاء والذمم المدينة</a>
                 <a class="nav-link" href="#sec-hr">الموارد البشرية والرواتب</a>
+                <a class="nav-link" href="#sec-zkteco"><i class="bi bi-fingerprint"></i> ربط جهاز البصمة</a>
                 <a class="nav-link" href="#sec-accounting">المحاسبة والقيود</a>
                 <a class="nav-link sub-item" href="#sec-accounting">└ القيد المزدوج</a>
                 <a class="nav-link sub-item" href="#sec-accounts">└ شجرة الحسابات</a>
@@ -803,9 +804,57 @@
             </div>
         </div>
 
-        <div class="text-center text-muted small mt-4 pb-4">
-            <i class="bi bi-check2-circle text-success"></i>
-            نظام POS — دليل الاستخدام | الإصدار 2.0
+
+        {{-- ══════════════ قسم جهاز البصمة ZKTeco ══════════════ --}}
+        <div class="help-section" id="sec-zkteco">
+            <div class="section-header">
+                <i class="bi bi-fingerprint"></i> ربط جهاز البصمة (ZKTeco)
+            </div>
+            <div class="section-body">
+
+                <div class="alert alert-primary">
+                    <i class="bi bi-info-circle-fill"></i>
+                    <strong>نظرة عامة:</strong> النظام يدعم ربط أجهزة البصمة <strong>ZKTeco</strong> عبر الشبكة المحلية (LAN)
+                    لاستيراد سجلات الحضور والانصراف تلقائياً دون إدخال يدوي.
+                </div>
+
+                <h6 class="subsection-title"><i class="bi bi-clipboard-check"></i> المتطلبات</h6>
+                <ul class="help-list">
+                    <li>جهاز ZKTeco يدعم الاتصال عبر الشبكة (UDP/TCP) على المنفذ <code>4370</code></li>
+                    <li>الجهاز والسيرفر على <strong>نفس الشبكة المحلية</strong> (LAN)</li>
+                    <li>معرفة <strong>IP الجهاز</strong> — من إعدادات الجهاز ← الشبكة</li>
+                    <li>كود الموظف في النظام يتطابق مع رقم المستخدم في الجهاز</li>
+                </ul>
+
+                <h6 class="subsection-title mt-4"><i class="bi bi-plug-fill"></i> خطوات الربط</h6>
+                <div class="workflow-step"><div class="step-num">1</div><div class="step-body"><div class="step-title">فتح صفحة المزامنة</div><div class="step-desc">الموارد البشرية ← الحضور والانصراف ← مزامنة ZKTeco</div></div></div>
+                <div class="workflow-step"><div class="step-num">2</div><div class="step-body"><div class="step-title">ضبط الإعدادات — تغيير الوضع إلى <span class="badge bg-success">Real</span></div><div class="step-desc">اضغط <strong>"الإعدادات"</strong> ← غيّر الوضع من <code>Demo</code> إلى <code>Real</code> ← أدخل IP الجهاز (مثال: <code>192.168.1.200</code>) والمنفذ <code>4370</code> ← اضغط <strong>"حفظ الإعدادات"</strong>.</div></div></div>
+                <div class="workflow-step"><div class="step-num">3</div><div class="step-body"><div class="step-title">معاينة البيانات</div><div class="step-desc">اضغط <strong>"معاينة"</strong> لرؤية سجلات الحضور الموجودة في الجهاز قبل استيرادها.</div></div></div>
+                <div class="workflow-step"><div class="step-num">4</div><div class="step-body"><div class="step-title">تنفيذ المزامنة</div><div class="step-desc">اضغط <strong>"مزامنة الآن"</strong> — يقرأ النظام السجلات ويحفظها مع حساب ساعات العمل تلقائياً.</div></div></div>
+
+                <h6 class="subsection-title mt-4"><i class="bi bi-laptop"></i> الوضع التجريبي (Demo)</h6>
+                <p class="help-text">في حال عدم توفر جهاز فعلي، فعّل <strong>وضع Demo</strong> الذي يولّد بيانات حضور وهمية واقعية لآخر 7 أيام بنسبة حضور 85% — مفيد للتدريب واختبار النظام.</p>
+
+                <h6 class="subsection-title mt-4"><i class="bi bi-people-fill"></i> تطابق الموظفين مع الجهاز</h6>
+                <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                    <strong>مهم:</strong> <strong>كود الموظف</strong> في النظام (مثال: <code>EMP-0001</code>) يجب أن يطابق <strong>رقم المستخدم</strong> في جهاز البصمة. يمكن مراجعته من: الموارد البشرية ← الموظفون ← تعديل الموظف.
+                </div>
+
+                <h6 class="subsection-title mt-4"><i class="bi bi-bug-fill"></i> استكشاف الأخطاء</h6>
+                <table class="table table-sm table-bordered">
+                    <thead class="table-light">
+                        <tr><th>المشكلة</th><th>السبب</th><th>الحل</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>فشل الاتصال</td><td>IP خطأ أو شبكة مختلفة</td><td>تحقق من IP في إعدادات الجهاز ← الشبكة</td></tr>
+                        <tr><td>موظف لا تُحفظ سجلاته</td><td>كود الموظف غير متطابق</td><td>عدّل كود الموظف في النظام ليطابق رقمه في الجهاز</td></tr>
+                        <tr><td>منفذ خاطئ</td><td>بعض الأجهزة تختلف</td><td>الافتراضي <code>4370</code> — راجع إعدادات الشبكة في الجهاز</td></tr>
+                        <tr><td>ساعات العمل = صفر</td><td>تُسجَّل الدخول فقط</td><td>تأكد من تسجيل الخروج، أو أدخله يدوياً من سجل الحضور</td></tr>
+                    </tbody>
+                </table>
+
+            </div>
         </div>
 
     </div>{{-- end col-lg-9 --}}

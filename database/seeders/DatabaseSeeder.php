@@ -126,7 +126,7 @@ class DatabaseSeeder extends Seeder
             'zkteco_enabled'     => '1',
             'zkteco_mode'        => 'demo', // demo أو real
             'zkteco_ip'          => '192.168.1.100',
-            'zkteco_port'        => '23',
+            'zkteco_port'        => '4370',
             'zkteco_username'    => '',
             'zkteco_password'    => '',
         ];

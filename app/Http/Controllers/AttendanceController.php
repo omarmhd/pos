@@ -140,6 +140,30 @@ class AttendanceController extends Controller
         return back()->with('success', $message);
     }
 
+    /** حفظ إعدادات ZKTeco */
+    public function saveZkSettings(Request $request)
+    {
+        $this->authorize('hr.manage_attendance');
+
+        $request->validate([
+            'zkteco_mode'     => 'required|in:demo,real',
+            'zkteco_ip'       => 'required_if:zkteco_mode,real|nullable|ip',
+            'zkteco_port'     => 'required_if:zkteco_mode,real|nullable|integer|min:1|max:65535',
+        ]);
+
+        Setting::set('zkteco_mode',     $request->input('zkteco_mode', 'demo'));
+        Setting::set('zkteco_ip',       $request->input('zkteco_ip', ''));
+        Setting::set('zkteco_port',     $request->input('zkteco_port', '4370'));
+        Setting::set('zkteco_username', $request->input('zkteco_username', ''));
+        Setting::set('zkteco_password', $request->input('zkteco_password', ''));
+
+        if ($request->wantsJson()) {
+            return response()->json(['success' => true, 'message' => 'تم حفظ الإعدادات']);
+        }
+
+        return back()->with('success', 'تم حفظ إعدادات جهاز البصمة');
+    }
+
     /** معاينة البيانات من الجهاز */
     public function syncPreview()
     {

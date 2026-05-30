@@ -77,9 +77,10 @@ Route::middleware(['auth'])->group(function () {
         Route::get('attendance/daily',   [AttendanceController::class, 'daily'])    ->name('attendance.daily');
         Route::post('attendance/daily',  [AttendanceController::class, 'saveDaily'])->name('attendance.save-daily');
         Route::get('attendance/monthly', [AttendanceController::class, 'monthly'])  ->name('attendance.monthly');
-        Route::get('attendance/sync',    [AttendanceController::class, 'syncIndex'])->name('attendance.sync');
-        Route::post('attendance/sync/now', [AttendanceController::class, 'syncNow'])->name('attendance.sync-now');
+        Route::get('attendance/sync',         [AttendanceController::class, 'syncIndex'])   ->name('attendance.sync');
+        Route::post('attendance/sync/now',    [AttendanceController::class, 'syncNow'])     ->name('attendance.sync-now');
         Route::get('attendance/sync/preview', [AttendanceController::class, 'syncPreview'])->name('attendance.sync-preview');
+        Route::post('attendance/sync/settings',[AttendanceController::class,'saveZkSettings'])->name('attendance.sync-settings');
         Route::get('payroll',            [PayrollController::class, 'index'])       ->name('payroll.index');
         Route::get('payroll/preview',    [PayrollController::class, 'preview'])     ->name('payroll.preview');
         Route::post('payroll',           [PayrollController::class, 'store'])       ->name('payroll.store');
