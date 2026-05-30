@@ -105,21 +105,25 @@ return new class extends Migration
         }
 
         // ── EMPLOYEES ─────────────────────────────────────────────────
-        Schema::table('employees', function (Blueprint $table) {
-            if (! $this->hasIndex('employees', 'idx_emp_is_active')) {
-                $table->index('is_active', 'idx_emp_is_active');
-            }
-            if (! $this->hasIndex('employees', 'idx_emp_department')) {
-                $table->index('department', 'idx_emp_department');
-            }
-        });
+        if (Schema::hasTable('employees')) {
+            Schema::table('employees', function (Blueprint $table) {
+                if (! $this->hasIndex('employees', 'idx_emp_is_active')) {
+                    $table->index('is_active', 'idx_emp_is_active');
+                }
+                if (! $this->hasIndex('employees', 'idx_emp_department')) {
+                    $table->index('department', 'idx_emp_department');
+                }
+            });
+        }
 
         // ── SHIFTS ────────────────────────────────────────────────────
-        Schema::table('shifts', function (Blueprint $table) {
-            if (! $this->hasIndex('shifts', 'idx_shifts_is_active')) {
-                $table->index('is_active', 'idx_shifts_is_active');
-            }
-        });
+        if (Schema::hasTable('shifts')) {
+            Schema::table('shifts', function (Blueprint $table) {
+                if (! $this->hasIndex('shifts', 'idx_shifts_is_active')) {
+                    $table->index('is_active', 'idx_shifts_is_active');
+                }
+            });
+        }
 
         // ── ACCOUNTS ──────────────────────────────────────────────────
         Schema::table('accounts', function (Blueprint $table) {
@@ -181,8 +185,12 @@ return new class extends Migration
         if (Schema::hasTable('attendance')) {
             $this->dropIndexIfExists('attendance', 'idx_att_work_date');
         }
-        Schema::table('employees', fn($t) => collect(['idx_emp_is_active','idx_emp_department'])->each(fn($i) => $this->dropIndexIfExists('employees', $i)));
-        $this->dropIndexIfExists('shifts', 'idx_shifts_is_active');
+        if (Schema::hasTable('employees')) {
+            collect(['idx_emp_is_active','idx_emp_department'])->each(fn($i) => $this->dropIndexIfExists('employees', $i));
+        }
+        if (Schema::hasTable('shifts')) {
+            $this->dropIndexIfExists('shifts', 'idx_shifts_is_active');
+        }
         Schema::table('accounts', fn($t) => collect(['idx_accounts_type','idx_accounts_is_active','idx_accounts_parent_id'])->each(fn($i) => $this->dropIndexIfExists('accounts', $i)));
         $this->dropIndexIfExists('users', 'idx_users_is_active');
         Schema::table('audit_logs', fn($t) => collect(['idx_audit_user_id','idx_audit_created_at','idx_audit_auditable'])->each(fn($i) => $this->dropIndexIfExists('audit_logs', $i)));
