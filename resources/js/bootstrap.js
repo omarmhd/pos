@@ -1,9 +1,7 @@
-import 'bootstrap';
-
 /**
- * We'll load the axios HTTP library which allows us to easily issue requests
- * to our Laravel back-end. This library automatically handles sending the
- * CSRF token as a header based on the value of the "XSRF" token cookie.
+ * Bootstrap JS is loaded from CDN in the HTML layout.
+ * Do NOT import it here — a duplicate registration causes every collapse
+ * toggle to fire twice, which cancels the open/close action.
  */
 
 import axios from 'axios';

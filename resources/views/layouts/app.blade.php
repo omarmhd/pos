@@ -663,5 +663,27 @@
 </script>
 
 @yield('scripts')
+
+<script>
+    // Guarantee the sidebar section containing the active sub-link stays open,
+    // even if the server-side routeIs() detection misses a route name.
+    (function () {
+        var active = document.querySelector('#sidebarNav .sub-nav .nav-link.active');
+        if (!active) return;
+
+        var collapse = active.closest('.collapse');
+        if (!collapse) return;
+
+        if (!collapse.classList.contains('show')) {
+            collapse.classList.add('show');
+        }
+
+        var btn = document.querySelector('[data-bs-target="#' + collapse.id + '"]');
+        if (btn) {
+            btn.classList.remove('collapsed');
+            btn.setAttribute('aria-expanded', 'true');
+        }
+    })();
+</script>
 </body>
 </html>
