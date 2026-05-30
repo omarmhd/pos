@@ -283,6 +283,45 @@
 .quick-btn.exact { background: #3498db; color: #fff; }
 .quick-btn:hover { background: #3498db; color: #fff; }
 
+/* ── Mobile receipt overlay ─────────────────────────────────── */
+#_rcptOverlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 99999;
+    background: #fff;
+    flex-direction: column;
+    overflow: hidden;
+}
+#_rcptOverlay.show { display: flex; }
+#_rcptContent {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+}
+#_rcptActions {
+    padding: 12px 16px;
+    background: #f8f9fa;
+    border-top: 1px solid #dee2e6;
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+@media print {
+    /* Mobile print: hide POS, show only receipt */
+    .pos-shell, .cart-fab, .cart-overlay,
+    .toast-container, #_rcptActions { display: none !important; }
+    #_rcptContent {
+        display: block !important;
+        position: static !important;
+        padding: 0 !important;
+        overflow: visible !important;
+    }
+}
+
 /* ── Responsive ─────────────────────────────────────────────── */
 @media (max-width: 991px) {
     .pos-cart {
@@ -308,6 +347,20 @@
 @endsection
 
 @section('content')
+
+{{-- Mobile receipt overlay (iOS-safe printing) --}}
+<div id="_rcptOverlay">
+    <div id="_rcptContent"></div>
+    <div id="_rcptActions">
+        <button class="btn btn-success flex-grow-1" onclick="window.print()">
+            <i class="bi bi-printer me-1"></i> طباعة الفاتورة
+        </button>
+        <button class="btn btn-outline-secondary" onclick="closeMobileReceipt()">
+            <i class="bi bi-x-lg"></i> إغلاق
+        </button>
+    </div>
+</div>
+
 <div class="pos-shell">
 
     {{-- ── Header ─────────────────────────────── --}}
@@ -322,7 +375,7 @@
         <div class="search-wrap">
             <input type="text" id="searchInput"
                    placeholder="ابحث بالاسم أو امسح الباركود…"
-                   autocomplete="off" autofocus spellcheck="false">
+                   autocomplete="off" spellcheck="false">
         </div>
 
         <span class="text-white-50 small d-none d-md-flex align-items-center gap-1 flex-shrink-0">
@@ -568,6 +621,9 @@ document.addEventListener('DOMContentLoaded', () => {
     toastEl   = document.getElementById('posToast');
     toastInst = bootstrap.Toast.getOrCreateInstance(toastEl, { delay: 2500 });
 
+    // Focus search only on non-touch (desktop barcode scanners/keyboards)
+    focusSearch();
+
     // Clock
     const clock = document.getElementById('clock');
     if (clock) {
@@ -603,7 +659,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const modal = document.querySelector('.modal.show');
         if (modal) return;
         if (e.key.length === 1 && !e.ctrlKey && !e.altKey) {
-            search.focus();
+            focusSearch();
         }
     });
 
@@ -684,7 +740,7 @@ function addToCart(productId) {
 
     renderCart();
     flashCard(productId);
-    document.getElementById('searchInput').focus();
+    focusSearch();
 }
 
 function flashCard(id) {
@@ -717,7 +773,7 @@ function clearCart() {
     document.getElementById('payMethodSel').value = 'cash';
     document.getElementById('payMethodSel').disabled = false;
     renderCart();
-    document.getElementById('searchInput').focus();
+    focusSearch();
 }
 
 function renderCart() {
@@ -926,7 +982,7 @@ async function completeSale() {
         document.getElementById('payMethodSel').disabled = false;
         renderCart();
         closeCart();
-        document.getElementById('searchInput').focus();
+        focusSearch();
 
     } catch (err) {
         showToast('خطأ في الاتصال بالخادم', 'danger');
@@ -936,9 +992,39 @@ async function completeSale() {
     }
 }
 
-// ── Print via iframe (no page navigation) ────────
+// ── focusSearch: only on non-touch (avoids unwanted keyboard on mobile) ──
+function focusSearch() {
+    if ('ontouchstart' in window) return;
+    document.getElementById('searchInput')?.focus();
+}
+
+// ── Print receipt ─────────────────────────────────
 function printReceipt(r) {
     if (!r) return;
+    const html = buildReceiptHTML(r);
+    const isTouch = 'ontouchstart' in window || window.innerWidth < 992;
+
+    if (isTouch) {
+        // iOS/Android: iframe.contentWindow.print() prints the parent page.
+        // Instead: inject receipt into a full-screen overlay, user taps "طباعة".
+        const overlay = document.getElementById('_rcptOverlay');
+        const content = document.getElementById('_rcptContent');
+
+        // Extract <style> and <body> from the receipt HTML
+        const parser  = new DOMParser();
+        const doc     = parser.parseFromString(html, 'text/html');
+        const style   = doc.querySelector('style')?.outerHTML ?? '';
+        // Remove the auto-print script (user taps the button instead)
+        doc.querySelectorAll('script').forEach(s => s.remove());
+        content.innerHTML = style + doc.body.innerHTML;
+
+        overlay.classList.add('show');
+        // Prevent POS scroll-through
+        document.querySelector('.pos-shell').style.overflow = 'hidden';
+        return;
+    }
+
+    // Desktop: hidden iframe (fast, no page reflow)
     let frame = document.getElementById('pFrame');
     if (!frame) {
         frame = document.createElement('iframe');
@@ -949,11 +1035,15 @@ function printReceipt(r) {
         });
         document.body.appendChild(frame);
     }
-    const html = buildReceiptHTML(r);
     frame.contentDocument.open();
     frame.contentDocument.write(html);
     frame.contentDocument.close();
     frame.onload = () => { try { frame.contentWindow.focus(); frame.contentWindow.print(); } catch(e) {} };
+}
+
+function closeMobileReceipt() {
+    document.getElementById('_rcptOverlay').classList.remove('show');
+    document.querySelector('.pos-shell').style.overflow = '';
 }
 
 function rePrint() { if (lastReceipt) printReceipt(lastReceipt); }
@@ -1037,7 +1127,7 @@ function showSuccessBar(data) {
 function newSale() {
     document.getElementById('saleSuccessBar').style.display = 'none';
     lastReceipt = null;
-    document.getElementById('searchInput').focus();
+    focusSearch();
 }
 
 function openCart() {
