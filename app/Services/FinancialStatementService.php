@@ -62,7 +62,9 @@ class FinancialStatementService
      */
     public function getIncomeStatement(Carbon $from, Carbon $to): array
     {
+        // Exclude header accounts — they have no direct journal entries
         $accounts = Account::where('is_active', true)
+            ->where('is_header', false)
             ->whereIn('type', ['revenue', 'expense'])
             ->orderBy('code')
             ->get(['id', 'code', 'name', 'type']);
@@ -76,47 +78,59 @@ class FinancialStatementService
             ->get()
             ->keyBy('account_id');
 
-        $revenue = [];
-        $cogs    = [];
-        $opex    = [];
+        // Contra-revenue: 4200 (مردودات) + 4300 (خصم ممنوح) — debit-normal
+        $grossRevenue  = [];  // 4000 main sales
+        $contraRevenue = [];  // 4200, 4300  shown as deductions
+        $otherIncome   = [];  // 4100 added after EBIT
+        $cogs          = [];  // 5000–5999
+        $opex          = [];  // 6000+
 
         foreach ($accounts as $account) {
             $b      = $balances->get($account->id);
             $debit  = (float) ($b->total_debit  ?? 0);
             $credit = (float) ($b->total_credit ?? 0);
-
-            $amount = $account->type === 'revenue'
-                ? $credit - $debit
-                : $debit - $credit;
-
-            if (abs($amount) < 0.001) {
-                continue;
-            }
+            $code   = (int) $account->code;
 
             if ($account->type === 'revenue') {
-                $revenue[] = ['account' => $account, 'amount' => $amount];
+                $isContra = in_array($code, [4200, 4300]);
+                $amount   = $isContra ? ($debit - $credit) : ($credit - $debit);
+                if (abs($amount) < 0.001) continue;
+
+                if ($isContra)      { $contraRevenue[] = ['account' => $account, 'amount' => $amount]; }
+                elseif ($code >= 4100 && $code < 4200) { $otherIncome[] = ['account' => $account, 'amount' => $amount]; }
+                else                { $grossRevenue[]  = ['account' => $account, 'amount' => $amount]; }
             } else {
-                $code = (int) $account->code;
-                if ($code >= 5000 && $code < 6000) {
-                    $cogs[] = ['account' => $account, 'amount' => $amount];
-                } else {
-                    $opex[] = ['account' => $account, 'amount' => $amount];
-                }
+                $amount = $debit - $credit;
+                if (abs($amount) < 0.001) continue;
+                if ($code >= 5000 && $code < 6000) { $cogs[] = ['account' => $account, 'amount' => $amount]; }
+                else                               { $opex[] = ['account' => $account, 'amount' => $amount]; }
             }
         }
 
-        $totalRevenue = collect($revenue)->sum('amount');
-        $totalCogs    = collect($cogs)->sum('amount');
-        $grossProfit  = $totalRevenue - $totalCogs;
-        $totalOpex    = collect($opex)->sum('amount');
-        $netIncome    = $grossProfit - $totalOpex;
-        $grossMargin  = $totalRevenue > 0 ? round(($grossProfit / $totalRevenue) * 100, 1) : 0;
-        $netMargin    = $totalRevenue > 0 ? round(($netIncome   / $totalRevenue) * 100, 1) : 0;
+        $totalGrossRevenue = collect($grossRevenue)->sum('amount');
+        $totalContra       = collect($contraRevenue)->sum('amount');
+        $totalNetRevenue   = $totalGrossRevenue - $totalContra;
+        $totalCogs         = collect($cogs)->sum('amount');
+        $grossProfit       = $totalNetRevenue - $totalCogs;
+        $totalOpex         = collect($opex)->sum('amount');
+        $operatingIncome   = $grossProfit - $totalOpex;
+        $totalOtherIncome  = collect($otherIncome)->sum('amount');
+        $netIncome         = $operatingIncome + $totalOtherIncome;
+
+        $totalRevenue = $totalNetRevenue; // alias used by balance sheet
+
+        $grossMargin = $totalNetRevenue > 0 ? round(($grossProfit    / $totalNetRevenue) * 100, 1) : 0;
+        $opexRatio   = $totalNetRevenue > 0 ? round(($totalOpex       / $totalNetRevenue) * 100, 1) : 0;
+        $netMargin   = $totalNetRevenue > 0 ? round(($netIncome        / $totalNetRevenue) * 100, 1) : 0;
 
         return compact(
-            'revenue', 'cogs', 'opex',
-            'totalRevenue', 'totalCogs', 'grossProfit',
-            'totalOpex', 'netIncome', 'grossMargin', 'netMargin'
+            'grossRevenue', 'contraRevenue', 'otherIncome',
+            'cogs', 'opex',
+            'totalGrossRevenue', 'totalContra', 'totalNetRevenue',
+            'totalCogs', 'grossProfit',
+            'totalOpex', 'operatingIncome',
+            'totalOtherIncome', 'netIncome',
+            'totalRevenue', 'grossMargin', 'opexRatio', 'netMargin'
         );
     }
 

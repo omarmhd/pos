@@ -205,7 +205,7 @@ class DemoDataSeeder extends Seeder
                 'payment_status' => $status,
                 'paid_amount'    => $paid,
                 'notes'          => null,
-                'is_posted'      => in_array($status, ['paid', 'partial']) ? 1 : 0,
+                'is_posted'      => 0, // GL entries created by migration 100004
                 'is_reversed'    => 0,
                 'created_at'     => $dateStr,
                 'updated_at'     => $dateStr,
@@ -284,7 +284,7 @@ class DemoDataSeeder extends Seeder
                 'payment_method' => $method,
                 'paid_amount'    => $paid,
                 'change_amount'  => 0.00,
-                'is_posted'      => $isPosted ? 1 : 0,
+                'is_posted'      => 0, // GL entries created by migration 100004
                 'is_reversed'    => 0,
                 'created_at'     => $dateStr,
                 'updated_at'     => $dateStr,

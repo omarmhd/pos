@@ -300,6 +300,51 @@ class LedgerPostingService
     }
 
     /**
+     * Step 5 — Post a customer payment to the GL.
+     *
+     * DR 1000/1100 Cash or Bank = amount received
+     * CR 1200 AR               = amount (reduces receivable)
+     */
+    public function postCustomerPayment(\App\Models\CustomerPayment $payment): JournalEntry
+    {
+        $payment->loadMissing('customer', 'sale');
+
+        $amount = round((float) $payment->amount, 2);
+
+        $arCode   = Setting::get('account_ar_code',   '1200');
+        $cashCode = Setting::get('account_cash_code', '1000');
+        $bankCode = Setting::get('account_bank_code', '1100');
+
+        $drCode       = $payment->payment_method === 'card' ? $bankCode : $cashCode;
+        $customerName = $payment->customer?->name ?? 'عميل';
+        $ref          = $payment->sale?->invoice_number ?? ('CPM-' . $payment->id);
+
+        $lines = [
+            [
+                'account_id'       => $this->account($drCode)->id,
+                'debit'            => $amount,
+                'credit'           => 0,
+                'line_description' => 'تحصيل من عميل – ' . $customerName,
+            ],
+            [
+                'account_id'       => $this->account($arCode)->id,
+                'debit'            => 0,
+                'credit'           => $amount,
+                'line_description' => 'تسوية ذمة عميل – ' . $customerName,
+            ],
+        ];
+
+        return $this->buildEntry([
+            'entry_date'  => \Carbon\Carbon::parse($payment->received_at),
+            'reference'   => $ref,
+            'source_type' => \App\Models\CustomerPayment::class,
+            'source_id'   => $payment->id,
+            'description' => 'تحصيل دفعة – ' . $customerName
+                             . ($payment->sale ? ' / فاتورة ' . $ref : ''),
+        ], $lines);
+    }
+
+    /**
      * Step 10 — Year-end closing entry.
      *
      * Zeroes all revenue & expense balances for $year into Retained Earnings (3100).

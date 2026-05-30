@@ -21,7 +21,7 @@ class InventoryAdjustmentController extends Controller
 
     public function index(Request $request)
     {
-        $query = InventoryAdjustment::with('product', 'createdBy')
+        $query = InventoryAdjustment::with('product:id,name', 'createdBy:id,name', 'journalEntry:id,entry_number')
             ->orderByDesc('created_at');
 
         if ($request->filled('product_id')) {

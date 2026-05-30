@@ -152,6 +152,10 @@
         /* ── Page title ── */
         .page-title { color: #2c3e50; font-weight: 600; margin-bottom: 20px; }
 
+        /* ── Custom badge colors ── */
+        .bg-purple { background-color: #7c3aed !important; color: #fff; }
+        .bg-orange { background-color: #ea580c !important; color: #fff; }
+
         /* ── Tailwind v4 conflict fix ──
            Tailwind v4 generates .collapse { visibility: collapse } as a utility
            which hides Bootstrap collapse panels. Override it here so the inline

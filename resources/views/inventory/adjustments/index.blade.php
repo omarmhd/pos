@@ -96,11 +96,11 @@
                         </span>
                     </td>
                     <td class="text-muted">{{ $adj->createdBy?->name ?? '—' }}</td>
-                    <td class="text-center">
-                        @if($adj->journal_entry_id)
+                    <td>
+                        @if($adj->journalEntry)
                             <a href="{{ route('journal_entries.show', $adj->journal_entry_id) }}"
-                               class="badge bg-success text-decoration-none" target="_blank">
-                                <i class="bi bi-journal-check"></i>
+                               class="text-success text-decoration-none font-monospace small" target="_blank">
+                                <i class="bi bi-journal-check me-1"></i>{{ $adj->journalEntry->entry_number }}
                             </a>
                         @else
                             <span class="text-muted">—</span>

@@ -163,13 +163,15 @@ class JournalEntryController extends Controller
     private function sourceBadge(JournalEntry $e): string
     {
         [$label, $cls] = match(true) {
-            str_contains($e->source_type ?? '', 'Sale')            => ['مبيعات',        'bg-success'],
-            str_contains($e->source_type ?? '', 'Purchase')        => ['مشتريات',       'bg-primary'],
-            str_contains($e->source_type ?? '', 'SupplierPayment') => ['دفعة مورد',     'bg-warning text-dark'],
-            str_contains($e->source_type ?? '', 'CustomerPayment') => ['تحصيل عميل',    'bg-info text-dark'],
-            str_contains($e->source_type ?? '', 'PayrollRun')      => ['رواتب',          'bg-secondary'],
-            is_null($e->source_type)                               => ['يدوي',           'bg-dark'],
-            default                                                => [e($e->source_type), 'bg-secondary'],
+            str_contains($e->source_type ?? '', 'Sale')               => ['مبيعات',        'bg-success'],
+            str_contains($e->source_type ?? '', 'Purchase')           => ['مشتريات',       'bg-primary'],
+            str_contains($e->source_type ?? '', 'SupplierPayment')    => ['دفعة مورد',     'bg-warning text-dark'],
+            str_contains($e->source_type ?? '', 'CustomerPayment')    => ['تحصيل عميل',    'bg-info text-dark'],
+            str_contains($e->source_type ?? '', 'PayrollRun')         => ['رواتب',          'bg-secondary'],
+            str_contains($e->source_type ?? '', 'InventorySession')   => ['جرد دوري',       'bg-purple'],
+            str_contains($e->source_type ?? '', 'InventoryAdjustment')=> ['تعديل مخزون',   'bg-orange'],
+            is_null($e->source_type)                                  => ['يدوي',           'bg-dark'],
+            default                                                   => ['قيد',            'bg-secondary'],
         };
         return "<span class='badge {$cls}'>{$label}</span>";
     }

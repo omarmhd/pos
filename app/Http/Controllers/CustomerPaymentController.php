@@ -2,14 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Account;
 use App\Models\Customer;
 use App\Models\CustomerPayment;
-use App\Models\JournalEntry;
-use App\Models\JournalEntryLine;
 use App\Models\Sale;
-use App\Models\Setting;
-use Carbon\Carbon;
+use App\Services\LedgerPostingService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -71,53 +67,10 @@ class CustomerPaymentController extends Controller
                 'user_id'        => auth()->id(),
             ]);
 
-            // Post GL entry: DR Cash/Bank → CR Accounts Receivable
-            $cashCode = Setting::get('account_cash_code', '1000');
-            $bankCode = Setting::get('account_bank_code', '1100');
-            $arCode   = Setting::get('account_ar_code',   '1200');
-
-            $drCode = $data['payment_method'] === 'card' ? $bankCode : $cashCode;
-
-            $resolveAccount = function (string $code) {
-                $account = Account::where('code', $code)
-                    ->where('is_active', true)
-                    ->where('is_header', false)
-                    ->first();
-                if (!$account) {
-                    throw new \RuntimeException("حساب الذمم غير موجود أو غير نشط: كود [{$code}]");
-                }
-                return $account;
-            };
-
-            $debitAccount  = $resolveAccount($drCode);
-            $creditAccount = $resolveAccount($arCode);
-            $amount        = round((float) $data['amount'], 2);
-
-            $entry = JournalEntry::create([
-                'entry_date'  => Carbon::parse($data['received_at']),
-                'reference'   => $sale->invoice_number,
-                'source_type' => CustomerPayment::class,
-                'source_id'   => $payment->id,
-                'description' => 'تحصيل من عميل ' . $customer->name . ' مقابل فاتورة ' . $sale->invoice_number,
-                'user_id'     => auth()->id(),
-                'posted_at'   => now(),
-            ]);
-
-            JournalEntryLine::create([
-                'journal_entry_id' => $entry->id,
-                'account_id'       => $debitAccount->id,
-                'debit'            => $amount,
-                'credit'           => 0,
-                'line_description' => 'تحصيل من ' . $customer->name,
-            ]);
-
-            JournalEntryLine::create([
-                'journal_entry_id' => $entry->id,
-                'account_id'       => $creditAccount->id,
-                'debit'            => 0,
-                'credit'           => $amount,
-                'line_description' => 'تسوية ذمم ' . $customer->name . ' – ' . $sale->invoice_number,
-            ]);
+            // DR Cash/Bank → CR AR  (via shared service for consistency)
+            (new LedgerPostingService())->postCustomerPayment(
+                $payment->load('customer', 'sale')
+            );
         });
 
         return redirect()->route('customers.show', $customer)
