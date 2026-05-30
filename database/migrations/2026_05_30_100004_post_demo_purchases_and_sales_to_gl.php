@@ -18,8 +18,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        $now = now();
-
+        DB::transaction(function () {
         // ── Resolve account IDs once ──────────────────────────────────────
         $acct = fn(string $code) => DB::table('accounts')->where('code', $code)->value('id');
 
@@ -49,9 +48,14 @@ return new class extends Migration
             ->orderBy('created_at')
             ->get(['id','invoice_number','supplier_id','total_amount','paid_amount','created_at']);
 
-        $jeSeq = DB::table('journal_entries')
-            ->whereDate('created_at', now()->toDateString())
-            ->count();
+        // Derive next sequence from the highest existing number for today so that
+        // a partial-failed run (migration not recorded) doesn't produce duplicates on retry.
+        $prefix = 'JE-' . now()->format('Ymd') . '-';
+        $maxEntry = DB::table('journal_entries')
+            ->where('entry_number', 'like', $prefix . '%')
+            ->orderByDesc('entry_number')
+            ->value('entry_number');
+        $jeSeq = $maxEntry ? (int) substr($maxEntry, strlen($prefix)) : 0;
 
         foreach ($purchases as $p) {
             $total  = round((float)$p->total_amount, 2);
@@ -132,7 +136,6 @@ return new class extends Migration
         foreach ($sales as $s) {
             $subtotal = round((float)$s->subtotal,      2);
             $discount = round((float)$s->discount,      2);
-            $tax      = round((float)$s->tax,           2);
             $total    = round((float)$s->total_amount,  2);
             $paid     = round((float)$s->paid_amount,   2);
 
@@ -210,6 +213,7 @@ return new class extends Migration
 
             DB::table('sales')->where('id', $s->id)->update(['is_posted' => 1]);
         }
+        }); // end DB::transaction
     }
 
     public function down(): void
