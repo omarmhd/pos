@@ -19,10 +19,11 @@ class AppServiceProvider extends ServiceProvider
     {
             Schema::defaultStringLength(191);
 
-        // Super-admin bypass: admin role passes every Gate check without needing
-        // individual permissions. All other roles are checked against permissions.
+        // Super-admin bypass: admin passes every Gate check.
+        // Checks both the Spatie pivot role AND the plain users.role column
+        // so the bypass works even when the Spatie role wasn't fully synced.
         Gate::before(function ($user, $ability) {
-            if ($user->hasRole('admin')) {
+            if ($user->role === 'admin' || $user->hasRole('admin')) {
                 return true;
             }
         });

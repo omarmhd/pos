@@ -203,7 +203,8 @@
 
                 {{-- ── Sales & Inventory ── --}}
                 @canany(['products.view','categories.view','sales.view','inventory.view'])
-                @php $s1 = request()->routeIs('products.*','categories.*','sales.*'); @endphp
+                @php $s1 = request()->routeIs('products.*','categories.*','sales.*')
+                         || request()->is('products*','categories*','sales*'); @endphp
                 <li class="nav-item">
                     <button class="nav-section-toggle {{ !$s1 ? 'collapsed' : '' }}"
                             data-bs-toggle="collapse" data-bs-target="#ns1"
@@ -253,7 +254,8 @@
 
                 {{-- ── Purchases ── --}}
                 @canany(['suppliers.view','purchases.view'])
-                @php $s2 = request()->routeIs('suppliers.*','purchases.*'); @endphp
+                @php $s2 = request()->routeIs('suppliers.*','purchases.*')
+                         || request()->is('suppliers*','purchases*'); @endphp
                 <li class="nav-item">
                     <button class="nav-section-toggle {{ !$s2 ? 'collapsed' : '' }}"
                             data-bs-toggle="collapse" data-bs-target="#ns2"
@@ -287,7 +289,8 @@
 
                 {{-- ── Customers ── --}}
                 @can('customers.view')
-                @php $s3 = request()->routeIs('customers.*','customer-payments.*'); @endphp
+                @php $s3 = request()->routeIs('customers.*','customer-payments.*')
+                         || request()->is('customers*'); @endphp
                 <li class="nav-item">
                     <button class="nav-section-toggle {{ !$s3 ? 'collapsed' : '' }}"
                             data-bs-toggle="collapse" data-bs-target="#ns3"
@@ -311,7 +314,8 @@
 
                 {{-- ── HR ── --}}
                 @canany(['hr.view_employees','hr.view_payroll','hr.view_attendance','hr.view_shifts'])
-                @php $s4 = request()->routeIs('hr.*'); @endphp
+                @php $s4 = request()->routeIs('hr.*')
+                         || request()->is('hr/*','hr'); @endphp
                 <li class="nav-item">
                     <button class="nav-section-toggle {{ !$s4 ? 'collapsed' : '' }}"
                             data-bs-toggle="collapse" data-bs-target="#ns4"
@@ -361,7 +365,8 @@
 
                 {{-- ── Accounting ── --}}
                 @canany(['accounts.view','journal_entries.view','ledger.view','trial_balance.view','financial_statements.view','accounting.year_end_close','reversals.view','audit_logs.view'])
-                @php $s5 = request()->routeIs('accounting.*','accounts.*','reversals.*','journal_entries.*','audit.*'); @endphp
+                @php $s5 = request()->routeIs('accounting.*','accounts.*','reversals.*','journal_entries.*','audit.*')
+                         || request()->is('accounting*','accounts*','journal-entries*','reversals*','audit-logs*'); @endphp
                 <li class="nav-item">
                     <button class="nav-section-toggle {{ !$s5 ? 'collapsed' : '' }}"
                             data-bs-toggle="collapse" data-bs-target="#ns5"
@@ -460,7 +465,8 @@
 
                 {{-- ── Reports ── --}}
                 @can('reports.view')
-                @php $s6 = request()->routeIs('reports.*'); @endphp
+                @php $s6 = request()->routeIs('reports.*')
+                         || request()->is('reports*'); @endphp
                 <li class="nav-item">
                     <button class="nav-section-toggle {{ !$s6 ? 'collapsed' : '' }}"
                             data-bs-toggle="collapse" data-bs-target="#ns6"
@@ -508,7 +514,8 @@
 
                 {{-- ── System Management ── --}}
                 @canany(['users.view','roles.view','settings.view'])
-                @php $s7 = request()->routeIs('users.*','roles.*','permissions.*','settings.*'); @endphp
+                @php $s7 = request()->routeIs('users.*','roles.*','permissions.*','settings.*')
+                         || request()->is('users*','roles*','permissions*','settings*'); @endphp
                 <li class="nav-item">
                     <button class="nav-section-toggle {{ !$s7 ? 'collapsed' : '' }}"
                             data-bs-toggle="collapse" data-bs-target="#ns7"
@@ -665,23 +672,36 @@
 @yield('scripts')
 
 <script>
-    // Guarantee the sidebar section containing the active sub-link stays open,
-    // even if the server-side routeIs() detection misses a route name.
+    // Sidebar section opener — uses URL path so it works even when
+    // server-side routeIs() or Spatie permission checks miss the route.
     (function () {
-        var active = document.querySelector('#sidebarNav .sub-nav .nav-link.active');
-        if (!active) return;
+        var p = window.location.pathname;
+        var map = [
+            { id: 'ns1', paths: ['/products', '/categories', '/sales'] },
+            { id: 'ns2', paths: ['/purchases', '/suppliers'] },
+            { id: 'ns3', paths: ['/customers'] },
+            { id: 'ns4', paths: ['/hr'] },
+            { id: 'ns5', paths: ['/accounting', '/accounts', '/journal-entries', '/reversals', '/audit-logs'] },
+            { id: 'ns6', paths: ['/reports'] },
+            { id: 'ns7', paths: ['/users', '/roles', '/permissions', '/settings'] },
+        ];
 
-        var collapse = active.closest('.collapse');
-        if (!collapse) return;
+        for (var i = 0; i < map.length; i++) {
+            var hit = map[i].paths.some(function (prefix) {
+                return p === prefix || p.startsWith(prefix + '/') || p.startsWith(prefix + '?');
+            });
+            if (!hit) continue;
 
-        if (!collapse.classList.contains('show')) {
-            collapse.classList.add('show');
-        }
-
-        var btn = document.querySelector('[data-bs-target="#' + collapse.id + '"]');
-        if (btn) {
-            btn.classList.remove('collapsed');
-            btn.setAttribute('aria-expanded', 'true');
+            var el = document.getElementById(map[i].id);
+            if (el && !el.classList.contains('show')) {
+                el.classList.add('show');
+            }
+            var btn = document.querySelector('[data-bs-target="#' + map[i].id + '"]');
+            if (btn) {
+                btn.classList.remove('collapsed');
+                btn.setAttribute('aria-expanded', 'true');
+            }
+            break;
         }
     })();
 </script>

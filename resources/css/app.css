@@ -9,3 +9,17 @@
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
 }
+
+/*
+ * Tailwind v4 generates .collapse { visibility: collapse } as a utility class,
+ * which conflicts with Bootstrap's .collapse / .collapsing state classes.
+ * These rules are placed after the @import so they win the cascade regardless
+ * of whether Tailwind's output is layered or not.
+ */
+.collapse,
+.collapsing {
+    visibility: visible !important;
+}
+.collapse:not(.show) {
+    display: none;
+}

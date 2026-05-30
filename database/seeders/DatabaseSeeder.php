@@ -7,7 +7,6 @@ use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 
 class DatabaseSeeder extends Seeder
@@ -152,7 +151,16 @@ class DatabaseSeeder extends Seeder
             );
         }
 
-        User::firstOrCreate(
+        // Core application roles must exist before PermissionSeeder runs
+        Role::firstOrCreate(['name' => 'admin',   'guard_name' => 'web']);
+        Role::firstOrCreate(['name' => 'manager',  'guard_name' => 'web']);
+        Role::firstOrCreate(['name' => 'cashier',  'guard_name' => 'web']);
+
+        // Seed all permissions and assign them to roles
+        $this->call(PermissionSeeder::class);
+
+        // Create users and immediately assign their Spatie role so Gate::before works
+        $admin = User::firstOrCreate(
             ['email' => 'admin@demo.com'],
             [
                 'name' => 'Admin',
@@ -161,26 +169,9 @@ class DatabaseSeeder extends Seeder
                 'is_active' => true,
             ]
         );
+        $admin->syncRoles(['admin']);
 
-        // Core application roles
-        $adminRole   = Role::firstOrCreate(['name' => 'admin']);
-        $managerRole = Role::firstOrCreate(['name' => 'manager']);
-        $cashierRole = Role::firstOrCreate(['name' => 'cashier']);
-
-        // Seed all permissions and role-permission assignments
-        $this->call(PermissionSeeder::class);
-
-        // Sync every user's Spatie role to match their users.role column
-        foreach (User::all() as $user) {
-            $roleName = $user->role ?? 'cashier';
-            if (in_array($roleName, ['admin', 'manager', 'cashier'])) {
-                if (!$user->hasRole($roleName)) {
-                    $user->assignRole($roleName);
-                }
-            }
-        }
-
-        User::firstOrCreate(
+        $testUser = User::firstOrCreate(
             ['email' => 'test@example.com'],
             [
                 'name' => 'Test User',
@@ -189,6 +180,7 @@ class DatabaseSeeder extends Seeder
                 'is_active' => true,
             ]
         );
+        $testUser->syncRoles(['cashier']);
 
         $this->call(DemoDataSeeder::class);
     }
