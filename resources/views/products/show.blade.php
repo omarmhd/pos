@@ -52,15 +52,15 @@
                                 </tr>
                                 <tr>
                                     <th>سعر الشراء:</th>
-                                    <td>{{ number_format($product->cost_price, 2) }} ج.م</td>
+                                    <td>{{ number_format($product->cost_price, 2) }} {{ $currency }}</td>
                                 </tr>
                                 <tr>
                                     <th>سعر البيع:</th>
-                                    <td class="text-success"><strong>{{ number_format($product->selling_price, 2) }} ج.م</strong></td>
+                                    <td class="text-success"><strong>{{ number_format($product->selling_price, 2) }} {{ $currency }}</strong></td>
                                 </tr>
                                 <tr>
                                     <th>هامش الربح:</th>
-                                    <td>{{ number_format($product->selling_price - $product->cost_price, 2) }} ج.م
+                                    <td>{{ number_format($product->selling_price - $product->cost_price, 2) }} {{ $currency }}
                                         ({{ number_format((($product->selling_price - $product->cost_price) / $product->cost_price) * 100, 1) }}%)
                                     </td>
                                 </tr>

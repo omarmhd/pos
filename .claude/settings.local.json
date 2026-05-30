@@ -25,7 +25,8 @@
       "Bash(php -r 'require '\\\\''vendor/autoload.php'\\\\''; $app = require '\\\\''bootstrap/app.php'\\\\''; $kernel = $app->make\\(Illuminate\\\\Contracts\\\\Http\\\\Kernel::class\\); echo '\\\\''OK'\\\\'';')",
       "Bash(Select-Object -First 20)",
       "Bash(composer show *)",
-      "Bash(Get-ChildItem -Path . -Force)"
+      "Bash(Get-ChildItem -Path . -Force)",
+      "Bash(grep -rn \"currency\\\\|currencySymbol\\\\|currency_symbol\\\\|ج\\\\.م\\\\|SAR\\\\|₪\\\\|\\\\$\" app/ resources/ database/ --include=\"*.php\" --include=\"*.blade.php\" --include=\"*.js\")"
     ]
   }
 }

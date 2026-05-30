@@ -14,7 +14,7 @@
                 <div class="row text-center">
                     <div class="col">
                         <div class="small text-muted">إجمالي المستحق</div>
-                        <div class="fw-bold text-danger fs-5">{{ number_format($outstandingTotal, 2) }} ج.م</div>
+                        <div class="fw-bold text-danger fs-5">{{ number_format($outstandingTotal, 2) }} {{ $currency }}</div>
                     </div>
                     <div class="col">
                         <div class="small text-muted">فواتير غير مسددة</div>
@@ -42,7 +42,7 @@
                                 <option value="{{ $p->id }}"
                                     data-remaining="{{ $p->remaining }}"
                                     {{ old('purchase_id', $selectedPurchase?->id) == $p->id ? 'selected' : '' }}>
-                                    {{ $p->invoice_number }} — متبقي: {{ number_format($p->remaining, 2) }} ج.م
+                                    {{ $p->invoice_number }} — متبقي: {{ number_format($p->remaining, 2) }} {{ $currency }}
                                 </option>
                             @endforeach
                         </select>
@@ -51,7 +51,7 @@
 
                     {{-- Remaining amount hint --}}
                     <div id="remaining-hint" class="alert alert-info py-2 small mb-3" style="display:none">
-                        المبلغ المتبقي لهذه الفاتورة: <strong id="remaining-value"></strong> ج.م
+                        المبلغ المتبقي لهذه الفاتورة: <strong id="remaining-value"></strong> {{ $currency }}
                     </div>
 
                     {{-- Amount --}}

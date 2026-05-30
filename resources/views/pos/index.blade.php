@@ -760,15 +760,41 @@ function removeItem(idx) {
     renderCart();
 }
 
+// ── Central sale reset — single source of truth ───
+function resetSale() {
+    // 1. Cart data
+    cart = [];
+
+    // 2. Discount
+    const discEl = document.getElementById('discountInput');
+    discEl.value = 0;
+    discEl.classList.remove('is-invalid');
+
+    // 3. Customer: clear both the visible search input AND the hidden value select
+    const csearch   = document.getElementById('customerSearch');
+    const csel      = document.getElementById('customerSel');
+    const cdropdown = document.getElementById('customerDropdown');
+    csearch.value          = '';
+    csel.value             = '';
+    cdropdown.style.display = 'none';
+    cdropdown.innerHTML    = '';
+
+    // 4. Credit toggle
+    document.getElementById('creditToggle').checked  = false;
+
+    // 5. Payment method
+    const payMeth = document.getElementById('payMethodSel');
+    payMeth.value    = 'cash';
+    payMeth.disabled = false;
+
+    // 6. Re-render & close mobile cart
+    renderCart();
+    closeCart();
+}
+
 function clearCart() {
     if (cart.length === 0) return;
-    cart = [];
-    document.getElementById('discountInput').value = 0;
-    document.getElementById('customerSel').value = '';
-    document.getElementById('creditToggle').checked = false;
-    document.getElementById('payMethodSel').value = 'cash';
-    document.getElementById('payMethodSel').disabled = false;
-    renderCart();
+    resetSale();
     focusSearch();
 }
 
@@ -966,18 +992,9 @@ async function completeSale() {
 
         payModal.hide();
         lastReceipt = data.receipt;
-        printReceipt(data.receipt);
         showSuccessBar(data);
-
-        // Reset
-        cart = [];
-        document.getElementById('discountInput').value = 0;
-        document.getElementById('customerSel').value = '';
-        document.getElementById('creditToggle').checked = false;
-        document.getElementById('payMethodSel').value = 'cash';
-        document.getElementById('payMethodSel').disabled = false;
-        renderCart();
-        closeCart();
+        printReceipt(data.receipt);   // mobile: shows overlay; desktop: silent iframe
+        resetSale();                  // clear cart + customer + discount + payment
         focusSearch();
 
     } catch (err) {
@@ -1052,9 +1069,10 @@ function printReceipt(r) {
 function closeMobileReceipt() {
     document.getElementById('_rcptOverlay').classList.remove('show');
     document.querySelector('.pos-shell').style.overflow = '';
-    // Clear injected content — removes the <style> tag from DOM entirely
-    // so no receipt CSS bleeds into the main page after closing.
+    // Clear injected content so receipt's <style> tags don't bleed into main page
     document.getElementById('_rcptContent').innerHTML = '';
+    // Success bar remains visible so cashier can confirm change amount.
+    // Tapping "بيع جديد" on the success bar calls newSale() for a clean state.
 }
 
 function rePrint() { if (lastReceipt) printReceipt(lastReceipt); }
@@ -1141,6 +1159,8 @@ function showSuccessBar(data) {
 function newSale() {
     document.getElementById('saleSuccessBar').style.display = 'none';
     lastReceipt = null;
+    // Ensure cart is fully clean (edge case: user clicks "بيع جديد" mid-session)
+    resetSale();
     focusSearch();
 }
 

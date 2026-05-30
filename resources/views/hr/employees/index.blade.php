@@ -40,7 +40,7 @@
                             @endif
                         </td>
                         <td class="small">{{ $typeLabel }} / {{ $payLabel }}</td>
-                        <td>{{ number_format($emp->grossMonthlySalary(), 2) }} ج.م</td>
+                        <td>{{ number_format($emp->grossMonthlySalary(), 2) }} {{ $currency }}</td>
                         <td>
                             @if($emp->is_active)
                                 <span class="badge bg-success">نشط</span>

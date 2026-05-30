@@ -40,7 +40,7 @@
             <div class="card text-center border-success">
                 <div class="card-body py-3">
                     <div class="small text-muted">إجمالي الإيرادات</div>
-                    <div class="fw-bold fs-5 text-success">{{ number_format($totalRevenue, 2) }} ج.م</div>
+                    <div class="fw-bold fs-5 text-success">{{ number_format($totalRevenue, 2) }} {{ $currency }}</div>
                 </div>
             </div>
         </div>
@@ -48,7 +48,7 @@
             <div class="card text-center border-danger">
                 <div class="card-body py-3">
                     <div class="small text-muted">إجمالي المصروفات</div>
-                    <div class="fw-bold fs-5 text-danger">{{ number_format($totalCogs + $totalOpex, 2) }} ج.م</div>
+                    <div class="fw-bold fs-5 text-danger">{{ number_format($totalCogs + $totalOpex, 2) }} {{ $currency }}</div>
                 </div>
             </div>
         </div>
@@ -57,7 +57,7 @@
                 <div class="card-body py-3">
                     <div class="small text-muted">صافي {{ $netIncome >= 0 ? 'الربح' : 'الخسارة' }}</div>
                     <div class="fw-bold fs-5 text-{{ $netIncome >= 0 ? 'primary' : 'warning' }}">
-                        {{ number_format(abs($netIncome), 2) }} ج.م
+                        {{ number_format(abs($netIncome), 2) }} {{ $currency }}
                     </div>
                 </div>
             </div>

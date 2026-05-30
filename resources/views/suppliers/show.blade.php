@@ -90,9 +90,9 @@
                             @forelse($supplier->purchases as $purchase)
                                 <tr>
                                     <td><strong>{{ $purchase->invoice_number }}</strong></td>
-                                    <td>{{ number_format($purchase->total_amount, 2) }} ج.م</td>
-                                    <td>{{ number_format($purchase->paid_amount, 2) }} ج.م</td>
-                                    <td>{{ number_format($purchase->remainingAmount(), 2) }} ج.م</td>
+                                    <td>{{ number_format($purchase->total_amount, 2) }} {{ $currency }}</td>
+                                    <td>{{ number_format($purchase->paid_amount, 2) }} {{ $currency }}</td>
+                                    <td>{{ number_format($purchase->remainingAmount(), 2) }} {{ $currency }}</td>
                                     <td>
                                         @if($purchase->payment_status == 'paid')
                                             <span class="badge bg-success">مدفوع</span>

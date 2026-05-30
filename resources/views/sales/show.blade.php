@@ -54,18 +54,18 @@
                                     <h6 class="text-muted mb-3">ملخص الفاتورة</h6>
                                     <p class="mb-2">
                                         <span>المجموع الفرعي:</span>
-                                        <strong>{{ number_format($sale->subtotal, 2) }} ج.م</strong>
+                                        <strong>{{ number_format($sale->subtotal, 2) }} {{ $currency }}</strong>
                                     </p>
                                     @if($sale->discount > 0)
                                         <p class="mb-2 text-danger">
                                             <span>الخصم:</span>
-                                            <strong>- {{ number_format($sale->discount, 2) }} ج.م</strong>
+                                            <strong>- {{ number_format($sale->discount, 2) }} {{ $currency }}</strong>
                                         </p>
                                     @endif
                                     <hr>
                                     <p class="mb-0">
                                         <span class="fs-5">الإجمالي:</span>
-                                        <strong class="fs-4 text-success">{{ number_format($sale->total_amount, 2) }} ج.م</strong>
+                                        <strong class="fs-4 text-success">{{ number_format($sale->total_amount, 2) }} {{ $currency }}</strong>
                                     </p>
                                 </div>
                             </div>
@@ -90,8 +90,8 @@
                                     <td>{{ $index + 1 }}</td>
                                     <td>{{ $item->product->name }}</td>
                                     <td>{{ $item->quantity }}</td>
-                                    <td>{{ number_format($item->unit_price, 2) }} ج.م</td>
-                                    <td><strong>{{ number_format($item->total_price, 2) }} ج.م</strong></td>
+                                    <td>{{ number_format($item->unit_price, 2) }} {{ $currency }}</td>
+                                    <td><strong>{{ number_format($item->total_price, 2) }} {{ $currency }}</strong></td>
                                 </tr>
                             @endforeach
                             </tbody>
@@ -104,11 +104,11 @@
                                 <div class="card-body">
                                     <div class="d-flex justify-content-between mb-2">
                                         <span>المدفوع:</span>
-                                        <strong>{{ number_format($sale->paid_amount, 2) }} ج.م</strong>
+                                        <strong>{{ number_format($sale->paid_amount, 2) }} {{ $currency }}</strong>
                                     </div>
                                     <div class="d-flex justify-content-between">
                                         <span>الباقي:</span>
-                                        <strong class="text-success">{{ number_format($sale->change_amount, 2) }} ج.م</strong>
+                                        <strong class="text-success">{{ number_format($sale->change_amount, 2) }} {{ $currency }}</strong>
                                     </div>
                                 </div>
                             </div>

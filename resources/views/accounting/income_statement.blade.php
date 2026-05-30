@@ -51,7 +51,7 @@
                             {{ $row['account']->name }}
                         </td>
                         <td class="text-end pe-4 text-success fw-semibold">
-                            {{ number_format($row['amount'], 2) }}
+                            {{ number_format($row['amount'], 2) }} {{ $currency }}
                         </td>
                     </tr>
                     @empty
@@ -59,7 +59,7 @@
                     @endforelse
                     <tr class="table-success fw-bold border-top border-2">
                         <td class="ps-4">إجمالي الإيرادات</td>
-                        <td class="text-end pe-4">{{ number_format($totalRevenue, 2) }}</td>
+                        <td class="text-end pe-4">{{ number_format($totalRevenue, 2) }} {{ $currency }}</td>
                     </tr>
                 </tbody>
 
@@ -77,7 +77,7 @@
                             {{ $row['account']->name }}
                         </td>
                         <td class="text-end pe-4 text-warning fw-semibold">
-                            ({{ number_format($row['amount'], 2) }})
+                            ({{ number_format($row['amount'], 2) }} {{ $currency }})
                         </td>
                     </tr>
                     @empty
@@ -85,7 +85,7 @@
                     @endforelse
                     <tr class="table-warning fw-bold border-top border-2">
                         <td class="ps-4">إجمالي تكلفة البضاعة المباعة</td>
-                        <td class="text-end pe-4">({{ number_format($totalCogs, 2) }})</td>
+                        <td class="text-end pe-4">({{ number_format($totalCogs, 2) }} {{ $currency }})</td>
                     </tr>
                 </tbody>
 
@@ -97,7 +97,7 @@
                             <small class="text-muted fw-normal ms-2">(هامش {{ $grossMargin }}%)</small>
                         </td>
                         <td class="text-end pe-4 py-3 {{ $grossProfit >= 0 ? 'text-primary' : 'text-danger' }}">
-                            {{ number_format($grossProfit, 2) }}
+                            {{ number_format($grossProfit, 2) }} {{ $currency }}
                         </td>
                     </tr>
                 </tbody>
@@ -116,7 +116,7 @@
                             {{ $row['account']->name }}
                         </td>
                         <td class="text-end pe-4 text-danger fw-semibold">
-                            ({{ number_format($row['amount'], 2) }})
+                            ({{ number_format($row['amount'], 2) }} {{ $currency }})
                         </td>
                     </tr>
                     @empty
@@ -124,7 +124,7 @@
                     @endforelse
                     <tr class="table-danger fw-bold border-top border-2">
                         <td class="ps-4">إجمالي المصروفات التشغيلية</td>
-                        <td class="text-end pe-4">({{ number_format($totalOpex, 2) }})</td>
+                        <td class="text-end pe-4">({{ number_format($totalOpex, 2) }} {{ $currency }})</td>
                     </tr>
                 </tbody>
 
@@ -137,7 +137,7 @@
                             <small class="fw-normal ms-2">(صافي الهامش {{ $netMargin }}%)</small>
                         </td>
                         <td class="text-end pe-4 py-3 {{ $netIncome >= 0 ? 'text-success' : 'text-danger' }}">
-                            {{ number_format(abs($netIncome), 2) }}
+                            {{ number_format(abs($netIncome), 2) }} {{ $currency }}
                         </td>
                     </tr>
                 </tbody>
@@ -150,26 +150,26 @@
             <div class="row text-center g-2">
                 <div class="col-md-3">
                     <div class="p-2 border rounded bg-white">
-                        <div class="text-success fw-bold fs-6">{{ number_format($totalRevenue, 2) }}</div>
+                        <div class="text-success fw-bold fs-6">{{ number_format($totalRevenue, 2) }} {{ $currency }}</div>
                         <small class="text-muted">إجمالي الإيرادات</small>
                     </div>
                 </div>
                 <div class="col-md-3">
                     <div class="p-2 border rounded bg-white">
-                        <div class="text-warning fw-bold fs-6">{{ number_format($totalCogs, 2) }}</div>
+                        <div class="text-warning fw-bold fs-6">{{ number_format($totalCogs, 2) }} {{ $currency }}</div>
                         <small class="text-muted">تكلفة المبيعات</small>
                     </div>
                 </div>
                 <div class="col-md-3">
                     <div class="p-2 border rounded bg-white">
-                        <div class="text-danger fw-bold fs-6">{{ number_format($totalOpex, 2) }}</div>
+                        <div class="text-danger fw-bold fs-6">{{ number_format($totalOpex, 2) }} {{ $currency }}</div>
                         <small class="text-muted">المصروفات التشغيلية</small>
                     </div>
                 </div>
                 <div class="col-md-3">
                     <div class="p-2 border rounded bg-white">
                         <div class="fw-bold fs-6 {{ $netIncome >= 0 ? 'text-success' : 'text-danger' }}">
-                            {{ number_format($netIncome, 2) }}
+                            {{ number_format($netIncome, 2) }} {{ $currency }}
                         </div>
                         <small class="text-muted">{{ $netIncome >= 0 ? 'صافي الربح' : 'صافي الخسارة' }}</small>
                     </div>

@@ -38,7 +38,7 @@
         <div class="col-md-3">
             <div class="card text-center border-0 bg-light">
                 <div class="card-body">
-                    <div class="fs-4 fw-bold text-primary">{{ number_format($totalBilled, 2) }}</div>
+                    <div class="fs-4 fw-bold text-primary">{{ number_format($totalBilled, 2) }} {{ $currency }}</div>
                     <div class="small text-muted">إجمالي الفواتير الآجلة</div>
                 </div>
             </div>
@@ -46,7 +46,7 @@
         <div class="col-md-3">
             <div class="card text-center border-0 bg-light">
                 <div class="card-body">
-                    <div class="fs-4 fw-bold text-success">{{ number_format($totalPaid, 2) }}</div>
+                    <div class="fs-4 fw-bold text-success">{{ number_format($totalPaid, 2) }} {{ $currency }}</div>
                     <div class="small text-muted">إجمالي المدفوعات</div>
                 </div>
             </div>
@@ -55,7 +55,7 @@
             <div class="card text-center border-0 {{ $outstanding > 0 ? 'bg-danger bg-opacity-10' : 'bg-success bg-opacity-10' }}">
                 <div class="card-body">
                     <div class="fs-4 fw-bold {{ $outstanding > 0 ? 'text-danger' : 'text-success' }}">
-                        {{ number_format($outstanding, 2) }}
+                        {{ number_format($outstanding, 2) }} {{ $currency }}
                     </div>
                     <div class="small text-muted">الرصيد المستحق</div>
                 </div>
@@ -70,7 +70,7 @@
                     <div class="small text-muted">
                         رصيد متاح
                         @if($customer->credit_limit > 0)
-                        (حد: {{ number_format($customer->credit_limit, 2) }})
+                        (حد: {{ number_format($customer->credit_limit, 2) }} {{ $currency }})
                         @endif
                     </div>
                 </div>
@@ -100,9 +100,9 @@
                             <tr>
                                 <td class="ps-3 fw-semibold">{{ $sale->invoice_number }}</td>
                                 <td class="text-muted">{{ $sale->created_at->format('Y/m/d') }}</td>
-                                <td class="text-end">{{ number_format($sale->total_amount, 2) }}</td>
+                                <td class="text-end">{{ number_format($sale->total_amount, 2) }} {{ $currency }}</td>
                                 <td class="text-end fw-bold {{ $sale->outstanding > 0 ? 'text-danger' : 'text-success' }}">
-                                    {{ number_format($sale->outstanding, 2) }}
+                                    {{ number_format($sale->outstanding, 2) }} {{ $currency }}
                                     @if($sale->outstanding == 0)
                                         <i class="bi bi-check-circle-fill text-success ms-1"></i>
                                     @endif
@@ -146,7 +146,7 @@
                             <tr>
                                 <td class="ps-3 text-muted">{{ $payment->received_at->format('Y/m/d') }}</td>
                                 <td class="small">{{ $payment->sale?->invoice_number ?? '—' }}</td>
-                                <td class="text-end fw-bold text-success">{{ number_format($payment->amount, 2) }}</td>
+                                <td class="text-end fw-bold text-success">{{ number_format($payment->amount, 2) }} {{ $currency }}</td>
                             </tr>
                             @empty
                             <tr><td colspan="3" class="text-center text-muted py-3">لا توجد مدفوعات</td></tr>

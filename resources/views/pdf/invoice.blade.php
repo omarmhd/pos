@@ -170,26 +170,26 @@
                 <table class="totals-table">
                     <tr>
                         <td class="lbl">المجموع الفرعي</td>
-                        <td class="val">{{ number_format($sale->subtotal, 2) }} ج.م</td>
+                        <td class="val">{{ number_format($sale->subtotal, 2) }} {{ $currency }}</td>
                     </tr>
                     @if($sale->discount > 0)
                     <tr>
                         <td class="lbl" style="color:#e74c3c;">الخصم</td>
-                        <td class="val" style="color:#e74c3c;">- {{ number_format($sale->discount, 2) }} ج.م</td>
+                        <td class="val" style="color:#e74c3c;">- {{ number_format($sale->discount, 2) }} {{ $currency }}</td>
                     </tr>
                     @endif
                     <tr class="grand">
                         <td class="lbl" style="color:white;">الإجمالي</td>
-                        <td class="val" style="color:white;">{{ number_format($sale->total_amount, 2) }} ج.م</td>
+                        <td class="val" style="color:white;">{{ number_format($sale->total_amount, 2) }} {{ $currency }}</td>
                     </tr>
                     @if(!$sale->is_credit)
                     <tr>
                         <td class="lbl">المدفوع</td>
-                        <td class="val">{{ number_format($sale->paid_amount, 2) }} ج.م</td>
+                        <td class="val">{{ number_format($sale->paid_amount, 2) }} {{ $currency }}</td>
                     </tr>
                     <tr>
                         <td class="lbl">الباقي / الفكة</td>
-                        <td class="val">{{ number_format($sale->change_amount, 2) }} ج.م</td>
+                        <td class="val">{{ number_format($sale->change_amount, 2) }} {{ $currency }}</td>
                     </tr>
                     @else
                     <tr>

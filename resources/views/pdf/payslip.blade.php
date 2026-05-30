@@ -169,20 +169,20 @@
             <td class="col-half">
                 <div class="sec-title earn-title">المستحقات</div>
                 <table class="detail-table">
-                    <tr><td class="d-label">الراتب الأساسي</td><td class="d-amount">{{ number_format($item->base_salary, 2) }} ج.م</td></tr>
+                    <tr><td class="d-label">الراتب الأساسي</td><td class="d-amount">{{ number_format($item->base_salary, 2) }} {{ $currency }}</td></tr>
                     @if($item->housing_allowance > 0)
-                    <tr><td class="d-label">بدل سكن</td><td class="d-amount">{{ number_format($item->housing_allowance, 2) }} ج.م</td></tr>
+                    <tr><td class="d-label">بدل سكن</td><td class="d-amount">{{ number_format($item->housing_allowance, 2) }} {{ $currency }}</td></tr>
                     @endif
                     @if($item->transport_allowance > 0)
-                    <tr><td class="d-label">بدل مواصلات</td><td class="d-amount">{{ number_format($item->transport_allowance, 2) }} ج.م</td></tr>
+                    <tr><td class="d-label">بدل مواصلات</td><td class="d-amount">{{ number_format($item->transport_allowance, 2) }} {{ $currency }}</td></tr>
                     @endif
                     @if($item->other_allowances > 0)
-                    <tr><td class="d-label">بدلات أخرى</td><td class="d-amount">{{ number_format($item->other_allowances, 2) }} ج.م</td></tr>
+                    <tr><td class="d-label">بدلات أخرى</td><td class="d-amount">{{ number_format($item->other_allowances, 2) }} {{ $currency }}</td></tr>
                     @endif
                     @if($item->overtime_pay > 0)
-                    <tr><td class="d-label">أجر أوفرتايم</td><td class="d-amount">{{ number_format($item->overtime_pay, 2) }} ج.م</td></tr>
+                    <tr><td class="d-label">أجر أوفرتايم</td><td class="d-amount">{{ number_format($item->overtime_pay, 2) }} {{ $currency }}</td></tr>
                     @endif
-                    <tr class="d-sub"><td class="d-label">إجمالي المستحقات</td><td class="d-amount">{{ number_format($item->gross_pay, 2) }} ج.م</td></tr>
+                    <tr class="d-sub"><td class="d-label">إجمالي المستحقات</td><td class="d-amount">{{ number_format($item->gross_pay, 2) }} {{ $currency }}</td></tr>
                 </table>
             </td>
             <td class="col-gap"></td>
@@ -190,15 +190,15 @@
                 <div class="sec-title ded-title">الخصومات</div>
                 <table class="detail-table">
                     @if($item->absence_deduction > 0)
-                    <tr><td class="d-label">خصم غياب</td><td class="d-amount d-red">{{ number_format($item->absence_deduction, 2) }} ج.م</td></tr>
+                    <tr><td class="d-label">خصم غياب</td><td class="d-amount d-red">{{ number_format($item->absence_deduction, 2) }} {{ $currency }}</td></tr>
                     @endif
                     @if($item->other_deductions > 0)
-                    <tr><td class="d-label">خصومات أخرى</td><td class="d-amount d-red">{{ number_format($item->other_deductions, 2) }} ج.م</td></tr>
+                    <tr><td class="d-label">خصومات أخرى</td><td class="d-amount d-red">{{ number_format($item->other_deductions, 2) }} {{ $currency }}</td></tr>
                     @endif
                     @if($item->total_deductions == 0)
                     <tr><td colspan="2" class="d-muted">لا توجد خصومات</td></tr>
                     @endif
-                    <tr class="d-sub"><td class="d-label">إجمالي الخصومات</td><td class="d-amount d-red">{{ number_format($item->total_deductions, 2) }} ج.م</td></tr>
+                    <tr class="d-sub"><td class="d-label">إجمالي الخصومات</td><td class="d-amount d-red">{{ number_format($item->total_deductions, 2) }} {{ $currency }}</td></tr>
                 </table>
             </td>
         </tr>
@@ -208,7 +208,7 @@
     <table class="net-table">
         <tr>
             <td class="net-label">صافي الراتب المستحق</td>
-            <td class="net-amount">{{ number_format($item->net_pay, 2) }} ج.م</td>
+            <td class="net-amount">{{ number_format($item->net_pay, 2) }} {{ $currency }}</td>
         </tr>
     </table>
 

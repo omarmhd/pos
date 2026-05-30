@@ -7,6 +7,7 @@ use App\Models\Reversal;
 use App\Policies\ReversalPolicy;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\View;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -29,5 +30,16 @@ class AppServiceProvider extends ServiceProvider
         });
 
         Gate::policy(Reversal::class, ReversalPolicy::class);
+
+        // Share $currency with every view so no controller needs to pass it manually.
+        // Setting::get() is cached (1-day TTL) so this is a single cache lookup per request.
+        View::composer('*', function ($view) {
+            try {
+                $view->with('currency', \App\Models\Setting::get('currency_symbol', 'ج.م'));
+            } catch (\Throwable $e) {
+                // Silently skip during migrations or when DB is unavailable
+                $view->with('currency', 'ج.م');
+            }
+        });
     }
 }

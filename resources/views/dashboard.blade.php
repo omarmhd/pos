@@ -12,7 +12,7 @@
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
                             <h6 class="mb-2">مبيعات اليوم</h6>
-                            <h3 class="mb-0">{{ number_format($todaySales, 2) }} ج.م</h3>
+                            <h3 class="mb-0">{{ number_format($todaySales, 2) }} {{ $currency }}</h3>
                         </div>
                         <div class="fs-1">
                             <i class="bi bi-cash-coin"></i>
@@ -26,7 +26,7 @@
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
                             <h6 class="mb-2">مبيعات الشهر</h6>
-                            <h3 class="mb-0">{{ number_format($monthSales, 2) }} ج.م</h3>
+                            <h3 class="mb-0">{{ number_format($monthSales, 2) }} {{ $currency }}</h3>
                         </div>
                         <div class="fs-1">
                             <i class="bi bi-graph-up-arrow"></i>
@@ -89,7 +89,7 @@
                                     <tr>
                                         <td><strong>{{ $sale->invoice_number }}</strong></td>
                                         <td>{{ $sale->user->name }}</td>
-                                        <td><strong>{{ number_format($sale->total_amount, 2) }} ج.م</strong></td>
+                                        <td><strong>{{ number_format($sale->total_amount, 2) }} {{ $currency }}</strong></td>
                                         <td>
                                             @if($sale->payment_method == 'cash')
                                                 <span class="badge bg-success">نقدي</span>
