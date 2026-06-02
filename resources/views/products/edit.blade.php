@@ -43,14 +43,26 @@
                                 @error('category_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
                             </div>
 
-                            <div class="col-md-6">
+                            <div class="col-md-4">
                                 <label class="form-label">الوحدة <span class="text-danger">*</span></label>
                                 <select name="unit" class="form-select @error('unit') is-invalid @enderror" required>
-                                    <option value="piece" {{ old('unit', $product->unit) == 'piece' ? 'selected' : '' }}>قطعة</option>
-                                    <option value="kg" {{ old('unit', $product->unit) == 'kg' ? 'selected' : '' }}>كيلوجرام</option>
-                                    <option value="liter" {{ old('unit', $product->unit) == 'liter' ? 'selected' : '' }}>لتر</option>
+                                    <option value="piece"  {{ old('unit', $product->unit) == 'piece'  ? 'selected' : '' }}>قطعة</option>
+                                    <option value="kg"     {{ old('unit', $product->unit) == 'kg'     ? 'selected' : '' }}>كيلوجرام</option>
+                                    <option value="g"      {{ old('unit', $product->unit) == 'g'      ? 'selected' : '' }}>جرام</option>
+                                    <option value="liter"  {{ old('unit', $product->unit) == 'liter'  ? 'selected' : '' }}>لتر</option>
+                                    <option value="ml"     {{ old('unit', $product->unit) == 'ml'     ? 'selected' : '' }}>مل</option>
                                 </select>
                                 @error('unit')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                            </div>
+
+                            <div class="col-md-2 d-flex align-items-end pb-1">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" name="allow_fractions" id="allow_fractions"
+                                           value="1" {{ old('allow_fractions', $product->allow_fractions) ? 'checked' : '' }}>
+                                    <label class="form-check-label small fw-semibold" for="allow_fractions">
+                                        <i class="bi bi-speedometer2 text-info"></i> يُباع بالوزن / الكسر
+                                    </label>
+                                </div>
                             </div>
 
                             <div class="col-md-6">

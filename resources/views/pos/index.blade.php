@@ -417,7 +417,13 @@
             <div class="product-scroll">
                 <div class="product-grid" id="pgrid">
                     @foreach($products as $p)
-                    @php $pIsOos = !$allowNegStock && $p->quantity <= 0; @endphp
+                    @php
+                        $pIsOos  = !$allowNegStock && $p->quantity <= 0;
+                        $pUnit   = $p->unit ?: 'قطعة';
+                        $pQtyFmt = $p->allow_fractions
+                            ? rtrim(rtrim(number_format((float)$p->quantity, 3, '.', ''), '0'), '.')
+                            : (int) $p->quantity;
+                    @endphp
                     <div class="p-card {{ $pIsOos ? 'oos' : '' }}"
                          data-id="{{ $p->id }}"
                          data-cat="{{ $p->category_id }}"
@@ -427,17 +433,28 @@
                         @if($p->image)
                         <img src="{{ asset('storage/'.$p->image) }}" class="p-img" alt="" loading="lazy">
                         @else
-                        <div class="p-img-ph"><i class="bi bi-box-seam"></i></div>
+                        <div class="p-img-ph">
+                            @if($p->allow_fractions)
+                                <i class="bi bi-speedometer2"></i>
+                            @else
+                                <i class="bi bi-box-seam"></i>
+                            @endif
+                        </div>
                         @endif
-                        <div class="p-name">{{ $p->name }}</div>
+                        <div class="p-name">
+                            {{ $p->name }}
+                            @if($p->allow_fractions)
+                                <span class="badge bg-info text-white" style="font-size:.55rem; vertical-align:middle;">{{ $pUnit }}</span>
+                            @endif
+                        </div>
                         <div class="p-price">{{ number_format($p->selling_price, 2) }}</div>
                         <div class="p-stock">
                             @if($p->quantity <= 0)
                                 <span class="text-danger">نفذ</span>
                             @elseif($p->quantity <= ($p->min_quantity ?? 5))
-                                <span class="text-warning">{{ $p->quantity }} متبقي</span>
+                                <span class="text-warning">{{ $pQtyFmt }} {{ $pUnit }} متبقي</span>
                             @else
-                                {{ $p->quantity }} قطعة
+                                {{ $pQtyFmt }} {{ $pUnit }}
                             @endif
                         </div>
                     </div>
@@ -472,6 +489,12 @@
                     <div id="customerDropdown" class="position-absolute w-100 bg-white border shadow-sm rounded"
                          style="display:none; top:100%; z-index:1000; max-height:250px; overflow-y:auto;">
                     </div>
+                </div>
+                {{-- Deposit balance badge --}}
+                <div id="depositBadge" class="d-none alert alert-success py-1 px-2 mb-1 small d-flex align-items-center gap-2" style="border-radius:6px; cursor:default;" title="سيُعرض خيار استخدام الرصيد عند الضغط على إتمام البيع">
+                    <i class="bi bi-piggy-bank"></i>
+                    <span>رصيد الإيداع: <strong id="depositBalanceDisp">0.00</strong> {{ $posSettings['currencySymbol'] }}</span>
+                    <small class="text-muted opacity-75">(يُستخدم عند الدفع)</small>
                 </div>
                 <div class="form-check form-switch mb-0">
                     <input class="form-check-input" type="checkbox" id="creditToggle" onchange="onCreditToggle()">
@@ -509,9 +532,10 @@
                 </div>
 
                 <select id="payMethodSel" class="form-select form-select-sm mb-1">
-                    <option value="cash"><i class="bi bi-cash"></i> نقدي</option>
+                    <option value="cash">نقدي</option>
                     <option value="card">بطاقة بنكية</option>
                     <option value="mobile_wallet">محفظة إلكترونية</option>
+                    <option value="deposit_balance">رصيد إيداع</option>
                 </select>
 
                 <button class="btn-checkout" id="checkoutBtn" onclick="checkout()">
@@ -551,8 +575,21 @@
                     <div class="text-muted small">{{ $posSettings['currencySymbol'] }}</div>
                 </div>
 
+                {{-- Deposit balance section (shown only when customer has balance) --}}
+                <div id="pmDepositSection" class="d-none mb-2 p-2 bg-success bg-opacity-10 rounded border border-success border-opacity-25">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="small fw-semibold text-success"><i class="bi bi-piggy-bank me-1"></i>رصيد الإيداع المتاح</span>
+                        <span class="fw-bold text-success" id="pmAvailableBalance">0.00</span>
+                    </div>
+                    <label class="form-label small fw-semibold mb-1">استخدام من الرصيد</label>
+                    <input id="pmBalanceUsed" type="number" min="0" step="0.01" value="0"
+                           class="form-control form-control-sm text-center fw-bold"
+                           oninput="onBalanceUsedChange()" placeholder="0.00">
+                    <div class="form-text small text-muted">اترك 0 إذا كنت تريد الدفع نقداً بالكامل</div>
+                </div>
+
                 <div id="pmCashSection">
-                    <label class="form-label small fw-semibold mb-1">المبلغ المستلم</label>
+                    <label class="form-label small fw-semibold mb-1">المبلغ المستلم نقداً</label>
                     <input id="pmPaid" type="number" min="0" step="0.01"
                            class="form-control form-control-lg text-center fw-bold"
                            oninput="calcChange()" style="font-size:1.4rem;">
@@ -582,16 +619,61 @@
     </div>
 </div>
 
+{{-- ── Fractional quantity modal ──────────────────────────── --}}
+<div class="modal fade" id="fracModal" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header py-2" style="background:#1a2535; color:#fff;">
+                <h6 class="modal-title mb-0">
+                    <i class="bi bi-speedometer2 me-1"></i>
+                    <span id="fracModalTitle">أدخل الكمية</span>
+                </h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body pb-2">
+                <div class="text-center mb-3">
+                    <label class="form-label fw-semibold">
+                        الكمية
+                        (<span id="fracModalUnit">كجم</span>)
+                    </label>
+                    <input id="fracQtyInput" type="number"
+                           class="form-control form-control-lg text-center fw-bold"
+                           step="0.001" min="0.001" placeholder="0.000"
+                           style="font-size:1.6rem;"
+                           onkeydown="if(event.key==='Enter'){confirmFracQty();}">
+                </div>
+                {{-- Quick-pick buttons --}}
+                <div class="d-flex flex-wrap gap-1 justify-content-center mb-1" id="fracQuickBtns">
+                    <button class="btn btn-outline-secondary btn-sm" onclick="setFracQuick(0.25)">¼</button>
+                    <button class="btn btn-outline-secondary btn-sm" onclick="setFracQuick(0.5)">½</button>
+                    <button class="btn btn-outline-secondary btn-sm" onclick="setFracQuick(0.75)">¾</button>
+                    <button class="btn btn-outline-primary   btn-sm" onclick="setFracQuick(1)">1</button>
+                    <button class="btn btn-outline-secondary btn-sm" onclick="setFracQuick(1.5)">1½</button>
+                    <button class="btn btn-outline-secondary btn-sm" onclick="setFracQuick(2)">2</button>
+                </div>
+            </div>
+            <div class="modal-footer pt-1">
+                <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">إلغاء</button>
+                <button type="button" class="btn btn-success px-4" onclick="confirmFracQty()">
+                    <i class="bi bi-check-lg me-1"></i> إضافة
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @endsection
 
 @php
 $productsData = $products->map(fn($p) => [
-    'id'      => $p->id,
-    'name'    => $p->name,
-    'price'   => (float) $p->selling_price,
-    'qty'     => (int) $p->quantity,
-    'barcode' => $p->barcode ?? '',
-    'cat'     => $p->category_id,
+    'id'             => $p->id,
+    'name'           => $p->name,
+    'price'          => (float) $p->selling_price,
+    'qty'            => (float) $p->quantity,
+    'barcode'        => $p->barcode ?? '',
+    'cat'            => $p->category_id,
+    'allowFractions' => (bool)  $p->allow_fractions,
+    'unit'           => $p->unit ?: 'قطعة',
 ]);
 @endphp
 {{-- Hidden data containers — Blade escapes into HTML text nodes; JS reads via textContent --}}
@@ -606,14 +688,17 @@ const POS_SETTINGS = JSON.parse(document.getElementById('__posSettings').textCon
 const CUR          = POS_SETTINGS.currencySymbol || 'ج.م';
 
 // ── State ─────────────────────────────────────────
-let cart        = [];
-let lastReceipt = null;
-let activeCat   = '';
-let payModal, toastEl, toastInst;
+let cart             = [];
+let lastReceipt      = null;
+let activeCat        = '';
+let payModal, fracModal, toastEl, toastInst;
+let fracProduct      = null;
+let customerDeposit  = 0; // current selected customer's deposit balance
 
 // ── Init ─────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
     payModal  = new bootstrap.Modal(document.getElementById('payModal'));
+    fracModal = new bootstrap.Modal(document.getElementById('fracModal'));
     toastEl   = document.getElementById('posToast');
     toastInst = bootstrap.Toast.getOrCreateInstance(toastEl, { delay: 2500 });
 
@@ -720,18 +805,71 @@ function applyFilter() {
     document.getElementById('noResults').style.display = visible === 0 ? 'block' : 'none';
 }
 
+// ── Fractional helpers ────────────────────────────
+function formatQty(qty) {
+    // Strips trailing zeros: 1.500→"1", 0.750→"0.75", 2.250→"2.25"
+    return parseFloat(parseFloat(qty).toFixed(3)).toString();
+}
+
+function openFracModal(p) {
+    fracProduct = p;
+    document.getElementById('fracModalTitle').textContent = p.name;
+    document.getElementById('fracModalUnit').textContent  = p.unit || 'قطعة';
+    const existing = cart.find(x => x.id === p.id);
+    const input = document.getElementById('fracQtyInput');
+    input.value = existing ? existing.qty : '';
+    input.classList.remove('is-invalid');
+    fracModal.show();
+    setTimeout(() => { input.focus(); input.select(); }, 250);
+}
+
+function setFracQuick(val) {
+    const input = document.getElementById('fracQtyInput');
+    input.value = val;
+    input.classList.remove('is-invalid');
+}
+
+function confirmFracQty() {
+    const input = document.getElementById('fracQtyInput');
+    const qty   = parseFloat(input.value);
+    if (isNaN(qty) || qty <= 0) {
+        input.classList.add('is-invalid');
+        return;
+    }
+    const p = fracProduct;
+    if (!POS_SETTINGS.allowNegStock && qty > p.qty) {
+        showToast('لا يوجد مخزون كافٍ (المتاح: ' + formatQty(p.qty) + ' ' + (p.unit || '') + ')', 'warning');
+        return;
+    }
+    const item = cart.find(x => x.id === p.id);
+    if (item) {
+        item.qty = qty;
+    } else {
+        cart.push({ id: p.id, name: p.name, price: p.price, qty: qty, maxQty: p.qty, allowFractions: true, unit: p.unit || 'قطعة' });
+    }
+    fracModal.hide();
+    renderCart();
+    flashCard(p.id);
+    focusSearch();
+}
+
 // ── Cart ──────────────────────────────────────────
 function addToCart(productId) {
     const p = PRODUCTS.find(x => x.id === productId);
     if (!p) return;
     if (!POS_SETTINGS.allowNegStock && p.qty <= 0) { showToast('المنتج نفذ من المخزون', 'warning'); return; }
 
+    if (p.allowFractions) {
+        openFracModal(p);
+        return;
+    }
+
     const item = cart.find(x => x.id === productId);
     if (item) {
         if (!POS_SETTINGS.allowNegStock && item.qty >= p.qty) { showToast('لا يوجد مخزون كافٍ', 'warning'); return; }
         item.qty++;
     } else {
-        cart.push({ id: p.id, name: p.name, price: p.price, qty: 1, maxQty: p.qty });
+        cart.push({ id: p.id, name: p.name, price: p.price, qty: 1, maxQty: p.qty, allowFractions: false, unit: p.unit || 'قطعة' });
     }
 
     renderCart();
@@ -748,11 +886,33 @@ function flashCard(id) {
 
 function changeQty(idx, delta) {
     if (!cart[idx]) return;
+    if (cart[idx].allowFractions) {
+        // For fractional items, re-open the modal to edit the quantity
+        openFracModal(PRODUCTS.find(x => x.id === cart[idx].id) || cart[idx]);
+        return;
+    }
     const newQty = cart[idx].qty + delta;
     if (newQty <= 0) { removeItem(idx); return; }
     if (!POS_SETTINGS.allowNegStock && newQty > cart[idx].maxQty) { showToast('لا يوجد مخزون كافٍ', 'warning'); return; }
     cart[idx].qty = newQty;
     renderCart();
+}
+
+function setFracQty(idx, rawValue) {
+    const qty = parseFloat(rawValue);
+    if (isNaN(qty) || qty <= 0) { removeItem(idx); return; }
+    const p = PRODUCTS.find(x => x.id === cart[idx].id);
+    if (!POS_SETTINGS.allowNegStock && p && qty > p.qty) {
+        showToast('لا يوجد مخزون كافٍ (المتاح: ' + formatQty(p.qty) + ')', 'warning');
+        const inp = document.getElementById('ci-qty-' + idx);
+        if (inp) inp.value = cart[idx].qty;
+        return;
+    }
+    cart[idx].qty = qty;
+    // Update row total without full re-render (keeps input focus)
+    const totalEl = document.querySelector('[data-ci-total="' + idx + '"]');
+    if (totalEl) totalEl.textContent = (qty * cart[idx].price).toFixed(2);
+    updateTotals();
 }
 
 function removeItem(idx) {
@@ -775,17 +935,28 @@ function resetSale() {
     const csel      = document.getElementById('customerSel');
     const cdropdown = document.getElementById('customerDropdown');
     csearch.value          = '';
+    // Remove the dynamically-added customer option, then reset
+    const dynOpt = csel.querySelector('[data-dynamic]');
+    if (dynOpt) dynOpt.remove();
     csel.value             = '';
     cdropdown.style.display = 'none';
     cdropdown.innerHTML    = '';
+    // Reset deposit balance
+    customerDeposit = 0;
+    const badge = document.getElementById('depositBadge');
+    badge.classList.add('d-none');
+    badge.classList.remove('d-flex');
 
     // 4. Credit toggle
     document.getElementById('creditToggle').checked  = false;
 
-    // 5. Payment method
+    // 5. Payment method — always reset to cash for next sale
     const payMeth = document.getElementById('payMethodSel');
     payMeth.value    = 'cash';
     payMeth.disabled = false;
+    // Reset balance input in modal
+    const balInput = document.getElementById('pmBalanceUsed');
+    if (balInput) balInput.value = '0';
 
     // 6. Re-render & close mobile cart
     renderCart();
@@ -807,20 +978,31 @@ function renderCart() {
         wrap.appendChild(empty);
         empty.style.display = 'flex';
     } else {
-        const html = cart.map((item, i) => `
-        <div class="ci-row">
-            <div class="ci-name">
-                <strong>${esc(item.name)}</strong>
-                <small>${item.price.toFixed(2)} ${CUR} / قطعة</small>
-            </div>
-            <div class="ci-controls">
-                <button class="ci-btn" onclick="changeQty(${i},-1)">−</button>
-                <span class="ci-qty">${item.qty}</span>
-                <button class="ci-btn" onclick="changeQty(${i},1)">+</button>
-                <span class="ci-total">${(item.qty * item.price).toFixed(2)}</span>
-                <button class="ci-del" onclick="removeItem(${i})"><i class="bi bi-x"></i></button>
-            </div>
-        </div>`).join('');
+        const html = cart.map((item, i) => {
+            const qtyCtrl = item.allowFractions
+                ? `<input id="ci-qty-${i}" type="number"
+                          class="form-control form-control-sm text-center fw-bold"
+                          style="width:68px;font-size:.8rem;padding:2px 4px;"
+                          value="${item.qty}" step="0.001" min="0.001"
+                          onchange="setFracQty(${i}, this.value)"
+                          onfocus="this.select()">`
+                : `<button class="ci-btn" onclick="changeQty(${i},-1)">−</button>
+                   <span class="ci-qty">${item.qty}</span>
+                   <button class="ci-btn" onclick="changeQty(${i},1)">+</button>`;
+
+            return `
+            <div class="ci-row">
+                <div class="ci-name">
+                    <strong>${esc(item.name)}</strong>
+                    <small>${item.price.toFixed(2)} ${CUR}/${esc(item.unit || 'قطعة')}</small>
+                </div>
+                <div class="ci-controls">
+                    ${qtyCtrl}
+                    <span class="ci-total" data-ci-total="${i}">${(item.qty * item.price).toFixed(2)}</span>
+                    <button class="ci-del" onclick="removeItem(${i})"><i class="bi bi-x"></i></button>
+                </div>
+            </div>`;
+        }).join('');
         wrap.innerHTML = html;
     }
 
@@ -843,7 +1025,7 @@ function updateTotals() {
     const afterDisc   = Math.max(0, subtotal - disc);
     const tax         = calcTax(afterDisc);
     const total       = afterDisc + tax;
-    const count       = cart.reduce((s, i) => s + i.qty, 0);
+    const count       = cart.length; // number of distinct product lines
 
     document.getElementById('subtotalDisp').textContent   = subtotal.toFixed(2) + ' ' + CUR;
 
@@ -878,10 +1060,20 @@ function getTotal() {
 function onCreditToggle() {
     const isCredit = document.getElementById('creditToggle').checked;
     document.getElementById('payMethodSel').disabled = isCredit;
-    if (isCredit && !document.getElementById('customerSel').value) {
-        showToast('اختر عميلاً للبيع الآجل', 'warning');
+
+    if (!isCredit) return; // unchecking — always allowed
+
+    if (!document.getElementById('customerSel').value) {
+        showToast('اختر عميلاً أولاً ثم فعّل البيع الآجل', 'warning');
         document.getElementById('creditToggle').checked = false;
         document.getElementById('payMethodSel').disabled = false;
+        return;
+    }
+
+    // Deposit balance + credit sale don't mix — warn the user
+    if (customerDeposit > 0) {
+        showToast('رصيد الإيداع يُستخدم فقط في المبيعات النقدية، وليس الآجلة', 'info');
+        // allow it but just inform
     }
 }
 
@@ -906,11 +1098,41 @@ function checkout() {
 
     const total = getTotal();
     document.getElementById('pmTotal').textContent = total.toFixed(2);
-    document.getElementById('pmPaid').value = total.toFixed(2);
+
+    // Show deposit section only if customer has balance AND has a customer selected
+    const depSection = document.getElementById('pmDepositSection');
+    const balanceInput = document.getElementById('pmBalanceUsed');
+    if (customerDeposit > 0 && document.getElementById('customerSel').value) {
+        document.getElementById('pmAvailableBalance').textContent = customerDeposit.toFixed(2) + ' ' + CUR;
+        // Auto-fill with min(deposit, total)
+        const autoFill = Math.min(customerDeposit, total);
+        balanceInput.value = autoFill.toFixed(2);
+        balanceInput.max   = Math.min(customerDeposit, total).toFixed(2);
+        depSection.classList.remove('d-none');
+    } else {
+        balanceInput.value = '0';
+        depSection.classList.add('d-none');
+    }
+
+    const balUsed  = parseFloat(balanceInput.value) || 0;
+    const cashPart = Math.max(0, total - balUsed);
+    const payMeth  = document.getElementById('payMethodSel');
+
+    if (cashPart <= 0.005) {
+        // Full deposit payment
+        payMeth.value    = 'deposit_balance';
+        payMeth.disabled = true;
+        document.getElementById('pmCashSection').classList.add('d-none');
+    } else {
+        if (payMeth.value === 'deposit_balance') payMeth.value = 'cash';
+        payMeth.disabled = false;
+        document.getElementById('pmPaid').value = cashPart.toFixed(2);
+        buildQuickBtns(cashPart);
+        document.getElementById('pmCashSection').classList.remove('d-none');
+    }
+
     document.getElementById('pmChange').value = '0.00 ' + CUR;
     document.getElementById('pmChange').style.color = '#198754';
-    buildQuickBtns(total);
-    document.getElementById('pmCashSection').classList.remove('d-none');
     document.getElementById('pmCreditSection').classList.add('d-none');
 
     payModal.show();
@@ -934,12 +1156,39 @@ function setPaid(amount) {
     calcChange();
 }
 
+function onBalanceUsedChange() {
+    const total    = parseFloat(document.getElementById('pmTotal').textContent) || 0;
+    const balUsed  = Math.min(parseFloat(document.getElementById('pmBalanceUsed').value) || 0, customerDeposit, total);
+    const cashPart = Math.max(0, total - balUsed);
+    const cashSec  = document.getElementById('pmCashSection');
+    cashSec.classList.toggle('d-none', cashPart <= 0.005);
+
+    const payMeth = document.getElementById('payMethodSel');
+    if (cashPart <= 0.005) {
+        // Full deposit payment — set method automatically and hide payment selector
+        payMeth.value    = 'deposit_balance';
+        payMeth.disabled = true;
+    } else {
+        // Mixed or cash — restore selector
+        if (payMeth.value === 'deposit_balance') payMeth.value = 'cash';
+        payMeth.disabled = false;
+        document.getElementById('pmPaid').value = cashPart.toFixed(2);
+        buildQuickBtns(cashPart);
+    }
+    calcChange();
+}
+
 function calcChange() {
-    const total  = parseFloat(document.getElementById('pmTotal').textContent) || 0;
-    const paid   = parseFloat(document.getElementById('pmPaid').value) || 0;
-    const change = paid - total;
+    const total   = parseFloat(document.getElementById('pmTotal').textContent) || 0;
+    const balUsed = Math.min(parseFloat(document.getElementById('pmBalanceUsed')?.value) || 0, customerDeposit, total);
+    const cashDue = Math.max(0, total - balUsed);
+    const paid    = parseFloat(document.getElementById('pmPaid').value) || 0;
+    const change  = paid - cashDue;
     const el = document.getElementById('pmChange');
-    if (change >= 0) {
+    if (cashDue <= 0) {
+        el.value = '0.00 ' + CUR;
+        el.style.color = '#198754';
+    } else if (change >= 0) {
         el.value = change.toFixed(2) + ' ' + CUR;
         el.style.color = '#198754';
     } else {
@@ -956,10 +1205,17 @@ async function completeSale() {
     const afterDisc = Math.max(0, subtotal - disc);
     const tax       = calcTax(afterDisc);
     const total     = parseFloat((afterDisc + tax).toFixed(2));
-    const paid      = isCredit ? 0 : (parseFloat(document.getElementById('pmPaid').value) || 0);
 
-    if (!isCredit && paid < total - 0.005) {
-        showToast('المبلغ المدفوع أقل من الإجمالي', 'danger'); return;
+    // Calculate balUsed FIRST so we can include it in the payment check
+    const balUsed = isCredit ? 0 : Math.min(
+        parseFloat(document.getElementById('pmBalanceUsed')?.value) || 0,
+        customerDeposit, total
+    );
+    const paid = isCredit ? 0 : (parseFloat(document.getElementById('pmPaid').value) || 0);
+
+    // Total received = cash paid + deposit balance used
+    if (!isCredit && (paid + balUsed) < total - 0.005) {
+        showToast('المبلغ المدفوع (نقدي + رصيد) أقل من الإجمالي', 'danger'); return;
     }
 
     const btn = document.getElementById('confirmSaleBtn');
@@ -980,6 +1236,7 @@ async function completeSale() {
                 customer_id:    document.getElementById('customerSel').value || null,
                 payment_method: isCredit ? 'cash' : document.getElementById('payMethodSel').value,
                 paid_amount:    paid,
+                balance_used:   balUsed,
             }),
         });
 
@@ -1081,7 +1338,7 @@ function buildReceiptHTML(r) {
     const rows = r.items.map(i => `
         <tr>
             <td>${esc(i.name)}</td>
-            <td style="text-align:center">${i.qty}</td>
+            <td style="text-align:center">${formatQty(i.qty)} ${esc(i.unit||'')}</td>
             <td style="text-align:left">${i.price}</td>
             <td style="text-align:left"><b>${i.total}</b></td>
         </tr>`).join('');
@@ -1132,7 +1389,8 @@ function buildReceiptHTML(r) {
         ${r.has_tax ? `<p><span>ضريبة ${r.tax_rate}%:</span><span>${r.tax} ${CUR}</span></p>` : ''}
         <p class="grand"><span>الإجمالي:</span><span>${r.total} ${CUR}</span></p>
         ${!r.is_credit
-            ? `<p><span>المدفوع:</span><span>${r.paid} ${CUR}</span></p>
+            ? `${r.has_balance ? `<p><span>رصيد إيداع:</span><span>- ${r.balance_used} ${CUR}</span></p>` : ''}
+               ${parseFloat(r.paid) > 0 ? `<p><span>المدفوع نقداً:</span><span>${r.paid} ${CUR}</span></p>` : ''}
                <p><span>الباقي:</span><span>${r.change} ${CUR}</span></p>`
             : `<p><span>آجل</span><span>—</span></p>`}
     </div>
@@ -1211,11 +1469,14 @@ customerSearch.addEventListener('input', e => {
                     return;
                 }
                 customerDropdown.innerHTML = customers.map(c =>
-                    `<div class="p-2 cursor-pointer border-bottom" onclick="selectCustomer(${c.id}, '${esc(c.name)}', ${parseFloat(c.credit_limit)})"
+                    `<div class="p-2 cursor-pointer border-bottom" onclick="selectCustomer(${c.id}, '${esc(c.name)}', ${parseFloat(c.credit_limit)}, ${parseFloat(c.deposit_balance || 0)})"
                           style="cursor:pointer; transition:background 0.1s">
                         <strong>${esc(c.name)}</strong>
                         ${c.phone ? `<br><small class="text-muted">${esc(c.phone)}</small>` : ''}
                         <span class="float-start text-success small">ح: ${parseFloat(c.credit_limit).toFixed(2)}</span>
+                        ${parseFloat(c.deposit_balance || 0) > 0
+                            ? `<span class="float-start ms-2 text-primary small"><i class="bi bi-piggy-bank"></i> ${parseFloat(c.deposit_balance).toFixed(2)}</span>`
+                            : ''}
                     </div>`
                 ).join('');
                 customerDropdown.style.display = 'block';
@@ -1228,11 +1489,31 @@ customerSearch.addEventListener('input', e => {
     }, 300);
 });
 
-function selectCustomer(id, name, limit) {
-    customerSel.value = id;
+function selectCustomer(id, name, limit, depositBal) {
+    // ── Fix: <select> only stores values that have a matching <option>.
+    //    Dynamically add/replace the customer option so .value is properly set.
+    const prev = customerSel.querySelector('[data-dynamic]');
+    if (prev) prev.remove();
+    const opt = new Option(name, id);
+    opt.setAttribute('data-dynamic', '1');
+    customerSel.appendChild(opt);
+    customerSel.value = id; // now works because the option exists
+
     customerSearch.value = name;
     customerSearch.dataset.limit = limit;
     customerDropdown.style.display = 'none';
+
+    // Show / hide deposit balance badge
+    customerDeposit = parseFloat(depositBal) || 0;
+    const badge = document.getElementById('depositBadge');
+    if (customerDeposit > 0) {
+        document.getElementById('depositBalanceDisp').textContent = customerDeposit.toFixed(2);
+        badge.classList.remove('d-none');
+        badge.classList.add('d-flex');
+    } else {
+        badge.classList.add('d-none');
+        badge.classList.remove('d-flex');
+    }
 }
 
 customerSearch.addEventListener('focus', e => {

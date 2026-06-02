@@ -33,8 +33,9 @@ class InventoryAdjustmentController extends Controller
 
         $adjustments = $query->paginate(25)->withQueryString();
         $products    = Product::orderBy('name')->get(['id', 'name', 'barcode']);
+        $currency    = Setting::get('currency_symbol', 'ج.م');
 
-        return view('inventory.adjustments.index', compact('adjustments', 'products'));
+        return view('inventory.adjustments.index', compact('adjustments', 'products', 'currency'));
     }
 
     public function create()

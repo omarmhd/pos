@@ -50,10 +50,59 @@ class PurchaseController extends Controller
     public function create()
     {
         $suppliers = Supplier::orderBy('name')->get();
-        $products  = Product::with('category')->orderBy('name')->get();
         $currency  = Setting::get('currency_symbol', 'ج.م');
 
-        return view('purchases.create', compact('suppliers', 'products', 'currency'));
+        return view('purchases.create', compact('suppliers', 'currency'));
+    }
+
+    public function searchProducts(Request $request)
+    {
+        $q = trim($request->get('q', ''));
+
+        $products = Product::when($q, fn($query) =>
+                $query->where('name', 'like', "%{$q}%")
+                      ->orWhere('barcode', 'like', "%{$q}%")
+            )
+            ->orderBy('name')
+            ->limit(30)
+            ->get(['id', 'name', 'barcode', 'cost_price']);
+
+        return response()->json($products->map(fn($p) => [
+            'id'         => $p->id,
+            'text'       => $p->name . ($p->barcode ? ' — ' . $p->barcode : ''),
+            'name'       => $p->name,
+            'cost_price' => (float) $p->cost_price,
+        ]));
+    }
+
+    public function quickCreateProduct(Request $request)
+    {
+        $this->middleware('can:products.create');
+
+        $request->validate([
+            'name'          => 'required|string|max:255',
+            'barcode'       => 'nullable|string|max:100|unique:products,barcode',
+            'cost_price'    => 'required|numeric|min:0',
+            'selling_price' => 'required|numeric|min:0',
+            'unit'          => 'nullable|string|max:50',
+        ]);
+
+        $product = Product::create([
+            'name'          => $request->name,
+            'barcode'       => $request->barcode ?: null,
+            'cost_price'    => $request->cost_price,
+            'selling_price' => $request->selling_price,
+            'unit'          => $request->unit ?: 'قطعة',
+            'quantity'      => 0,
+            'min_quantity'  => 5,
+        ]);
+
+        return response()->json([
+            'id'         => $product->id,
+            'text'       => $product->name . ($product->barcode ? ' — ' . $product->barcode : ''),
+            'name'       => $product->name,
+            'cost_price' => (float) $product->cost_price,
+        ], 201);
     }
 
     public function store(Request $request)
@@ -65,7 +114,7 @@ class PurchaseController extends Controller
             'notes' => 'nullable|string',
             'items' => 'required|array|min:1',
             'items.*.product_id' => 'required|exists:products,id',
-            'items.*.quantity' => 'required|integer|min:1',
+            'items.*.quantity' => 'required|numeric|min:0.001',
             'items.*.unit_price' => 'required|numeric|min:0'
         ]);
 

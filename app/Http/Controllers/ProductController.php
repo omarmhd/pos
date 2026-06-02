@@ -67,12 +67,15 @@ class ProductController extends Controller
             'description'   => 'nullable|string',
             'cost_price'    => 'required|numeric|min:0',
             'selling_price' => 'required|numeric|min:0',
-            'quantity'      => 'required|integer|min:0',
-            'min_quantity'  => 'required|integer|min:0',
-            'unit'          => 'required|in:piece,kg,liter',
+            'quantity'      => 'required|numeric|min:0',
+            'min_quantity'  => 'required|numeric|min:0',
+            'unit'          => 'required|in:piece,kg,g,liter,ml',
+            'allow_fractions' => 'nullable|boolean',
             'expiry_date'   => 'nullable|date|after:today',
             'image'         => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
         ]);
+
+        $validated['allow_fractions'] = $request->boolean('allow_fractions');
 
         if ($request->hasFile('image')) {
             $validated['image'] = $request->file('image')->store('products', 'public');
@@ -104,12 +107,15 @@ class ProductController extends Controller
             'description'   => 'nullable|string',
             'cost_price'    => 'required|numeric|min:0',
             'selling_price' => 'required|numeric|min:0',
-            'quantity'      => 'required|integer|min:0',
-            'min_quantity'  => 'required|integer|min:0',
-            'unit'          => 'required|in:piece,kg,liter',
+            'quantity'      => 'required|numeric|min:0',
+            'min_quantity'  => 'required|numeric|min:0',
+            'unit'          => 'required|in:piece,kg,g,liter,ml',
+            'allow_fractions' => 'nullable|boolean',
             'expiry_date'   => 'nullable|date|after:today',
             'image'         => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
         ]);
+
+        $validated['allow_fractions'] = $request->boolean('allow_fractions');
 
         if ($request->hasFile('image')) {
             if ($product->image) {

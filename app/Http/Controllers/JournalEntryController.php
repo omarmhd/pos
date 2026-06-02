@@ -21,23 +21,25 @@ class JournalEntryController extends Controller
     public function index(Request $request)
     {
         if ($request->ajax()) {
-            // withSum avoids N+1 — single LEFT JOIN per aggregate
+            // select() must come BEFORE withSum() — otherwise it resets the added subquery selects
             $query = JournalEntry::query()
+                ->select('journal_entries.*')
                 ->with('user:id,name')
                 ->withSum('lines as total_debit',  'debit')
-                ->withSum('lines as total_credit', 'credit')
-                ->select('journal_entries.*');
+                ->withSum('lines as total_credit', 'credit');
 
             return DataTables::eloquent($query)
                 ->addColumn('entry_date_fmt', fn($e) =>
                     optional($e->entry_date)->format('Y-m-d') ?? '—')
                 ->addColumn('source_badge', fn($e) => $this->sourceBadge($e))
                 ->addColumn('debit_fmt', fn($e) =>
-                    '<span class="font-monospace">' . number_format((float)$e->total_debit, 2) . '</span>')
+                    '<span class="font-monospace text-primary">' . number_format((float)$e->total_debit, 2) . '</span>')
+                ->addColumn('credit_fmt', fn($e) =>
+                    '<span class="font-monospace text-success">' . number_format((float)$e->total_credit, 2) . '</span>')
                 ->addColumn('balanced_icon', function ($e) {
                     $diff = abs((float)$e->total_debit - (float)$e->total_credit);
                     return $diff < 0.01
-                        ? '<i class="bi bi-check-circle-fill text-success"></i>'
+                        ? '<i class="bi bi-check-circle-fill text-success" title="متوازن"></i>'
                         : '<i class="bi bi-exclamation-triangle-fill text-danger" title="فرق: ' . number_format($diff, 2) . '"></i>';
                 })
                 ->addColumn('user_name', fn($e) => e($e->user?->name ?? '—'))
@@ -53,7 +55,7 @@ class JournalEntryController extends Controller
                     $q->whereHas('user', fn($u) => $u->where('name', 'like', "%{$k}%")))
                 ->orderColumn('entry_date_fmt', 'entry_date $1')
                 ->orderColumn('debit_fmt',      'total_debit $1')
-                ->rawColumns(['source_badge', 'debit_fmt', 'balanced_icon', 'action'])
+                ->rawColumns(['source_badge', 'debit_fmt', 'credit_fmt', 'balanced_icon', 'action'])
                 ->make(true);
         }
 
@@ -166,7 +168,10 @@ class JournalEntryController extends Controller
             str_contains($e->source_type ?? '', 'Sale')               => ['مبيعات',        'bg-success'],
             str_contains($e->source_type ?? '', 'Purchase')           => ['مشتريات',       'bg-primary'],
             str_contains($e->source_type ?? '', 'SupplierPayment')    => ['دفعة مورد',     'bg-warning text-dark'],
+            str_contains($e->source_type ?? '', 'CustomerDeposit')    => ['إيداع عميل',    'bg-primary'],
             str_contains($e->source_type ?? '', 'CustomerPayment')    => ['تحصيل عميل',    'bg-info text-dark'],
+            str_contains($e->source_type ?? '', 'ReceiptVoucher')     => ['سند قبض',       'bg-success'],
+            str_contains($e->source_type ?? '', 'PaymentVoucher')     => ['سند صرف',       'bg-danger'],
             str_contains($e->source_type ?? '', 'PayrollRun')         => ['رواتب',          'bg-secondary'],
             str_contains($e->source_type ?? '', 'InventorySession')   => ['جرد دوري',       'bg-purple'],
             str_contains($e->source_type ?? '', 'InventoryAdjustment')=> ['تعديل مخزون',   'bg-orange'],

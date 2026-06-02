@@ -52,6 +52,8 @@ class PermissionSeeder extends Seeder
             'categories.view', 'categories.create', 'categories.edit', 'categories.delete',
             // Inventory & Stocktaking
             'inventory.view', 'inventory.adjust', 'inventory.count',
+            // Vouchers
+            'vouchers.view', 'vouchers.create', 'vouchers.delete',
             // Accounting (read + basic)
             'accounts.view',
             'journal_entries.view',
@@ -83,6 +85,7 @@ class PermissionSeeder extends Seeder
             'purchases.view', 'purchases.post',
             'customers.view', 'customers.payments',
             'suppliers.view', 'suppliers.payments',
+            'vouchers.view', 'vouchers.create', 'vouchers.delete',
             'accounts.view', 'accounts.create', 'accounts.edit', 'accounts.delete', 'accounts.import',
             'journal_entries.view', 'journal_entries.create',
             'ledger.view', 'trial_balance.view', 'financial_statements.view',

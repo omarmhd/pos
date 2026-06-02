@@ -26,6 +26,20 @@ class Customer extends Model
         return $this->hasMany(CustomerPayment::class);
     }
 
+    public function deposits()
+    {
+        return $this->hasMany(CustomerDeposit::class);
+    }
+
+    /** Current available deposit balance (ما أودعه العميل ناقص ما استُخدم) */
+    public function depositBalance(): float
+    {
+        $deposited = (float) $this->deposits()->where('type', 'deposit')->sum('amount');
+        $refunded  = (float) $this->deposits()->where('type', 'refund')->sum('amount');
+        $used      = (float) $this->sales()->sum('balance_used');
+        return max(0.0, $deposited - $refunded - $used);
+    }
+
     /** Total value of credit sales (ever billed on account) */
     public function totalCreditBilled(): float
     {

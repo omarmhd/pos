@@ -19,12 +19,17 @@
                     <div class="text-muted small mt-1"><i class="bi bi-geo-alt"></i> {{ $customer->address }}</div>
                     @endif
                 </div>
-                <div class="d-flex gap-2">
+                <div class="d-flex gap-2 flex-wrap">
                     @if($outstanding > 0)
-                    <a href="{{ route('customer-payments.create', $customer) }}" class="btn btn-success">
+                    <a href="{{ route('customer-payments.create', $customer) }}" class="btn btn-success btn-sm">
                         <i class="bi bi-cash-coin"></i> تسجيل دفعة
                     </a>
                     @endif
+                    @can('customers.payments')
+                    <a href="{{ route('customer-deposits.create', $customer) }}" class="btn btn-primary btn-sm">
+                        <i class="bi bi-wallet2"></i> إيداع / استرداد رصيد
+                    </a>
+                    @endcan
                     <a href="{{ route('customers.edit', $customer) }}" class="btn btn-outline-secondary btn-sm">
                         <i class="bi bi-pencil"></i> تعديل
                     </a>
@@ -77,6 +82,22 @@
             </div>
         </div>
     </div>
+
+    {{-- Deposit Balance Banner --}}
+    @if($depositBalance > 0)
+    <div class="alert alert-success border-0 d-flex align-items-center gap-3 mb-4 shadow-sm" style="border-radius:10px;">
+        <i class="bi bi-piggy-bank fs-3 text-success"></i>
+        <div class="flex-grow-1">
+            <div class="fw-bold fs-5">رصيد الإيداع المتاح: {{ number_format($depositBalance, 2) }} {{ $currency }}</div>
+            <div class="small text-muted">يمكن للعميل استخدام هذا الرصيد في مشترياته القادمة</div>
+        </div>
+        @can('customers.payments')
+        <a href="{{ route('customer-deposits.create', $customer) }}" class="btn btn-outline-success btn-sm">
+            <i class="bi bi-wallet2 me-1"></i> إيداع / استرداد
+        </a>
+        @endcan
+    </div>
+    @endif
 
     <div class="row g-4">
 
@@ -158,6 +179,78 @@
         </div>
 
     </div>{{-- end row --}}
+
+    {{-- ── Deposit History ── --}}
+    @if($depositHistory->count())
+    <div class="card mt-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span class="fw-bold"><i class="bi bi-piggy-bank text-primary me-1"></i> سجل الإيداعات والاسترداد</span>
+            @can('customers.payments')
+            <a href="{{ route('customer-deposits.create', $customer) }}" class="btn btn-primary btn-sm">
+                <i class="bi bi-plus-circle me-1"></i> إيداع / استرداد
+            </a>
+            @endcan
+        </div>
+        <div class="card-body p-0">
+            <table class="table table-hover mb-0 small">
+                <thead class="table-light">
+                    <tr>
+                        <th>رقم السند</th>
+                        <th>التاريخ</th>
+                        <th>النوع</th>
+                        <th>طريقة الدفع</th>
+                        <th class="text-end">المبلغ</th>
+                        <th>المرجع</th>
+                        <th>بواسطة</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach($depositHistory as $dep)
+                <tr>
+                    <td class="fw-semibold">{{ $dep->voucher_number }}</td>
+                    <td>{{ $dep->voucher_date->format('Y-m-d') }}</td>
+                    <td>
+                        @if($dep->type === 'deposit')
+                            <span class="badge bg-success"><i class="bi bi-arrow-down-circle me-1"></i>إيداع</span>
+                        @else
+                            <span class="badge bg-danger"><i class="bi bi-arrow-up-circle me-1"></i>استرداد</span>
+                        @endif
+                    </td>
+                    <td>{{ $dep->paymentMethodLabel() }}</td>
+                    <td class="text-end fw-bold {{ $dep->type === 'deposit' ? 'text-success' : 'text-danger' }}">
+                        {{ $dep->type === 'refund' ? '−' : '+' }}{{ number_format($dep->amount, 2) }}
+                    </td>
+                    <td class="text-muted">{{ $dep->reference ?? '—' }}</td>
+                    <td class="text-muted">{{ $dep->user?->name }}</td>
+                </tr>
+                @endforeach
+                </tbody>
+                <tfoot class="table-light fw-bold">
+                <tr>
+                    <td colspan="4" class="text-end">الرصيد الحالي:</td>
+                    <td class="text-end text-success">{{ number_format($depositBalance, 2) }} {{ $currency }}</td>
+                    <td colspan="2"></td>
+                </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+    @else
+    <div class="card mt-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span class="fw-bold"><i class="bi bi-piggy-bank text-primary me-1"></i> رصيد الإيداع</span>
+            @can('customers.payments')
+            <a href="{{ route('customer-deposits.create', $customer) }}" class="btn btn-primary btn-sm">
+                <i class="bi bi-plus-circle me-1"></i> إيداع جديد
+            </a>
+            @endcan
+        </div>
+        <div class="card-body text-center text-muted py-3">
+            <i class="bi bi-piggy-bank fs-2 opacity-25 d-block mb-1"></i>
+            لا يوجد رصيد إيداع لهذا العميل بعد
+        </div>
+    </div>
+    @endif
 
 </div>
 @endsection

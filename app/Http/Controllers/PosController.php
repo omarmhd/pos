@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Category;
 use App\Models\Customer;
+use App\Models\CustomerDeposit;
 use App\Models\Product;
 use App\Models\Sale;
 use App\Models\SaleItem;
@@ -70,7 +71,13 @@ class PosController extends Controller
             ->limit($limit)
             ->get(['id', 'name', 'phone', 'email', 'credit_limit']);
 
-        return response()->json($customers);
+        return response()->json($customers->map(fn($c) => [
+            'id'              => $c->id,
+            'name'            => $c->name,
+            'phone'           => $c->phone,
+            'credit_limit'    => (float) $c->credit_limit,
+            'deposit_balance' => round($c->depositBalance(), 2),
+        ]));
     }
 
     public function store(Request $request)
@@ -78,7 +85,7 @@ class PosController extends Controller
         $request->validate([
             'items'              => 'required|array|min:1',
             'items.*.product_id' => 'required|exists:products,id',
-            'items.*.quantity'   => 'required|integer|min:1',
+            'items.*.quantity'   => 'required|numeric|min:0.001',
             'items.*.unit_price' => 'required|numeric|min:0',
             'subtotal'           => 'required|numeric|min:0',
             'discount'           => 'nullable|numeric|min:0',
@@ -86,8 +93,9 @@ class PosController extends Controller
             'total_amount'       => 'required|numeric|min:0',
             'is_credit'          => 'nullable|boolean',
             'customer_id'        => 'required_if:is_credit,true|nullable|exists:customers,id',
-            'payment_method'     => 'required_unless:is_credit,true|nullable|in:cash,card,mobile_wallet',
+            'payment_method'     => 'required_unless:is_credit,true|nullable|in:cash,card,mobile_wallet,deposit_balance',
             'paid_amount'        => 'required|numeric|min:0',
+            'balance_used'       => 'nullable|numeric|min:0',
         ]);
 
         // ── Load settings (authoritative for calculation) ──────────────────
@@ -97,9 +105,10 @@ class PosController extends Controller
         $allowNegStock = (bool) Setting::get('allow_negative_stock',  0);
         $maxDiscPct    = (float) Setting::get('max_discount_percent', 100);
 
-        $isCredit  = (bool) $request->input('is_credit', false);
-        $subtotal  = round((float) $request->subtotal, 2);
-        $discount  = round((float) ($request->discount ?? 0), 2);
+        $isCredit    = (bool) $request->input('is_credit', false);
+        $subtotal    = round((float) $request->subtotal, 2);
+        $discount    = round((float) ($request->discount ?? 0), 2);
+        $balanceUsed = round((float) ($request->balance_used ?? 0), 2);
 
         // ── Validate discount ceiling ──────────────────────────────────────
         if ($maxDiscPct < 100 && $subtotal > 0) {
@@ -136,12 +145,26 @@ class PosController extends Controller
                 }
             }
 
-            $paidAmount   = $isCredit ? 0 : (float) $request->paid_amount;
-            $changeAmount = $isCredit ? 0 : max(0, $paidAmount - $totalAmount);
+            // ── Validate deposit balance if used ──────────────────────────
+            if ($balanceUsed > 0) {
+                if (!$request->customer_id) {
+                    return response()->json(['error' => 'يجب تحديد العميل لاستخدام رصيد الإيداع'], 422);
+                }
+                $depositCustomer = Customer::find($request->customer_id);
+                $availableBalance = $depositCustomer ? $depositCustomer->depositBalance() : 0;
+                if ($balanceUsed > $availableBalance + 0.005) {
+                    return response()->json([
+                        'error' => 'رصيد الإيداع المتاح (' . number_format($availableBalance, 2) . ') أقل من المبلغ المطلوب (' . number_format($balanceUsed, 2) . ')',
+                    ], 422);
+                }
+            }
 
-            // Validate paid >= total for cash sales
-            if (!$isCredit && $paidAmount < $totalAmount - 0.005) {
-                return response()->json(['error' => 'المبلغ المدفوع أقل من الإجمالي المستحق'], 422);
+            $paidAmount   = $isCredit ? 0 : (float) $request->paid_amount;
+            $changeAmount = $isCredit ? 0 : max(0, $paidAmount - ($totalAmount - $balanceUsed));
+
+            // Validate cash paid + balance_used >= total for cash sales
+            if (!$isCredit && ($paidAmount + $balanceUsed) < $totalAmount - 0.005) {
+                return response()->json(['error' => 'المبلغ المدفوع (نقدي + رصيد) أقل من الإجمالي المستحق'], 422);
             }
 
             if ($isCredit && $request->customer_id) {
@@ -159,7 +182,7 @@ class PosController extends Controller
 
             $sale = Sale::create([
                 'user_id'        => auth()->id(),
-                'customer_id'    => $isCredit ? $request->customer_id : null,
+                'customer_id'    => ($isCredit || $balanceUsed > 0) ? $request->customer_id : null,
                 'is_credit'      => $isCredit,
                 'subtotal'       => $subtotal,
                 'discount'       => $discount,
@@ -167,6 +190,7 @@ class PosController extends Controller
                 'total_amount'   => $totalAmount,
                 'payment_method' => $isCredit ? 'cash' : $request->payment_method,
                 'paid_amount'    => $paidAmount,
+                'balance_used'   => $balanceUsed,
                 'change_amount'  => $changeAmount,
             ]);
 
@@ -189,10 +213,11 @@ class PosController extends Controller
 
             $sale->load('items.product', 'customer', 'user');
             $payLabel = $isCredit ? 'آجل' : match ($sale->payment_method) {
-                'cash'          => 'نقدي',
-                'card'          => 'بطاقة بنكية',
-                'mobile_wallet' => 'محفظة إلكترونية',
-                default         => $sale->payment_method,
+                'cash'            => 'نقدي',
+                'card'            => 'بطاقة بنكية',
+                'mobile_wallet'   => 'محفظة إلكترونية',
+                'deposit_balance' => 'رصيد إيداع',
+                default           => $sale->payment_method,
             };
 
             return response()->json([
@@ -210,6 +235,7 @@ class PosController extends Controller
                     'items'          => $sale->items->map(fn($i) => [
                         'name'  => $i->product->name,
                         'qty'   => $i->quantity,
+                        'unit'  => $i->product->unit ?? 'قطعة',
                         'price' => number_format($i->unit_price, 2),
                         'total' => number_format($i->total_price, 2),
                     ])->toArray(),
@@ -219,9 +245,11 @@ class PosController extends Controller
                     'tax'         => number_format($sale->tax, 2),
                     'has_tax'     => $sale->tax > 0,
                     'tax_rate'    => $vatRate,
-                    'total'       => number_format($sale->total_amount, 2),
-                    'paid'        => number_format($paidAmount, 2),
-                    'change'      => number_format($changeAmount, 2),
+                    'total'           => number_format($sale->total_amount, 2),
+                    'paid'            => number_format($paidAmount, 2),
+                    'balance_used'    => number_format($balanceUsed, 2),
+                    'has_balance'     => $balanceUsed > 0,
+                    'change'          => number_format($changeAmount, 2),
                 ],
             ]);
 

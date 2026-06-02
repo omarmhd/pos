@@ -86,6 +86,15 @@ return [
             'inventory.count'  => 'إنشاء جلسات الجرد الدوري واعتمادها',
         ],
     ],
+    'vouchers' => [
+        'label' => 'سندات القبض والصرف',
+        'icon'  => 'bi-receipt-cutoff',
+        'permissions' => [
+            'vouchers.view'   => 'عرض سندات القبض والصرف',
+            'vouchers.create' => 'إنشاء سند قبض أو صرف',
+            'vouchers.delete' => 'حذف السندات (غير المُرحَّلة)',
+        ],
+    ],
     'accounts' => [
         'label' => 'دليل الحسابات',
         'icon'  => 'bi-list-columns-reverse',

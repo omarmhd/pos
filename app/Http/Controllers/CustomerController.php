@@ -95,9 +95,15 @@ class CustomerController extends Controller
         $outstanding     = max(0, $totalBilled - $totalPaid);
         $availableCredit = max(0, (float) $customer->credit_limit - $outstanding);
 
+        // Deposit balance
+        $depositBalance  = $customer->depositBalance();
+        $depositHistory  = $customer->deposits()->with('user')->latest('voucher_date')->get();
+        $currency        = \App\Models\Setting::get('currency_symbol', 'ج.م');
+
         return view('customers.show', compact(
             'customer', 'creditSales', 'payments',
-            'totalBilled', 'totalPaid', 'outstanding', 'availableCredit'
+            'totalBilled', 'totalPaid', 'outstanding', 'availableCredit',
+            'depositBalance', 'depositHistory', 'currency'
         ));
     }
 

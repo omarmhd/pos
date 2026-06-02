@@ -115,11 +115,27 @@ Route::middleware(['auth'])->group(function () {
         [CustomerPaymentController::class, 'create'])->name('customer-payments.create');
     Route::post('customers/{customer}/payments',
         [CustomerPaymentController::class, 'store'])->name('customer-payments.store');
+    Route::get('customers/{customer}/deposits/create',
+        [\App\Http\Controllers\CustomerDepositController::class, 'create'])->name('customer-deposits.create');
+    Route::post('customers/{customer}/deposits',
+        [\App\Http\Controllers\CustomerDepositController::class, 'store'])->name('customer-deposits.store');
 
     // ── Purchases ─────────────────────────────────────────────────────────────
+    Route::get('purchases/products/search',       [PurchaseController::class, 'searchProducts'])     ->name('purchases.products.search');
+    Route::post('purchases/products/quick-create', [PurchaseController::class, 'quickCreateProduct'])->name('purchases.products.quick-create');
     Route::resource('purchases', PurchaseController::class)->except(['edit', 'update']);
     Route::get('purchases/{purchase}/pdf',
         [PurchaseController::class, 'pdf'])->name('purchases.pdf');
+
+    // ── Vouchers (سندات القبض والصرف) ────────────────────────────────────────
+    Route::prefix('vouchers')->name('vouchers.')->group(function () {
+        Route::get('receipts/data',    [\App\Http\Controllers\ReceiptVoucherController::class, 'data'])->name('receipts.data');
+        Route::resource('receipts', \App\Http\Controllers\ReceiptVoucherController::class)->except(['edit', 'update']);
+        Route::get('receipts/{receipt}/pdf', [\App\Http\Controllers\ReceiptVoucherController::class, 'pdf'])->name('receipts.pdf');
+        Route::get('payments/data',    [\App\Http\Controllers\PaymentVoucherController::class, 'data'])->name('payments.data');
+        Route::resource('payments', \App\Http\Controllers\PaymentVoucherController::class)->except(['edit', 'update']);
+        Route::get('payments/{payment}/pdf', [\App\Http\Controllers\PaymentVoucherController::class, 'pdf'])->name('payments.pdf');
+    });
 
     // ── POS ───────────────────────────────────────────────────────────────────
     Route::get('/pos',              [PosController::class, 'index'])  ->name('pos.index');

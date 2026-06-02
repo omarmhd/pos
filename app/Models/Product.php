@@ -19,6 +19,7 @@ class Product extends Model
         'quantity',
         'min_quantity',
         'unit',
+        'allow_fractions',
         'expiry_date',
         'image',
         'inventory_account_id',
@@ -26,9 +27,11 @@ class Product extends Model
     ];
 
     protected $casts = [
-        'expiry_date' => 'date',
-        'cost_price' => 'decimal:2',
-        'selling_price' => 'decimal:2'
+        'expiry_date'     => 'date',
+        'cost_price'      => 'decimal:2',
+        'selling_price'   => 'decimal:2',
+        'quantity'        => 'decimal:3',
+        'allow_fractions' => 'boolean',
     ];
 
     public function category()

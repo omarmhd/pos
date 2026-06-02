@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\JournalEntry;
 use App\Models\Sale;
+use App\Models\Setting;
 use App\Services\PdfService;
 use Illuminate\Http\Request;
 use Yajra\DataTables\Facades\DataTables;
@@ -42,8 +44,16 @@ class SaleController extends Controller
 
     public function show(Sale $sale)
     {
-        $sale->load('user', 'items.product');
-        return view('sales.show', compact('sale'));
+        $sale->load('user', 'customer', 'items.product');
+
+        $journalEntry = JournalEntry::where('source_type', Sale::class)
+            ->where('source_id', $sale->id)
+            ->with('lines.account')
+            ->first();
+
+        $currency = Setting::get('currency_symbol', 'ج.م');
+
+        return view('sales.show', compact('sale', 'journalEntry', 'currency'));
     }
 
     public function pdf(Sale $sale)
@@ -86,9 +96,10 @@ class SaleController extends Controller
     private function paymentBadge(string $method): string
     {
         $map = [
-            'cash'          => ['success', 'نقدي'],
-            'card'          => ['primary', 'بطاقة'],
-            'mobile_wallet' => ['info',    'محفظة'],
+            'cash'            => ['success', 'نقدي'],
+            'card'            => ['primary', 'بطاقة'],
+            'mobile_wallet'   => ['info',    'محفظة'],
+            'deposit_balance' => ['purple',  'رصيد إيداع'],
         ];
         [$color, $label] = $map[$method] ?? ['secondary', $method];
         return "<span class='badge bg-{$color}'>{$label}</span>";

@@ -532,6 +532,36 @@
                 </div>
                 @endcanany
 
+                {{-- ── Vouchers (سندات) ── --}}
+                @can('vouchers.view')
+                @php $sv = request()->is('vouchers*'); @endphp
+                <li class="nav-item">
+                    <button class="nav-section-toggle {{ !$sv ? 'collapsed' : '' }}"
+                            data-bs-toggle="collapse" data-bs-target="#nsv"
+                            aria-expanded="{{ $sv ? 'true' : 'false' }}">
+                        <i class="bi bi-receipt-cutoff sec-icon"></i>
+                        <span>سندات القبض والصرف</span>
+                        <i class="bi bi-chevron-down chevron"></i>
+                    </button>
+                </li>
+                <div class="collapse {{ $sv ? 'show' : '' }}" id="nsv">
+                    <ul class="nav flex-column sub-nav">
+                        <li class="nav-item">
+                            <a class="nav-link {{ request()->is('vouchers/receipts*') ? 'active' : '' }}"
+                               href="{{ route('vouchers.receipts.index') }}">
+                                <i class="bi bi-arrow-down-circle text-success"></i> سندات القبض
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {{ request()->is('vouchers/payments*') ? 'active' : '' }}"
+                               href="{{ route('vouchers.payments.index') }}">
+                                <i class="bi bi-arrow-up-circle text-danger"></i> سندات الصرف
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+                @endcan
+
                 {{-- ── Accounting ── --}}
                 @canany(['accounts.view','journal_entries.view','ledger.view','trial_balance.view','financial_statements.view','accounting.year_end_close','reversals.view','audit_logs.view'])
                 @php $s5 = request()->routeIs('accounting.*','accounts.*','reversals.*','journal_entries.*','audit.*')
@@ -888,6 +918,7 @@
         var map = [
             { id: 'ns1', paths: ['/products', '/categories', '/sales', '/inventory'] },
             { id: 'ns2', paths: ['/purchases', '/suppliers'] },
+            { id: 'nsv', paths: ['/vouchers'] },
             { id: 'ns3', paths: ['/customers'] },
             { id: 'ns4', paths: ['/hr'] },
             { id: 'ns5', paths: ['/accounting', '/accounts', '/journal-entries', '/reversals', '/audit-logs'] },

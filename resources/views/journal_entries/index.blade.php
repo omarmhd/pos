@@ -21,8 +21,9 @@
                         <th>الوصف</th>
                         <th>المرجع</th>
                         <th>المصدر</th>
-                        <th class="text-end">إجمالي المدين</th>
-                        <th class="text-center">متوازن</th>
+                        <th class="text-end text-primary">المدين</th>
+                        <th class="text-end text-success">الدائن</th>
+                        <th class="text-center">توازن</th>
                         <th>بواسطة</th>
                         <th class="text-center">إجراءات</th>
                     </tr>
@@ -48,6 +49,7 @@ $(function () {
             { data: 'reference',     name: 'reference',     defaultContent: '—' },
             { data: 'source_badge',  name: 'source_badge',  orderable: false  },
             { data: 'debit_fmt',     name: 'debit_fmt',     orderable: true,  searchable: false, className: 'text-end' },
+            { data: 'credit_fmt',    name: 'credit_fmt',    orderable: false, searchable: false, className: 'text-end' },
             { data: 'balanced_icon', name: 'balanced_icon', orderable: false, searchable: false, className: 'text-center' },
             { data: 'user_name',     name: 'user_name',     orderable: false  },
             { data: 'action',        name: 'action',        orderable: false, searchable: false, className: 'text-center' },

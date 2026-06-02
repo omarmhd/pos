@@ -42,14 +42,26 @@
                                 @error('category_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
                             </div>
 
-                            <div class="col-md-6">
+                            <div class="col-md-4">
                                 <label class="form-label">الوحدة <span class="text-danger">*</span></label>
                                 <select name="unit" class="form-select @error('unit') is-invalid @enderror" required>
                                     <option value="piece">قطعة</option>
                                     <option value="kg">كيلوجرام</option>
+                                    <option value="g">جرام</option>
                                     <option value="liter">لتر</option>
+                                    <option value="ml">مل</option>
                                 </select>
                                 @error('unit')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                            </div>
+
+                            <div class="col-md-2 d-flex align-items-end pb-1">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" name="allow_fractions" id="allow_fractions"
+                                           value="1" {{ old('allow_fractions') ? 'checked' : '' }}>
+                                    <label class="form-check-label small fw-semibold" for="allow_fractions">
+                                        <i class="bi bi-speedometer2 text-info"></i> يُباع بالوزن / الكسر
+                                    </label>
+                                </div>
                             </div>
 
                             <div class="col-md-6">

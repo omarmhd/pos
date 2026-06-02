@@ -1,6 +1,6 @@
 @extends('layouts.app')
 @section('title', 'مسير راتب')
-@section('page-title', 'مسير راتب — {{ $payrollRun->periodLabel() }}')
+@section('page-title', 'مسير راتب — ' . $payrollRun->periodLabel())
 
 @section('content')
 <div class="container-fluid">

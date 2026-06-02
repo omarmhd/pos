@@ -5,7 +5,10 @@ namespace App\Services;
 use App\Models\Account;
 use App\Models\JournalEntry;
 use App\Models\JournalEntryLine;
+use App\Models\CustomerDeposit;
+use App\Models\PaymentVoucher;
 use App\Models\Purchase;
+use App\Models\ReceiptVoucher;
 use App\Models\Sale;
 use App\Models\Setting;
 use App\Models\SupplierPayment;
@@ -105,9 +108,12 @@ class LedgerPostingService
         $discountCode  = Setting::get('account_discount_code',    '4300');
         $cogsCode      = Setting::get('account_cogs_code',        '5000');
 
+        $balanceUsed     = round((float) ($sale->balance_used ?? 0), 2);
+        $depositsCode    = Setting::get('account_customer_deposits_code', '2050');
+
         $lines = [];
 
-        // ── Debit: Cash/Bank or Accounts Receivable ──
+        // ── Debit: Cash/Bank, AR, or Customer Deposits ──
         if ($sale->is_credit) {
             $lines[] = [
                 'account_id'       => $this->account($arCode)->id,
@@ -116,18 +122,31 @@ class LedgerPostingService
                 'line_description' => 'ذمم عميل – ' . ($sale->customer?->name ?? 'عميل'),
             ];
         } else {
-            $drCode  = $sale->payment_method === 'card' ? $bankCode : $cashCode;
-            $label   = match ($sale->payment_method) {
-                'card'          => 'تحصيل بطاقة',
-                'mobile_wallet' => 'تحصيل محفظة',
-                default         => 'تحصيل نقدي',
-            };
-            $lines[] = [
-                'account_id'       => $this->account($drCode)->id,
-                'debit'            => $total,
-                'credit'           => 0,
-                'line_description' => $label,
-            ];
+            // Part paid from deposit balance
+            if ($balanceUsed > 0) {
+                $lines[] = [
+                    'account_id'       => $this->account($depositsCode)->id,
+                    'debit'            => $balanceUsed,
+                    'credit'           => 0,
+                    'line_description' => 'خصم رصيد إيداع – ' . ($sale->customer?->name ?? 'عميل'),
+                ];
+            }
+            // Remaining paid in cash/card (nothing if fully from deposit)
+            $cashPaid = round($total - $balanceUsed, 2);
+            if ($cashPaid > 0 && $sale->payment_method !== 'deposit_balance') {
+                $drCode = $sale->payment_method === 'card' ? $bankCode : $cashCode;
+                $label  = match ($sale->payment_method) {
+                    'card'          => 'تحصيل بطاقة',
+                    'mobile_wallet' => 'تحصيل محفظة',
+                    default         => 'تحصيل نقدي',
+                };
+                $lines[] = [
+                    'account_id'       => $this->account($drCode)->id,
+                    'debit'            => $cashPaid,
+                    'credit'           => 0,
+                    'line_description' => $label,
+                ];
+            }
         }
 
         // ── Debit: Sales Discount (contra-revenue, normal debit balance) ──
@@ -342,6 +361,183 @@ class LedgerPostingService
             'description' => 'تحصيل دفعة – ' . $customerName
                              . ($payment->sale ? ' / فاتورة ' . $ref : ''),
         ], $lines);
+    }
+
+    /**
+     * إيداع / استرداد رصيد عميل — Customer Deposit or Refund
+     *
+     * إيداع:    DR Cash/Bank (1000/1100) = amount  |  CR Customer Deposits (2050) = amount
+     * استرداد:  DR Customer Deposits (2050) = amount  |  CR Cash/Bank = amount
+     */
+    public function postCustomerDeposit(CustomerDeposit $deposit): JournalEntry
+    {
+        if ($deposit->is_posted) {
+            throw new RuntimeException("هذا السند [{$deposit->voucher_number}] مُرحَّل مسبقاً");
+        }
+
+        $deposit->loadMissing('customer');
+
+        $amount       = round((float) $deposit->amount, 2);
+        $cashCode     = Setting::get('account_cash_code', '1000');
+        $bankCode     = Setting::get('account_bank_code', '1100');
+        $depositCode  = Setting::get('account_customer_deposits_code', '2050');
+
+        $cashOrBankCode = $deposit->payment_method === 'bank' ? $bankCode : $cashCode;
+        $customerName   = $deposit->customer?->name ?? 'عميل';
+        $typeLabel      = $deposit->type === 'deposit' ? 'إيداع' : 'استرداد';
+
+        if ($deposit->type === 'deposit') {
+            $lines = [
+                [
+                    'account_id'       => $this->account($cashOrBankCode)->id,
+                    'debit'            => $amount,
+                    'credit'           => 0,
+                    'line_description' => 'استلام إيداع من ' . $customerName,
+                ],
+                [
+                    'account_id'       => $this->account($depositCode)->id,
+                    'debit'            => 0,
+                    'credit'           => $amount,
+                    'line_description' => 'إيداع مسبق – ' . $customerName,
+                ],
+            ];
+        } else {
+            // Refund: reverse the entries
+            $lines = [
+                [
+                    'account_id'       => $this->account($depositCode)->id,
+                    'debit'            => $amount,
+                    'credit'           => 0,
+                    'line_description' => 'استرداد إيداع – ' . $customerName,
+                ],
+                [
+                    'account_id'       => $this->account($cashOrBankCode)->id,
+                    'debit'            => 0,
+                    'credit'           => $amount,
+                    'line_description' => 'صرف استرداد لـ ' . $customerName,
+                ],
+            ];
+        }
+
+        $entry = $this->buildEntry([
+            'entry_date'  => Carbon::parse($deposit->voucher_date),
+            'reference'   => $deposit->voucher_number,
+            'source_type' => CustomerDeposit::class,
+            'source_id'   => $deposit->id,
+            'description' => $typeLabel . ' رصيد عميل – ' . $deposit->voucher_number . ' / ' . $customerName,
+        ], $lines);
+
+        $deposit->update(['is_posted' => true, 'journal_entry_id' => $entry->id]);
+
+        return $entry;
+    }
+
+    /**
+     * سند قبض — Receipt Voucher
+     *
+     * DR cash_account (صندوق/بنك) = amount
+     * CR account      (الحساب المقابل) = amount
+     */
+    public function postReceiptVoucher(ReceiptVoucher $voucher): JournalEntry
+    {
+        if ($voucher->is_posted) {
+            throw new RuntimeException("سند القبض [{$voucher->voucher_number}] مُرحَّل مسبقاً في دفتر الأستاذ");
+        }
+
+        $voucher->loadMissing('cashAccount', 'account');
+
+        foreach (['cashAccount', 'account'] as $rel) {
+            $acc = $voucher->$rel;
+            if (!$acc || !$acc->is_active) {
+                throw new RuntimeException("حساب غير موجود أو غير نشط في سند القبض");
+            }
+            if ($acc->is_header) {
+                throw new RuntimeException("لا يمكن الترحيل لحساب رئيسي (تجميعي): [{$acc->code}] {$acc->name}");
+            }
+        }
+
+        $amount = round((float) $voucher->amount, 2);
+
+        $lines = [
+            [
+                'account_id'       => $voucher->cash_account_id,
+                'debit'            => $amount,
+                'credit'           => 0,
+                'line_description' => 'تحصيل من ' . $voucher->received_from,
+            ],
+            [
+                'account_id'       => $voucher->account_id,
+                'debit'            => 0,
+                'credit'           => $amount,
+                'line_description' => 'سند قبض – ' . $voucher->voucher_number,
+            ],
+        ];
+
+        $entry = $this->buildEntry([
+            'entry_date'  => Carbon::parse($voucher->voucher_date),
+            'reference'   => $voucher->voucher_number,
+            'source_type' => ReceiptVoucher::class,
+            'source_id'   => $voucher->id,
+            'description' => 'سند قبض – ' . $voucher->voucher_number . ' / ' . $voucher->received_from,
+        ], $lines);
+
+        $voucher->update(['is_posted' => true, 'journal_entry_id' => $entry->id]);
+
+        return $entry;
+    }
+
+    /**
+     * سند صرف — Payment Voucher
+     *
+     * DR account      (الحساب المقابل) = amount
+     * CR cash_account (صندوق/بنك) = amount
+     */
+    public function postPaymentVoucher(PaymentVoucher $voucher): JournalEntry
+    {
+        if ($voucher->is_posted) {
+            throw new RuntimeException("سند الصرف [{$voucher->voucher_number}] مُرحَّل مسبقاً في دفتر الأستاذ");
+        }
+
+        $voucher->loadMissing('cashAccount', 'account');
+
+        foreach (['cashAccount', 'account'] as $rel) {
+            $acc = $voucher->$rel;
+            if (!$acc || !$acc->is_active) {
+                throw new RuntimeException("حساب غير موجود أو غير نشط في سند الصرف");
+            }
+            if ($acc->is_header) {
+                throw new RuntimeException("لا يمكن الترحيل لحساب رئيسي (تجميعي): [{$acc->code}] {$acc->name}");
+            }
+        }
+
+        $amount = round((float) $voucher->amount, 2);
+
+        $lines = [
+            [
+                'account_id'       => $voucher->account_id,
+                'debit'            => $amount,
+                'credit'           => 0,
+                'line_description' => 'سند صرف – ' . $voucher->voucher_number,
+            ],
+            [
+                'account_id'       => $voucher->cash_account_id,
+                'debit'            => 0,
+                'credit'           => $amount,
+                'line_description' => 'دفع لـ ' . $voucher->paid_to,
+            ],
+        ];
+
+        $entry = $this->buildEntry([
+            'entry_date'  => Carbon::parse($voucher->voucher_date),
+            'reference'   => $voucher->voucher_number,
+            'source_type' => PaymentVoucher::class,
+            'source_id'   => $voucher->id,
+            'description' => 'سند صرف – ' . $voucher->voucher_number . ' / ' . $voucher->paid_to,
+        ], $lines);
+
+        $voucher->update(['is_posted' => true, 'journal_entry_id' => $entry->id]);
+
+        return $entry;
     }
 
     /**
