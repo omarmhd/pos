@@ -29,10 +29,14 @@ class DemoDataSeeder extends Seeder
         $products   = $this->seedProducts($categories);
         $customers  = $this->seedCustomers();
 
-        $this->seedPurchases($suppliers, $products);
-        $this->seedSales($customers, $products);
-        $this->recalcQuantities($products);
-        $this->seedHR();
+        // Only seed transactional data (purchases, sales, HR) once.
+        // If purchases already exist we assume a full seed was done before.
+        if (!\App\Models\Purchase::exists()) {
+            $this->seedPurchases($suppliers, $products);
+            $this->seedSales($customers, $products);
+            $this->recalcQuantities($products);
+            $this->seedHR();
+        }
     }
 
     // ── Categories ────────────────────────────────────────────────────────
@@ -49,7 +53,7 @@ class DemoDataSeeder extends Seeder
             ['name' => 'عناية شخصية',         'description' => 'شامبو وصابون ومستحضرات'],
             ['name' => 'وجبات خفيفة وحلويات', 'description' => 'رقائق وشوكولاتة وحلوى'],
             ['name' => 'مجمدات',              'description' => 'خضروات مجمدة ووجبات جاهزة'],
-        ])->map(fn($r) => Category::create($r))->all();
+        ])->map(fn($r) => Category::firstOrCreate(['name' => $r['name']], $r))->all();
     }
 
     // ── Suppliers ─────────────────────────────────────────────────────────
@@ -62,7 +66,7 @@ class DemoDataSeeder extends Seeder
             ['name' => 'مزارع الطازج للتوزيع',        'phone' => '0551112233', 'email' => 'fresh@farms.sa',     'company' => 'مزارع الطازج',          'address' => 'القصيم - حائل'],
             ['name' => 'شركة النظافة والتنظيف',       'phone' => '0554445566', 'email' => 'clean@supply.sa',    'company' => 'النظافة والتنظيف',      'address' => 'الرياض - حي الملز'],
             ['name' => 'توزيع المشروبات الوطنية',     'phone' => '0557778899', 'email' => 'drinks@national.sa', 'company' => 'المشروبات الوطنية',     'address' => 'جدة - ميناء جدة الإسلامي'],
-        ])->map(fn($r) => Supplier::create($r))->all();
+        ])->map(fn($r) => Supplier::firstOrCreate(['email' => $r['email'] ?? $r['name']], $r))->all();
     }
 
     // ── Products ──────────────────────────────────────────────────────────
@@ -119,18 +123,20 @@ class DemoDataSeeder extends Seeder
 
         return collect($rows)->map(function ($r) use ($categories, $inv, $cogs) {
             [$catIdx, $name, $barcode, $cost, $sell, $unit, $minQty] = $r;
-            return Product::create([
-                'name'                 => $name,
-                'barcode'              => $barcode,
-                'category_id'          => $categories[$catIdx]->id,
-                'cost_price'           => $cost,
-                'selling_price'        => $sell,
-                'quantity'             => 0,
-                'min_quantity'         => $minQty,
-                'unit'                 => $unit,
-                'inventory_account_id' => $inv,
-                'cogs_account_id'      => $cogs,
-            ]);
+            return Product::firstOrCreate(
+                ['barcode' => $barcode],
+                [
+                    'name'                 => $name,
+                    'category_id'          => $categories[$catIdx]->id,
+                    'cost_price'           => $cost,
+                    'selling_price'        => $sell,
+                    'quantity'             => 0,
+                    'min_quantity'         => $minQty,
+                    'unit'                 => $unit,
+                    'inventory_account_id' => $inv,
+                    'cogs_account_id'      => $cogs,
+                ]
+            );
         })->all();
     }
 
@@ -153,7 +159,7 @@ class DemoDataSeeder extends Seeder
             ['name' => 'بدر عبدالله الرشيدي',   'phone' => '0554004004', 'email' => null,                'credit_limit' => 2500, 'address' => 'الرياض - حي السلامة'],
             ['name' => 'لين حمد الأسمري',       'phone' => '0555005005', 'email' => 'leen@mail.com',     'credit_limit' => 600,  'address' => 'جدة - حي الزهراء'],
             ['name' => 'تركي وليد المالكي',     'phone' => '0556006006', 'email' => null,                'credit_limit' => 1100, 'address' => 'الرياض - حي القيروان'],
-        ])->map(fn($r) => Customer::create($r))->all();
+        ])->map(fn($r) => Customer::firstOrCreate(['phone' => $r['phone']], $r))->all();
     }
 
     // ── Purchases ─────────────────────────────────────────────────────────
