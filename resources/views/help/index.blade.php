@@ -72,8 +72,12 @@
                 <a class="nav-link" href="#sec-roles">الأدوار والصلاحيات</a>
                 <a class="nav-link sub-item" href="#sec-roles">└ المدير، المشرف، الكاشير</a>
                 <a class="nav-link" href="#sec-pos">نقطة البيع (POS)</a>
+                <a class="nav-link" href="#sec-sale-returns">مرتجعات المبيعات</a>
                 <a class="nav-link" href="#sec-inventory">المخزون والمنتجات</a>
+                <a class="nav-link" href="#sec-branches">الفروع والمخازن</a>
+                <a class="nav-link" href="#sec-pricing">قوائم الأسعار (جملة / تجزئة)</a>
                 <a class="nav-link" href="#sec-purchases">المشتريات والموردون</a>
+                <a class="nav-link" href="#sec-purchase-returns">مرتجعات المشتريات</a>
                 <a class="nav-link" href="#sec-customers">العملاء والذمم المدينة</a>
                 <a class="nav-link" href="#sec-hr">الموارد البشرية والرواتب</a>
                 <a class="nav-link" href="#sec-zkteco"><i class="bi bi-fingerprint"></i> ربط جهاز البصمة</a>
@@ -272,6 +276,181 @@
         </div>
 
         {{-- ══════════════════════════════════════════════════════════ --}}
+        {{-- Sale Returns --}}
+        {{-- ══════════════════════════════════════════════════════════ --}}
+        <div class="help-section" id="sec-sale-returns">
+            <div class="section-header">
+                <i class="bi bi-arrow-return-left fs-5"></i> مرتجعات المبيعات
+            </div>
+            <div class="section-body">
+                <p>تُستخدم مرتجعات المبيعات لتسجيل البضاعة التي أعادها العميل بعد عملية البيع، سواء كان البيع نقدياً أو آجلاً.</p>
+
+                <div class="subsection-title">طريقة تسجيل المرتجع</div>
+                <div class="workflow-step">
+                    <span class="step-num">1</span>
+                    <div><span class="step-title">فتح صفحة المرتجعات</span><br>
+                    <span class="step-desc">من الشريط الجانبي: المبيعات والمخزون ← مرتجعات المبيعات ← مرتجع جديد.</span></div>
+                </div>
+                <div class="workflow-step">
+                    <span class="step-num">2</span>
+                    <div><span class="step-title">تحديد التاريخ وطريقة الاسترداد</span><br>
+                    <span class="step-desc">اختر تاريخ المرتجع، ثم طريقة الاسترداد: <strong>نقدي</strong> (صرف نقدي للعميل)، <strong>بنكي</strong> (تحويل بنكي)، أو <strong>إشعار دائن</strong> (تخفيض مديونية عميل آجل).</span></div>
+                </div>
+                <div class="workflow-step">
+                    <span class="step-num">3</span>
+                    <div><span class="step-title">تحديد العميل (للإشعار الدائن)</span><br>
+                    <span class="step-desc">عند اختيار "إشعار دائن" يصبح تحديد العميل إجبارياً لتخفيض رصيد ذمته.</span></div>
+                </div>
+                <div class="workflow-step">
+                    <span class="step-num">4</span>
+                    <div><span class="step-title">إضافة الأصناف المرتجعة</span><br>
+                    <span class="step-desc">اضغط "إضافة صنف"، ابحث عن المنتج بالاسم أو الباركود، أدخل الكمية وسعر البيع، ثم كرر لكل صنف.</span></div>
+                </div>
+                <div class="workflow-step">
+                    <span class="step-num">5</span>
+                    <div><span class="step-title">الحفظ والترحيل</span><br>
+                    <span class="step-desc">اضغط "حفظ المرتجع وترحيل القيد" — يُرحَّل القيد المحاسبي تلقائياً وتعود الكميات للمخزون.</span></div>
+                </div>
+
+                <div class="subsection-title mt-3">القيود المحاسبية</div>
+                <p><strong>مرتجع نقدي أو بنكي:</strong></p>
+                <div class="gl-example">
+                    <table class="w-100">
+                        <tr><td class="gl-debit">مدين: مردودات المبيعات (4100)</td><td>قيمة المرتجع</td></tr>
+                        <tr><td class="gl-credit">دائن: الصندوق / البنك (1000/1100)</td><td>قيمة المرتجع</td></tr>
+                        <tr><td class="gl-debit">مدين: المخزون (1300)</td><td>تكلفة البضاعة</td></tr>
+                        <tr><td class="gl-credit">دائن: تكلفة بضاعة مباعة (5000)</td><td>تكلفة البضاعة</td></tr>
+                    </table>
+                </div>
+                <p class="mt-2"><strong>إشعار دائن (مرتجع آجل):</strong></p>
+                <div class="gl-example">
+                    <table class="w-100">
+                        <tr><td class="gl-debit">مدين: مردودات المبيعات (4100)</td><td>قيمة المرتجع</td></tr>
+                        <tr><td class="gl-credit">دائن: ذمم العملاء (1200)</td><td>تخفيض المديونية</td></tr>
+                        <tr><td class="gl-debit">مدين: المخزون (1300)</td><td>تكلفة البضاعة</td></tr>
+                        <tr><td class="gl-credit">دائن: تكلفة بضاعة مباعة (5000)</td><td>تكلفة البضاعة</td></tr>
+                    </table>
+                </div>
+
+                <div class="alert-tip mt-3">
+                    <strong>تنبيه:</strong> يجب إضافة حساب <strong>مردودات المبيعات (كود 4100)</strong> في شجرة الحسابات قبل استخدام هذه الميزة، أو تغيير الكود الافتراضي من إعدادات النظام (مفتاح: <code>account_sales_returns_code</code>).
+                </div>
+            </div>
+        </div>
+
+        {{-- ══════════════════════════════════════════════════════════ --}}
+        {{-- Branches & Warehouses --}}
+        {{-- ══════════════════════════════════════════════════════════ --}}
+        <div class="help-section" id="sec-branches">
+            <div class="section-header">
+                <i class="bi bi-building-fill-check fs-5"></i> الفروع والمخازن
+            </div>
+            <div class="section-body">
+                <p>يدعم النظام شركات بفروع ومخازن متعددة أو بدونها تماماً — التصميم <strong>اختياري بالكامل</strong>.</p>
+
+                <div class="subsection-title">الهرمية</div>
+                <ul>
+                    <li><strong>الفرع (Branch)</strong> — وحدة جغرافية/تشغيلية: مقر رئيسي، فرع تجزئة، فرع جملة، مستودع، معرض.</li>
+                    <li><strong>المخزن (Warehouse)</strong> — يتبع فرعاً أو يقف مستقلاً. كل مخزن له رصيد منفصل لكل صنف.</li>
+                    <li><strong>المخزن الافتراضي</strong> — مخزن واحد يُعيَّن افتراضياً. كل معاملة بدون تحديد مخزن تذهب إليه تلقائياً.</li>
+                </ul>
+
+                <div class="subsection-title">سيناريوهات الاستخدام</div>
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="card border-success mb-2">
+                            <div class="card-body p-2 small">
+                                <strong class="text-success">شركة بسيطة (الحالة الافتراضية)</strong><br>
+                                مخزن واحد افتراضي — لا تغيير في أي سلوك. كل المعاملات تذهب للمخزن الرئيسي.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card border-primary mb-2">
+                            <div class="card-body p-2 small">
+                                <strong class="text-primary">فروع متعددة</strong><br>
+                                أنشئ فرعاً لكل موقع. عيِّن كل موظف لفرعه. POS يستخدم مخزن الفرع تلقائياً.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card border-warning mb-2">
+                            <div class="card-body p-2 small">
+                                <strong class="text-warning">مخازن متعددة</strong><br>
+                                أنشئ مخازن بدون فروع. في فاتورة الشراء اختر المخزن المستلِم. كل مخزن له رصيده الخاص.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="subsection-title mt-3">إدارة الفروع والمخازن</div>
+                <p>من <strong>إدارة النظام ← الفروع / المخازن</strong> يمكنك:</p>
+                <ul>
+                    <li>إضافة فروع وتحديد نوعها (تجزئة / جملة / مستودع / معرض)</li>
+                    <li>إضافة مخازن وربطها بالفروع (أو تركها مستقلة)</li>
+                    <li>تحديد المخزن الافتراضي للنظام (النجمة ⭐)</li>
+                    <li>عرض رصيد كل مخزن (زر الصناديق 📦)</li>
+                </ul>
+
+                <div class="alert-tip">
+                    <strong>المخزن الافتراضي:</strong> عند تحديد مخزن كـ "افتراضي" يُلغى الافتراضي السابق تلقائياً — يمكن أن يكون هناك مخزن افتراضي واحد فقط في النظام.
+                </div>
+                <div class="alert-warn mt-2">
+                    <strong>حذف المخزن:</strong> لا يمكن حذف مخزن يحتوي على كميات موجبة. حوِّل البضاعة لمخزن آخر أولاً.
+                </div>
+            </div>
+        </div>
+
+        {{-- ══════════════════════════════════════════════════════════ --}}
+        {{-- Pricing --}}
+        {{-- ══════════════════════════════════════════════════════════ --}}
+        <div class="help-section" id="sec-pricing">
+            <div class="section-header">
+                <i class="bi bi-tags-fill fs-5"></i> قوائم الأسعار — جملة وتجزئة
+            </div>
+            <div class="section-body">
+                <p>يدعم النظام تسعيراً مرناً متعدد المستويات دون أي تعقيد — الفرع الواحد يخدم عملاء جملة وتجزئة في نفس الوقت.</p>
+
+                <div class="subsection-title">تسلسل الأولوية</div>
+                <table class="table table-sm table-bordered small">
+                    <thead class="table-light"><tr><th>#</th><th>المصدر</th><th>متى يُطبَّق</th></tr></thead>
+                    <tbody>
+                        <tr><td>1</td><td><strong>قائمة سعر العميل</strong></td><td>إذا خُصِّصت قائمة للعميل في بطاقته</td></tr>
+                        <tr><td>2</td><td><strong>قائمة سعر الفرع</strong></td><td>إذا لم يكن للعميل قائمة، تُستخدم قائمة فرع الكاشير</td></tr>
+                        <tr><td>3</td><td><strong>القائمة الافتراضية</strong></td><td>إذا لم يكن للفرع قائمة</td></tr>
+                        <tr><td>4</td><td><strong>سعر المنتج الأساسي</strong></td><td>Fallback نهائي — لا يحتاج إعداد</td></tr>
+                    </tbody>
+                </table>
+
+                <div class="subsection-title mt-3">إعداد قوائم الأسعار</div>
+                <div class="workflow-step">
+                    <span class="step-num">1</span>
+                    <div><span class="step-title">إنشاء القائمة</span><br>
+                    <span class="step-desc">من إدارة النظام ← قوائم الأسعار ← قائمة جديدة. أدخل الكود والاسم والنوع (جملة/تجزئة/VIP).</span></div>
+                </div>
+                <div class="workflow-step">
+                    <span class="step-num">2</span>
+                    <div><span class="step-title">تحديد أسعار الأصناف</span><br>
+                    <span class="step-desc">اضغط "أسعار الأصناف" (أيقونة $). اترك الحقل فارغاً لاستخدام السعر الأساسي، أو أدخل سعراً مخصصاً.</span></div>
+                </div>
+                <div class="workflow-step">
+                    <span class="step-num">3</span>
+                    <div><span class="step-title">ربط العملاء بالقائمة</span><br>
+                    <span class="step-desc">في بطاقة العميل اختر "قائمة الأسعار". الآن POS سيستخدم أسعار هذه القائمة تلقائياً عند تحديد هذا العميل.</span></div>
+                </div>
+                <div class="workflow-step">
+                    <span class="step-num">4</span>
+                    <div><span class="step-title">(اختياري) ربط الفرع بقائمة</span><br>
+                    <span class="step-desc">في إعدادات الفرع يمكن تعيين قائمة افتراضية. العملاء الزوار (بدون قائمة) سيأخذون أسعار هذه القائمة.</span></div>
+                </div>
+
+                <div class="alert-tip mt-3">
+                    <strong>الحماية من التلاعب:</strong> الأسعار تُحسب من الخادم وليس من المتصفح. حتى لو حاول مستخدم تغيير السعر في الشبكة، يرفضه الخادم ويستخدم السعر الصحيح.
+                </div>
+            </div>
+        </div>
+
+        {{-- ══════════════════════════════════════════════════════════ --}}
         {{-- 4. Inventory --}}
         {{-- ══════════════════════════════════════════════════════════ --}}
         <div class="help-section" id="sec-inventory">
@@ -342,6 +521,56 @@
                 <div class="alert-tip mt-2">
                     <i class="bi bi-lightbulb-fill"></i>
                     بعد تسجيل الدفعة تتغير حالة الفاتورة تلقائياً: "غير مدفوعة" → "جزئية" → "مدفوعة" حسب المبلغ المسدَّد.
+                </div>
+            </div>
+        </div>
+
+        {{-- ══════════════════════════════════════════════════════════ --}}
+        {{-- Purchase Returns --}}
+        {{-- ══════════════════════════════════════════════════════════ --}}
+        <div class="help-section" id="sec-purchase-returns">
+            <div class="section-header">
+                <i class="bi bi-arrow-return-right fs-5"></i> مرتجعات المشتريات
+            </div>
+            <div class="section-body">
+                <p>تُستخدم لتسجيل البضاعة المُرجَعة للمورد بسبب التلف أو الخطأ أو عدم المطابقة، مع ترحيل القيد المحاسبي تلقائياً وتخفيض المخزون.</p>
+
+                <div class="subsection-title">خطوات تسجيل المرتجع</div>
+                <div class="workflow-step">
+                    <span class="step-num">1</span>
+                    <div><span class="step-title">اختر المورد والتاريخ</span><br>
+                    <span class="step-desc">من المشتريات والموردون ← مرتجعات المشتريات ← مرتجع جديد.</span></div>
+                </div>
+                <div class="workflow-step">
+                    <span class="step-num">2</span>
+                    <div><span class="step-title">حدد طريقة الاسترداد</span><br>
+                    <span class="step-desc"><strong>خصم من ذمة المورد</strong> (الأشيع): يُقلَّص ما نديه للمورد. <strong>استرداد نقدي/بنكي</strong>: المورد يردّ المبلغ فعلياً.</span></div>
+                </div>
+                <div class="workflow-step">
+                    <span class="step-num">3</span>
+                    <div><span class="step-title">أضف الأصناف المرتجعة</span><br>
+                    <span class="step-desc">ابحث عن الصنف، أدخل الكمية وسعر الشراء (يُعبأ تلقائياً من آخر سعر شراء).</span></div>
+                </div>
+                <div class="workflow-step">
+                    <span class="step-num">4</span>
+                    <div><span class="step-title">حفظ وترحيل</span><br>
+                    <span class="step-desc">يُرحَّل القيد فور الحفظ وتنخفض الكمية من المخزون تلقائياً.</span></div>
+                </div>
+
+                <div class="subsection-title mt-3">القيد المحاسبي</div>
+                <p><strong>خصم من ذمة المورد (الأشيع):</strong></p>
+                <div class="gl-example">
+                    <table class="w-100">
+                        <tr><td class="gl-debit">مدين: ذمم الموردين (2000)</td><td>قيمة المرتجع</td></tr>
+                        <tr><td class="gl-credit">دائن: المخزون (1300)</td><td>قيمة المرتجع</td></tr>
+                    </table>
+                </div>
+                <p class="mt-2"><strong>استرداد نقدي/بنكي:</strong></p>
+                <div class="gl-example">
+                    <table class="w-100">
+                        <tr><td class="gl-debit">مدين: الصندوق / البنك (1000/1100)</td><td>المبلغ المسترد</td></tr>
+                        <tr><td class="gl-credit">دائن: المخزون (1300)</td><td>المبلغ المسترد</td></tr>
+                    </table>
                 </div>
             </div>
         </div>

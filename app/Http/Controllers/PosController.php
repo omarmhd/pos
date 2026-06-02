@@ -10,6 +10,8 @@ use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Models\Setting;
 use App\Services\LedgerPostingService;
+use App\Services\PricingService;
+use App\Services\WarehouseService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -77,7 +79,37 @@ class PosController extends Controller
             'phone'           => $c->phone,
             'credit_limit'    => (float) $c->credit_limit,
             'deposit_balance' => round($c->depositBalance(), 2),
+            'price_list_id'   => $c->price_list_id,
+            'price_list_name' => $c->priceList?->name,
         ]));
+    }
+
+    /**
+     * AJAX: resolve prices for a list of product IDs under a given customer/price_list context.
+     * Called by POS JS when the customer changes, to refresh cart prices.
+     *
+     * POST /pos/resolve-prices
+     * Body: { customer_id: int|null, product_ids: int[] }
+     * Returns: { prices: { [product_id]: float } }
+     */
+    public function resolvePrices(Request $request)
+    {
+        $customerId = $request->input('customer_id');
+        $productIds = (array) $request->input('product_ids', []);
+
+        $customer  = $customerId ? Customer::find($customerId) : null;
+        $priceList = PricingService::resolveList($customer, auth()->user());
+
+        $prices = PricingService::getPricesForProducts(
+            array_map('intval', $productIds),
+            $priceList
+        );
+
+        return response()->json([
+            'prices'          => $prices,
+            'price_list_name' => $priceList?->name ?? 'الافتراضي',
+            'price_list_type' => $priceList?->type ?? 'retail',
+        ]);
     }
 
     public function store(Request $request)
@@ -105,10 +137,33 @@ class PosController extends Controller
         $allowNegStock = (bool) Setting::get('allow_negative_stock',  0);
         $maxDiscPct    = (float) Setting::get('max_discount_percent', 100);
 
+        // ── Resolve price list for this transaction ─────────────────────────
+        $customer  = $request->customer_id ? Customer::find($request->customer_id) : null;
+        $priceList = PricingService::resolveList($customer, auth()->user());
+
+        // Build server-authoritative price map for all items
+        $productIds    = collect($request->items)->pluck('product_id')->map('intval')->all();
+        $serverPrices  = PricingService::getPricesForProducts($productIds, $priceList);
+
         $isCredit    = (bool) $request->input('is_credit', false);
         $subtotal    = round((float) $request->subtotal, 2);
         $discount    = round((float) ($request->discount ?? 0), 2);
         $balanceUsed = round((float) ($request->balance_used ?? 0), 2);
+
+        // ── Recalculate subtotal using server-authoritative prices ───────────
+        // This prevents clients from manipulating unit prices on the frontend.
+        $serverSubtotal = 0;
+        foreach ($request->items as $item) {
+            $authorizedPrice = $serverPrices[(int) $item['product_id']] ?? (float) $item['unit_price'];
+            $serverSubtotal += $item['quantity'] * $authorizedPrice;
+        }
+        $serverSubtotal = round($serverSubtotal, 2);
+
+        // Accept if client's subtotal matches (within 1 fils rounding tolerance)
+        // If mismatch → use server value (protects against price tampering)
+        if (abs($serverSubtotal - $subtotal) > 0.01) {
+            $subtotal = $serverSubtotal;
+        }
 
         // ── Validate discount ceiling ──────────────────────────────────────
         if ($maxDiscPct < 100 && $subtotal > 0) {
@@ -133,15 +188,38 @@ class PosController extends Controller
 
         DB::beginTransaction();
         try {
+            // Resolve warehouse for this sale (user's branch → system default)
+            $warehouseId = WarehouseService::getForUser(auth()->user())->id;
+
             $productIds = collect($request->items)->pluck('product_id')->unique()->values()->all();
-            $products   = Product::whereIn('id', $productIds)->lockForUpdate()->get()->keyBy('id');
+
+            // ── CRITICAL: Lock order must be consistent to prevent deadlocks ──
+            // Always lock stock_levels FIRST, then products (consistent order = no deadlock)
+            $stockLevels = \App\Models\StockLevel::where('warehouse_id', $warehouseId)
+                ->whereIn('product_id', $productIds)
+                ->lockForUpdate()   // ← ADDED: prevents overselling in concurrent requests
+                ->get()
+                ->keyBy('product_id');
+
+            $products = Product::whereIn('id', $productIds)->lockForUpdate()->get()->keyBy('id');
 
             foreach ($request->items as $item) {
                 $product = $products->get($item['product_id']);
-                if (!$product || (!$allowNegStock && $product->quantity < $item['quantity'])) {
-                    return response()->json([
-                        'error' => 'المنتج "' . ($product?->name ?? '#' . $item['product_id']) . '" غير متوفر بالكمية المطلوبة',
-                    ], 400);
+                if (!$product) {
+                    return response()->json(['error' => 'منتج غير موجود: #' . $item['product_id']], 400);
+                }
+                if (!$allowNegStock) {
+                    // Check per-warehouse stock; fall back to global if no stock_level record yet
+                    $available = isset($stockLevels[$item['product_id']])
+                        ? (float) $stockLevels[$item['product_id']]->quantity
+                        : (float) $product->quantity;
+
+                    if ($available < $item['quantity']) {
+                        return response()->json([
+                            'error' => 'المنتج "' . $product->name . '" غير متوفر بالكمية المطلوبة'
+                                     . ' (المتاح في المخزن: ' . number_format($available, 2) . ')',
+                        ], 400);
+                    }
                 }
             }
 
@@ -184,6 +262,7 @@ class PosController extends Controller
                 'user_id'        => auth()->id(),
                 'customer_id'    => ($isCredit || $balanceUsed > 0) ? $request->customer_id : null,
                 'is_credit'      => $isCredit,
+                'warehouse_id'   => $warehouseId,
                 'subtotal'       => $subtotal,
                 'discount'       => $discount,
                 'tax'            => $tax,
@@ -196,15 +275,19 @@ class PosController extends Controller
 
             foreach ($request->items as $item) {
                 $product = $products->get($item['product_id']);
+                // Use server-authoritative price (prevents frontend price manipulation)
+                $unitPrice = $serverPrices[(int) $item['product_id']] ?? (float) $item['unit_price'];
                 SaleItem::create([
                     'sale_id'     => $sale->id,
                     'product_id'  => $item['product_id'],
                     'quantity'    => $item['quantity'],
-                    'unit_price'  => $item['unit_price'],
+                    'unit_price'  => $unitPrice,
                     'cost_price'  => $product->cost_price,
-                    'total_price' => $item['quantity'] * $item['unit_price'],
+                    'total_price' => round($item['quantity'] * $unitPrice, 2),
                 ]);
-                $product->decrement('quantity', $item['quantity']);
+                // SaleItem::created() boot handles products.quantity decrement.
+                // Update per-warehouse stock_level here.
+                WarehouseService::out($warehouseId, $item['product_id'], $item['quantity']);
             }
 
             (new LedgerPostingService())->postSale($sale->load('items', 'customer'));

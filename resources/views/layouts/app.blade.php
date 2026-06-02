@@ -393,6 +393,14 @@
                             </a>
                         </li>
                         @endcan
+                        @can('sales.returns.view')
+                        <li class="nav-item">
+                            <a class="nav-link {{ request()->routeIs('sale-returns.*') ? 'active' : '' }}"
+                               href="{{ route('sale-returns.index') }}">
+                                <i class="bi bi-arrow-return-left"></i> مرتجعات المبيعات
+                            </a>
+                        </li>
+                        @endcan
                         @can('inventory.view')
                         <li class="nav-item">
                             <a class="nav-link {{ request()->routeIs('products.low-stock','products.expiring') ? 'active' : '' }}"
@@ -449,6 +457,14 @@
                             <a class="nav-link {{ request()->routeIs('purchases.*') ? 'active' : '' }}"
                                href="{{ route('purchases.index') }}">
                                 <i class="bi bi-bag-plus"></i> فواتير الشراء
+                            </a>
+                        </li>
+                        @endcan
+                        @can('purchases.returns.view')
+                        <li class="nav-item">
+                            <a class="nav-link {{ request()->routeIs('purchase-returns.*') ? 'active' : '' }}"
+                               href="{{ route('purchase-returns.index') }}">
+                                <i class="bi bi-arrow-return-right"></i> مرتجعات المشتريات
                             </a>
                         </li>
                         @endcan
@@ -525,6 +541,14 @@
                             <a class="nav-link {{ request()->routeIs('hr.payroll.*') ? 'active' : '' }}"
                                href="{{ route('hr.payroll.index') }}">
                                 <i class="bi bi-cash-stack"></i> مسير الرواتب
+                            </a>
+                        </li>
+                        @endcan
+                        @can('hr.manage_loans')
+                        <li class="nav-item">
+                            <a class="nav-link {{ request()->routeIs('hr.loans.*') ? 'active' : '' }}"
+                               href="{{ route('hr.loans.index') }}">
+                                <i class="bi bi-cash-coin text-warning"></i> سلف الموظفين
                             </a>
                         </li>
                         @endcan
@@ -712,9 +736,9 @@
                 @endcan
 
                 {{-- ── System Management ── --}}
-                @canany(['users.view','roles.view','settings.view'])
-                @php $s7 = request()->routeIs('users.*','roles.*','permissions.*','settings.*')
-                         || request()->is('users*','roles*','permissions*','settings*'); @endphp
+                @canany(['users.view','roles.view','settings.view','branches.view','price_lists.view'])
+                @php $s7 = request()->routeIs('users.*','roles.*','permissions.*','settings.*','branches.*','warehouses.*','price-lists.*')
+                         || request()->is('users*','roles*','permissions*','settings*','branches*','warehouses*','price-lists*'); @endphp
                 <li class="nav-item">
                     <button class="nav-section-toggle {{ !$s7 ? 'collapsed' : '' }}"
                             data-bs-toggle="collapse" data-bs-target="#ns7"
@@ -739,6 +763,28 @@
                             <a class="nav-link {{ request()->routeIs('roles.*') ? 'active' : '' }}"
                                href="{{ route('roles.index') }}">
                                 <i class="bi bi-shield-lock"></i> الأدوار والصلاحيات
+                            </a>
+                        </li>
+                        @endcan
+                        @can('branches.view')
+                        <li class="nav-item">
+                            <a class="nav-link {{ request()->routeIs('branches.*') ? 'active' : '' }}"
+                               href="{{ route('branches.index') }}">
+                                <i class="bi bi-building-fill-check"></i> الفروع
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {{ request()->routeIs('warehouses.*') ? 'active' : '' }}"
+                               href="{{ route('warehouses.index') }}">
+                                <i class="bi bi-archive-fill"></i> المخازن
+                            </a>
+                        </li>
+                        @endcan
+                        @can('price_lists.view')
+                        <li class="nav-item">
+                            <a class="nav-link {{ request()->routeIs('price-lists.*') ? 'active' : '' }}"
+                               href="{{ route('price-lists.index') }}">
+                                <i class="bi bi-tags-fill"></i> قوائم الأسعار
                             </a>
                         </li>
                         @endcan
@@ -916,14 +962,14 @@
     (function () {
         var p = window.location.pathname;
         var map = [
-            { id: 'ns1', paths: ['/products', '/categories', '/sales', '/inventory'] },
-            { id: 'ns2', paths: ['/purchases', '/suppliers'] },
+            { id: 'ns1', paths: ['/products', '/categories', '/sales', '/sale-returns', '/inventory'] },
+            { id: 'ns2', paths: ['/purchases', '/purchase-returns', '/suppliers'] },
             { id: 'nsv', paths: ['/vouchers'] },
             { id: 'ns3', paths: ['/customers'] },
             { id: 'ns4', paths: ['/hr'] },
             { id: 'ns5', paths: ['/accounting', '/accounts', '/journal-entries', '/reversals', '/audit-logs'] },
             { id: 'ns6', paths: ['/reports'] },
-            { id: 'ns7', paths: ['/users', '/roles', '/permissions', '/settings'] },
+            { id: 'ns7', paths: ['/users', '/roles', '/permissions', '/settings', '/branches', '/warehouses', '/price-lists'] },
         ];
 
         for (var i = 0; i < map.length; i++) {

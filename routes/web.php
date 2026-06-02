@@ -8,8 +8,10 @@ use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\PurchaseController;
+use App\Http\Controllers\PurchaseReturnController;
 use App\Http\Controllers\PosController;
 use App\Http\Controllers\SaleController;
+use App\Http\Controllers\SaleReturnController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\AccountingController;
 use App\Http\Controllers\AttendanceController;
@@ -21,6 +23,9 @@ use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\FinancialStatementController;
 use App\Http\Controllers\SupplierPaymentController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\BranchController;
+use App\Http\Controllers\PriceListController;
+use App\Http\Controllers\WarehouseController;
 use App\Http\Controllers\YearEndClosingController;
 use App\Http\Controllers\RoleController;
 
@@ -107,6 +112,13 @@ Route::middleware(['auth'])->group(function () {
         Route::patch('payroll/{payrollRun}/approve', [PayrollController::class, 'approve'])->name('payroll.approve');
         Route::get('payroll/{payrollRun}/items/{item}/payslip',
             [PayrollController::class, 'payslip'])->name('payroll.payslip');
+
+        // ── Employee Loans (سلف الموظفين) ────────────────────────────────
+        Route::get('loans',              [\App\Http\Controllers\EmployeeLoanController::class, 'index']) ->name('loans.index');
+        Route::get('loans/create',       [\App\Http\Controllers\EmployeeLoanController::class, 'create'])->name('loans.create');
+        Route::post('loans',             [\App\Http\Controllers\EmployeeLoanController::class, 'store']) ->name('loans.store');
+        Route::get('loans/{loan}',       [\App\Http\Controllers\EmployeeLoanController::class, 'show'])  ->name('loans.show');
+        Route::patch('loans/{loan}/cancel', [\App\Http\Controllers\EmployeeLoanController::class, 'cancel'])->name('loans.cancel');
     });
 
     // ── Customers ─────────────────────────────────────────────────────────────
@@ -126,6 +138,10 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('purchases', PurchaseController::class)->except(['edit', 'update']);
     Route::get('purchases/{purchase}/pdf',
         [PurchaseController::class, 'pdf'])->name('purchases.pdf');
+
+    // ── Purchase Returns ──────────────────────────────────────────────────────
+    Route::resource('purchase-returns', PurchaseReturnController::class)
+        ->only(['index', 'create', 'store', 'show']);
 
     // ── Vouchers (سندات القبض والصرف) ────────────────────────────────────────
     Route::prefix('vouchers')->name('vouchers.')->group(function () {
@@ -147,6 +163,9 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('sales', SaleController::class)->only(['index', 'show']);
     Route::get('sales/{sale}/pdf',    [SaleController::class, 'pdf'])    ->name('sales.pdf');
     Route::delete('sales/{sale}',     [SaleController::class, 'destroy'])->name('sales.destroy');
+
+    // ── Sale Returns ──────────────────────────────────────────────────────────
+    Route::resource('sale-returns', SaleReturnController::class)->only(['index', 'create', 'store', 'show']);
 
     // ── Reports ───────────────────────────────────────────────────────────────
     Route::prefix('reports')->name('reports.')->group(function () {
@@ -196,6 +215,18 @@ Route::middleware(['auth'])->group(function () {
         [App\Http\Controllers\AccountController::class, 'importCsv'])->name('accounts.import');
     Route::get('accounts-export',
         [App\Http\Controllers\AccountController::class, 'exportCsv'])->name('accounts.export');
+
+    // ── Branches & Warehouses ────────────────────────────────────────────────
+    Route::resource('branches', BranchController::class)->except(['show']);
+    // ── Price Lists (Wholesale / Retail) ─────────────────────────────────────
+    Route::resource('price-lists', PriceListController::class)->except(['show']);
+    Route::match(['get','post'], 'price-lists/{priceList}/products',
+        [PriceListController::class, 'products'])->name('price-lists.products');
+    // ── POS: resolve prices for a customer/price-list ───────────────────────
+    Route::post('pos/resolve-prices', [PosController::class, 'resolvePrices'])->name('pos.resolve-prices');
+    Route::resource('warehouses', WarehouseController::class)->except(['show']);
+    Route::get('warehouses/{warehouse}/stock',
+        [WarehouseController::class, 'stock'])->name('warehouses.stock');
 
     // ── Settings ──────────────────────────────────────────────────────────────
     Route::get('settings/accounting',

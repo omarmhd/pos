@@ -25,7 +25,7 @@
     <div class="card-body">
         <form action="{{ route('purchases.store') }}" method="POST" id="purchaseForm">
             @csrf
-            <div class="row mb-4">
+            <div class="row mb-3">
                 <div class="col-md-6">
                     <label class="form-label">المورد <span class="text-danger">*</span></label>
                     <select name="supplier_id" class="form-select @error('supplier_id') is-invalid @enderror" required>
@@ -38,11 +38,49 @@
                 </div>
 
                 <div class="col-md-6">
+                    <label class="form-label">رقم فاتورة المورد</label>
+                    <input type="text" name="supplier_invoice_number"
+                           class="form-control @error('supplier_invoice_number') is-invalid @enderror"
+                           value="{{ old('supplier_invoice_number') }}"
+                           placeholder="رقم الفاتورة الصادرة من المورد (اختياري)">
+                    @error('supplier_invoice_number')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                </div>
+            </div>
+
+            {{-- Warehouse selector: only visible when system has >1 warehouse --}}
+            @if($warehouses->count() > 1)
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label class="form-label">
+                        <i class="bi bi-archive text-success me-1"></i>
+                        المخزن المستلِم
+                        <span class="badge bg-success ms-1">{{ $warehouses->count() }} مخازن</span>
+                    </label>
+                    <select name="warehouse_id" class="form-select">
+                        @foreach($warehouses as $wh)
+                            <option value="{{ $wh->id }}"
+                                {{ old('warehouse_id', $defaultWarehouseId) == $wh->id ? 'selected' : '' }}>
+                                {{ $wh->name }}
+                                @if($wh->branch) ({{ $wh->branch->name }}) @endif
+                                @if($wh->is_default) ⭐ @endif
+                            </option>
+                        @endforeach
+                    </select>
+                    <div class="form-text">البضاعة ستُضاف لمخزون هذا المخزن</div>
+                </div>
+            </div>
+            @else
+            {{-- Single warehouse: submit silently --}}
+            <input type="hidden" name="warehouse_id" value="{{ $defaultWarehouseId }}">
+            @endif
+
+            <div class="row mb-4">
+                <div class="col-md-6">
                     <label class="form-label">حالة الدفع <span class="text-danger">*</span></label>
                     <select name="payment_status" class="form-select" id="paymentStatus" required>
-                        <option value="paid">مدفوع بالكامل</option>
-                        <option value="partial">مدفوع جزئياً</option>
                         <option value="unpaid">غير مدفوع</option>
+                        <option value="partial">مدفوع جزئياً</option>
+                        <option value="paid">مدفوع بالكامل</option>
                     </select>
                 </div>
             </div>
@@ -57,14 +95,14 @@
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">
-                        <table class="table" id="productsTable">
-                            <thead>
+                        <table class="table" id="productsTable" style="min-width:640px;">
+                            <thead class="table-light">
                             <tr>
-                                <th style="width:42%">المنتج</th>
-                                <th style="width:14%">الكمية</th>
-                                <th style="width:19%">سعر الوحدة</th>
-                                <th style="width:19%">المجموع</th>
-                                <th style="width:6%"></th>
+                                <th style="width:40%">المنتج</th>
+                                <th style="width:15%;min-width:110px">الكمية</th>
+                                <th style="width:18%;min-width:130px">سعر الوحدة</th>
+                                <th style="width:18%;min-width:120px">المجموع</th>
+                                <th style="width:9%"></th>
                             </tr>
                             </thead>
                             <tbody id="productRows"></tbody>
@@ -140,7 +178,14 @@
                 </div>
                 <div class="mb-3">
                     <label class="form-label">الوحدة</label>
-                    <input type="text" id="qp_unit" class="form-control" placeholder="قطعة">
+                    <select id="qp_unit" class="form-select">
+                        @foreach(\App\Enums\ProductUnit::cases() as $unit)
+                            <option value="{{ $unit->value }}"
+                                {{ $unit->value === 'piece' ? 'selected' : '' }}>
+                                {{ $unit->label() }}
+                            </option>
+                        @endforeach
+                    </select>
                 </div>
             </div>
             <div class="modal-footer">
@@ -157,10 +202,10 @@
 @section('scripts')
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
-    const SEARCH_URL       = '{{ route('purchases.products.search') }}';
-    const QUICK_CREATE_URL = '{{ route('purchases.products.quick-create') }}';
-    const CSRF             = '{{ csrf_token() }}';
-    const CURRENCY         = '{{ $currency }}';
+    const SEARCH_URL       = "{{ route('purchases.products.search') }}";
+    const QUICK_CREATE_URL = "{{ route('purchases.products.quick-create') }}";
+    const CSRF             = "{{ csrf_token() }}";
+    const CURRENCY         = "{{ $currency }}";
 
     let rowCount        = 0;
     let pendingRowId    = null; // row that triggered the quick-create modal
@@ -183,13 +228,15 @@
                 <input type="number" name="items[${id}][quantity]"
                        class="form-control quantity-input"
                        value="1" min="0.001" step="0.001"
-                       onchange="calculateRow(${id})" required>
+                       placeholder="الكمية"
+                       oninput="calculateRow(${id})" required>
             </td>
             <td>
                 <input type="number" name="items[${id}][unit_price]"
                        class="form-control unit-price"
                        step="0.01" min="0"
-                       onchange="calculateRow(${id})" required>
+                       placeholder="السعر"
+                       oninput="calculateRow(${id})" required>
             </td>
             <td>
                 <input type="text" class="form-control row-total" readonly value="0.00">
@@ -289,6 +336,9 @@
         let total = 0;
         $('.row-total').each(function () { total += parseFloat($(this).val()) || 0; });
         $('#totalAmount').text(total.toFixed(2) + ' ' + CURRENCY);
+        if ($('#paymentStatus').val() === 'paid') {
+            $('#paidAmount').val(total.toFixed(2));
+        }
         updateRemaining();
     }
 

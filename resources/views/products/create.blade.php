@@ -45,11 +45,12 @@
                             <div class="col-md-4">
                                 <label class="form-label">الوحدة <span class="text-danger">*</span></label>
                                 <select name="unit" class="form-select @error('unit') is-invalid @enderror" required>
-                                    <option value="piece">قطعة</option>
-                                    <option value="kg">كيلوجرام</option>
-                                    <option value="g">جرام</option>
-                                    <option value="liter">لتر</option>
-                                    <option value="ml">مل</option>
+                                    @foreach(\App\Enums\ProductUnit::cases() as $unit)
+                                        <option value="{{ $unit->value }}"
+                                            {{ old('unit', 'piece') === $unit->value ? 'selected' : '' }}>
+                                            {{ $unit->label() }}
+                                        </option>
+                                    @endforeach
                                 </select>
                                 @error('unit')<div class="invalid-feedback">{{ $message }}</div>@enderror
                             </div>

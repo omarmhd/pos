@@ -59,15 +59,27 @@ class Sale extends Model
         return $this->hasMany(CustomerPayment::class);
     }
 
+    public function saleReturns()
+    {
+        return $this->hasMany(SaleReturn::class);
+    }
+
     public function outstandingBalance(): float
     {
         if (!$this->is_credit) {
             return 0.0;
         }
+
         $paid = $this->relationLoaded('customerPayments')
             ? (float) $this->customerPayments->sum('amount')
             : (float) $this->customerPayments()->sum('amount');
-        return max(0, (float) $this->total_amount - $paid);
+
+        // Credit notes reduce the outstanding balance for this invoice
+        $creditNotes = $this->relationLoaded('saleReturns')
+            ? (float) $this->saleReturns->where('refund_method', 'credit_note')->sum('total_amount')
+            : (float) $this->saleReturns()->where('refund_method', 'credit_note')->sum('total_amount');
+
+        return max(0, (float) $this->total_amount - $paid - $creditNotes);
     }
 
     protected static function boot()

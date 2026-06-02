@@ -93,6 +93,26 @@
                         </div>
                     </div>
 
+                    {{-- Branch assignment (optional) --}}
+                    @if(isset($branches) && $branches->count() > 0)
+                    <div class="mb-3 mt-3">
+                        <label class="form-label">
+                            <i class="bi bi-building-fill-check text-primary me-1"></i>
+                            الفرع المرتبط
+                            <small class="text-muted">(يحدد مخزن POS الافتراضي للمستخدم)</small>
+                        </label>
+                        <select name="branch_id" class="form-select">
+                            <option value="">— بدون فرع (يستخدم المخزن الافتراضي للنظام) —</option>
+                            @foreach($branches as $b)
+                                <option value="{{ $b->id }}"
+                                    {{ old('branch_id', $user->branch_id) == $b->id ? 'selected' : '' }}>
+                                    [{{ $b->code }}] {{ $b->name }} — {{ $b->typeLabel() }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                    @endif
+
                     <button type="submit" class="btn btn-primary">
                         <i class="bi bi-save"></i> حفظ التعديلات
                     </button>

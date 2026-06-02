@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Branch;
 use App\Models\Customer;
 use App\Models\Sale;
 use App\Models\Purchase;
@@ -29,9 +30,12 @@ class ReportController extends Controller
     {
         $dateFrom = $request->input('date_from', now()->startOfMonth());
         $dateTo   = $request->input('date_to',   now()->endOfMonth());
+        $branchId = $request->filled('branch_id') ? (int) $request->input('branch_id') : null;
+        $branches = Branch::where('is_active', true)->orderBy('name')->get(['id', 'name', 'code']);
         $cur      = Setting::get('currency_symbol', 'ج.م');
 
         $sales = Sale::whereBetween('created_at', [$dateFrom, $dateTo])
+            ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
             ->selectRaw('DATE(created_at) as date')
             ->selectRaw('COUNT(*) as count')
             ->selectRaw('SUM(total_amount) as total')
@@ -48,7 +52,8 @@ class ReportController extends Controller
 
         return view('reports.sales', compact(
             'sales', 'totalSales', 'totalTransactions',
-            'totalDiscount', 'totalTax', 'dateFrom', 'dateTo', 'cur'
+            'totalDiscount', 'totalTax', 'dateFrom', 'dateTo',
+            'cur', 'branches', 'branchId'
         ));
     }
 
@@ -56,10 +61,13 @@ class ReportController extends Controller
     {
         $dateFrom = $request->input('date_from', now()->startOfMonth());
         $dateTo   = $request->input('date_to',   now()->endOfMonth());
+        $branchId = $request->filled('branch_id') ? (int) $request->input('branch_id') : null;
+        $branches = Branch::where('is_active', true)->orderBy('name')->get(['id', 'name', 'code']);
         $cur      = Setting::get('currency_symbol', 'ج.م');
 
         $purchases = Purchase::with('supplier')
             ->whereBetween('created_at', [$dateFrom, $dateTo])
+            ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
             ->get();
 
         $totalPurchases = $purchases->sum('total_amount');
@@ -68,7 +76,8 @@ class ReportController extends Controller
 
         return view('reports.purchases', compact(
             'purchases', 'totalPurchases', 'totalPaid',
-            'totalRemaining', 'dateFrom', 'dateTo', 'cur'
+            'totalRemaining', 'dateFrom', 'dateTo',
+            'cur', 'branches', 'branchId'
         ));
     }
 

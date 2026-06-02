@@ -33,6 +33,28 @@ class Employee extends Model
         return $this->hasMany(PayrollItem::class);
     }
 
+    public function loans()
+    {
+        return $this->hasMany(EmployeeLoan::class);
+    }
+
+    public function activeLoans()
+    {
+        return $this->loans()->where('status', 'active')->where('remaining_balance', '>', 0);
+    }
+
+    /** مجموع الأقساط المستحقة هذا الشهر من جميع السلف النشطة */
+    public function pendingLoanInstallment(): float
+    {
+        return $this->activeLoans()->get()->sum(fn($l) => $l->currentInstallment());
+    }
+
+    /** رصيد السلف الكلي المتبقي */
+    public function totalLoanBalance(): float
+    {
+        return (float) $this->activeLoans()->sum('remaining_balance');
+    }
+
     /** Gross monthly salary (all fixed allowances) */
     public function grossMonthlySalary(): float
     {

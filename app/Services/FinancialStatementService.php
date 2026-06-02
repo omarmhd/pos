@@ -10,13 +10,15 @@ class FinancialStatementService
 {
     /**
      * Cumulative account balance from the beginning of time up to $asOf.
-     * Respects normal balance convention.
+     *
+     * @param int|null $branchId  null = consolidated (all branches)
      */
-    public function getAccountBalance(Account $account, ?Carbon $asOf = null): float
+    public function getAccountBalance(Account $account, ?Carbon $asOf = null, ?int $branchId = null): float
     {
         $query = DB::table('journal_entry_lines')
             ->join('journal_entries', 'journal_entry_lines.journal_entry_id', '=', 'journal_entries.id')
-            ->where('journal_entry_lines.account_id', $account->id);
+            ->where('journal_entry_lines.account_id', $account->id)
+            ->when($branchId, fn($q) => $q->where('journal_entries.branch_id', $branchId));
 
         if ($asOf) {
             $query->whereDate('journal_entries.entry_date', '<=', $asOf->toDateString());
@@ -28,7 +30,7 @@ class FinancialStatementService
         $credit = (float) ($row->total_credit ?? 0);
 
         return match ($account->type) {
-            'asset', 'expense'              => $debit - $credit,
+            'asset', 'expense'               => $debit - $credit,
             'liability', 'equity', 'revenue' => $credit - $debit,
             default                          => 0.0,
         };
@@ -36,13 +38,16 @@ class FinancialStatementService
 
     /**
      * Account balance for a specific period.
+     *
+     * @param int|null $branchId  null = consolidated
      */
-    public function getPeriodBalance(Account $account, Carbon $from, Carbon $to): float
+    public function getPeriodBalance(Account $account, Carbon $from, Carbon $to, ?int $branchId = null): float
     {
         $row = DB::table('journal_entry_lines')
             ->join('journal_entries', 'journal_entry_lines.journal_entry_id', '=', 'journal_entries.id')
             ->where('journal_entry_lines.account_id', $account->id)
             ->whereBetween('journal_entries.entry_date', [$from->toDateString(), $to->toDateString()])
+            ->when($branchId, fn($q) => $q->where('journal_entries.branch_id', $branchId))
             ->selectRaw('SUM(debit) as total_debit, SUM(credit) as total_credit')
             ->first();
 
@@ -50,7 +55,7 @@ class FinancialStatementService
         $credit = (float) ($row->total_credit ?? 0);
 
         return match ($account->type) {
-            'asset', 'expense'              => $debit - $credit,
+            'asset', 'expense'               => $debit - $credit,
             'liability', 'equity', 'revenue' => $credit - $debit,
             default                          => 0.0,
         };
@@ -58,11 +63,13 @@ class FinancialStatementService
 
     /**
      * Income Statement for the period [from, to].
-     * Single GROUP BY query replaces N+1 getPeriodBalance() calls.
+     *
+     * @param Carbon   $from
+     * @param Carbon   $to
+     * @param int|null $branchId  null = consolidated (all branches)
      */
-    public function getIncomeStatement(Carbon $from, Carbon $to): array
+    public function getIncomeStatement(Carbon $from, Carbon $to, ?int $branchId = null): array
     {
-        // Exclude header accounts — they have no direct journal entries
         $accounts = Account::where('is_active', true)
             ->where('is_header', false)
             ->whereIn('type', ['revenue', 'expense'])
@@ -72,18 +79,18 @@ class FinancialStatementService
         $balances = DB::table('journal_entry_lines as jel')
             ->join('journal_entries as je', 'jel.journal_entry_id', '=', 'je.id')
             ->whereBetween('je.entry_date', [$from->toDateString(), $to->toDateString()])
+            ->when($branchId, fn($q) => $q->where('je.branch_id', $branchId))
             ->whereIn('jel.account_id', $accounts->pluck('id'))
             ->groupBy('jel.account_id')
             ->selectRaw('jel.account_id, SUM(jel.debit) as total_debit, SUM(jel.credit) as total_credit')
             ->get()
             ->keyBy('account_id');
 
-        // Contra-revenue: 4200 (مردودات) + 4300 (خصم ممنوح) — debit-normal
-        $grossRevenue  = [];  // 4000 main sales
-        $contraRevenue = [];  // 4200, 4300  shown as deductions
-        $otherIncome   = [];  // 4100 added after EBIT
-        $cogs          = [];  // 5000–5999
-        $opex          = [];  // 6000+
+        $grossRevenue  = [];
+        $contraRevenue = [];
+        $otherIncome   = [];
+        $cogs          = [];
+        $opex          = [];
 
         foreach ($accounts as $account) {
             $b      = $balances->get($account->id);
@@ -96,14 +103,14 @@ class FinancialStatementService
                 $amount   = $isContra ? ($debit - $credit) : ($credit - $debit);
                 if (abs($amount) < 0.001) continue;
 
-                if ($isContra)      { $contraRevenue[] = ['account' => $account, 'amount' => $amount]; }
-                elseif ($code >= 4100 && $code < 4200) { $otherIncome[] = ['account' => $account, 'amount' => $amount]; }
-                else                { $grossRevenue[]  = ['account' => $account, 'amount' => $amount]; }
+                if ($isContra)                             { $contraRevenue[] = ['account' => $account, 'amount' => $amount]; }
+                elseif ($code >= 4100 && $code < 4200)    { $otherIncome[]   = ['account' => $account, 'amount' => $amount]; }
+                else                                       { $grossRevenue[]  = ['account' => $account, 'amount' => $amount]; }
             } else {
                 $amount = $debit - $credit;
                 if (abs($amount) < 0.001) continue;
-                if ($code >= 5000 && $code < 6000) { $cogs[] = ['account' => $account, 'amount' => $amount]; }
-                else                               { $opex[] = ['account' => $account, 'amount' => $amount]; }
+                if ($code >= 5000 && $code < 6000)        { $cogs[] = ['account' => $account, 'amount' => $amount]; }
+                else                                       { $opex[] = ['account' => $account, 'amount' => $amount]; }
             }
         }
 
@@ -116,12 +123,11 @@ class FinancialStatementService
         $operatingIncome   = $grossProfit - $totalOpex;
         $totalOtherIncome  = collect($otherIncome)->sum('amount');
         $netIncome         = $operatingIncome + $totalOtherIncome;
+        $totalRevenue      = $totalNetRevenue;
 
-        $totalRevenue = $totalNetRevenue; // alias used by balance sheet
-
-        $grossMargin = $totalNetRevenue > 0 ? round(($grossProfit    / $totalNetRevenue) * 100, 1) : 0;
-        $opexRatio   = $totalNetRevenue > 0 ? round(($totalOpex       / $totalNetRevenue) * 100, 1) : 0;
-        $netMargin   = $totalNetRevenue > 0 ? round(($netIncome        / $totalNetRevenue) * 100, 1) : 0;
+        $grossMargin = $totalNetRevenue > 0 ? round(($grossProfit / $totalNetRevenue) * 100, 1) : 0;
+        $opexRatio   = $totalNetRevenue > 0 ? round(($totalOpex   / $totalNetRevenue) * 100, 1) : 0;
+        $netMargin   = $totalNetRevenue > 0 ? round(($netIncome   / $totalNetRevenue) * 100, 1) : 0;
 
         return compact(
             'grossRevenue', 'contraRevenue', 'otherIncome',
@@ -136,9 +142,14 @@ class FinancialStatementService
 
     /**
      * Balance Sheet as of $asOf.
-     * Single GROUP BY query replaces N+1 getAccountBalance() calls.
+     *
+     * Note: The Balance Sheet is typically consolidated (company-wide).
+     * Branch filtering is supported but balance may not reconcile
+     * if inter-branch accounts are used.
+     *
+     * @param int|null $branchId  null = consolidated
      */
-    public function getBalanceSheet(Carbon $asOf, float $netIncome = 0.0): array
+    public function getBalanceSheet(Carbon $asOf, float $netIncome = 0.0, ?int $branchId = null): array
     {
         $accounts = Account::where('is_active', true)
             ->whereIn('type', ['asset', 'liability', 'equity'])
@@ -149,6 +160,7 @@ class FinancialStatementService
         $balances = DB::table('journal_entry_lines as jel')
             ->join('journal_entries as je', 'jel.journal_entry_id', '=', 'je.id')
             ->whereDate('je.entry_date', '<=', $asOf->toDateString())
+            ->when($branchId, fn($q) => $q->where('je.branch_id', $branchId))
             ->whereIn('jel.account_id', $accounts->pluck('id'))
             ->groupBy('jel.account_id')
             ->selectRaw('jel.account_id, SUM(jel.debit) as total_debit, SUM(jel.credit) as total_credit')
@@ -172,48 +184,35 @@ class FinancialStatementService
                 default               => 0.0,
             };
 
-            if (abs($balance) < 0.001) {
-                continue;
-            }
+            if (abs($balance) < 0.001) continue;
 
             $code    = (int) $account->code;
             $subType = $account->sub_type;
 
             if ($account->type === 'asset') {
-                $isFixed = $subType === 'fixed_asset'
-                    || ($subType === null && $code >= 1500);
-                if ($isFixed) {
-                    $fixedAssets[] = ['account' => $account, 'amount' => $balance];
-                } else {
-                    $currentAssets[] = ['account' => $account, 'amount' => $balance];
-                }
+                $isFixed = $subType === 'fixed_asset' || ($subType === null && $code >= 1500);
+                if ($isFixed) { $fixedAssets[]   = ['account' => $account, 'amount' => $balance]; }
+                else          { $currentAssets[] = ['account' => $account, 'amount' => $balance]; }
             } elseif ($account->type === 'liability') {
-                $isLongTerm = $subType === 'long_term_liability'
-                    || ($subType === null && $code >= 2500);
-                if ($isLongTerm) {
-                    $longTermLiabilities[] = ['account' => $account, 'amount' => $balance];
-                } else {
-                    $currentLiabilities[] = ['account' => $account, 'amount' => $balance];
-                }
+                $isLongTerm = $subType === 'long_term_liability' || ($subType === null && $code >= 2500);
+                if ($isLongTerm) { $longTermLiabilities[] = ['account' => $account, 'amount' => $balance]; }
+                else             { $currentLiabilities[]  = ['account' => $account, 'amount' => $balance]; }
             } elseif ($account->type === 'equity') {
                 $equityAccounts[] = ['account' => $account, 'amount' => $balance];
             }
         }
 
-        $totalCurrentAssets      = collect($currentAssets)->sum('amount');
-        $totalFixedAssets        = collect($fixedAssets)->sum('amount');
-        $totalAssets             = $totalCurrentAssets + $totalFixedAssets;
-
+        $totalCurrentAssets       = collect($currentAssets)->sum('amount');
+        $totalFixedAssets         = collect($fixedAssets)->sum('amount');
+        $totalAssets              = $totalCurrentAssets + $totalFixedAssets;
         $totalCurrentLiabilities  = collect($currentLiabilities)->sum('amount');
         $totalLongTermLiabilities = collect($longTermLiabilities)->sum('amount');
         $totalLiabilities         = $totalCurrentLiabilities + $totalLongTermLiabilities;
-
-        $totalEquityAccounts = collect($equityAccounts)->sum('amount');
-        $totalEquity         = $totalEquityAccounts + $netIncome;
-        $totalLiabAndEquity  = $totalLiabilities + $totalEquity;
-
-        $isBalanced = abs($totalAssets - $totalLiabAndEquity) < 0.01;
-        $difference = $totalAssets - $totalLiabAndEquity;
+        $totalEquityAccounts      = collect($equityAccounts)->sum('amount');
+        $totalEquity              = $totalEquityAccounts + $netIncome;
+        $totalLiabAndEquity       = $totalLiabilities + $totalEquity;
+        $isBalanced               = abs($totalAssets - $totalLiabAndEquity) < 0.01;
+        $difference               = $totalAssets - $totalLiabAndEquity;
 
         return compact(
             'currentAssets', 'fixedAssets',

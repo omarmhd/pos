@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Branch;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -16,9 +17,17 @@ class LedgerController extends Controller
 
     public function index(Request $request)
     {
+        $branchId = $request->filled('branch_id') ? (int) $request->input('branch_id') : null;
+
         if ($request->ajax()) {
             $query = DB::table('accounts as a')
                 ->leftJoin('journal_entry_lines as jel', 'a.id', '=', 'jel.account_id')
+                ->leftJoin('journal_entries as je', function ($join) use ($branchId) {
+                    $join->on('jel.journal_entry_id', '=', 'je.id');
+                    if ($branchId) {
+                        $join->where('je.branch_id', $branchId);
+                    }
+                })
                 ->selectRaw('a.id, a.code, a.name, a.type,
                              COALESCE(SUM(jel.debit),  0) as total_debit,
                              COALESCE(SUM(jel.credit), 0) as total_credit')
@@ -50,9 +59,10 @@ class LedgerController extends Controller
                         . ($net < 0 ? ' (م)' : '')
                         . '</span>';
                 })
-                ->addColumn('action', function ($row) {
-                    return '<a href="' . route('accounting.ledger.show', $row->id) . '"
-                               class="btn btn-sm btn-outline-primary">
+                ->addColumn('action', function ($row) use ($branchId) {
+                    $url = route('accounting.ledger.show', $row->id)
+                         . ($branchId ? '?branch_id=' . $branchId : '');
+                    return '<a href="' . $url . '" class="btn btn-sm btn-outline-primary">
                                <i class="bi bi-eye"></i> تفاصيل
                             </a>';
                 })
@@ -60,13 +70,18 @@ class LedgerController extends Controller
                 ->make(true);
         }
 
-        return view('accounting.ledger_index');
+        $branches = Branch::where('is_active', true)->orderBy('name')->get(['id', 'name', 'code']);
+        return view('accounting.ledger_index', compact('branches', 'branchId'));
     }
 
     public function show(Request $request, int $accountId)
     {
-        $account = DB::table('accounts')->where('id', $accountId)->first();
+        $account  = DB::table('accounts')->where('id', $accountId)->first();
         abort_if(!$account, 404);
+
+        $branchId = $request->filled('branch_id') ? (int) $request->input('branch_id') : null;
+        $branches = Branch::where('is_active', true)->orderBy('name')->get(['id', 'name', 'code']);
+        $branch   = $branchId ? Branch::find($branchId) : null;
 
         $dateFrom = $request->filled('date_from')
             ? Carbon::parse($request->input('date_from'))->startOfDay()
@@ -82,11 +97,12 @@ class LedgerController extends Controller
                 ->join('journal_entries as je', 'jel.journal_entry_id', '=', 'je.id')
                 ->where('jel.account_id', $accountId)
                 ->whereDate('je.entry_date', '<', $dateFrom->toDateString())
+                ->when($branchId, fn($q) => $q->where('je.branch_id', $branchId))
                 ->selectRaw('SUM(jel.debit) as d, SUM(jel.credit) as c')
                 ->first();
             $d = (float)($ob->d ?? 0);
             $c = (float)($ob->c ?? 0);
-            $creditNormal = in_array($account->type, ['liability', 'equity', 'revenue']);
+            $creditNormal   = in_array($account->type, ['liability', 'equity', 'revenue']);
             $openingBalance = $creditNormal ? ($c - $d) : ($d - $c);
         }
 
@@ -94,40 +110,37 @@ class LedgerController extends Controller
         $linesQuery = DB::table('journal_entry_lines as jel')
             ->join('journal_entries as je', 'jel.journal_entry_id', '=', 'je.id')
             ->where('jel.account_id', $accountId)
+            ->when($branchId, fn($q) => $q->where('je.branch_id', $branchId))
             ->orderBy('je.entry_date')
             ->orderBy('jel.id')
             ->select(
                 'jel.id', 'jel.debit', 'jel.credit', 'jel.line_description',
-                'je.id as journal_entry_id', 'je.entry_number', 'je.entry_date', 'je.description as je_description'
+                'je.id as journal_entry_id', 'je.entry_number', 'je.entry_date',
+                'je.description as je_description', 'je.branch_id'
             );
 
-        if ($dateFrom) {
-            $linesQuery->whereDate('je.entry_date', '>=', $dateFrom->toDateString());
-        }
-        if ($dateTo) {
-            $linesQuery->whereDate('je.entry_date', '<=', $dateTo->toDateString());
-        }
+        if ($dateFrom) $linesQuery->whereDate('je.entry_date', '>=', $dateFrom->toDateString());
+        if ($dateTo)   $linesQuery->whereDate('je.entry_date', '<=', $dateTo->toDateString());
 
         $allLines = $linesQuery->get();
 
-        // Compute running balance
         $creditNormal = in_array($account->type, ['liability', 'equity', 'revenue']);
-        $running = $openingBalance;
-        $items = $allLines->map(function ($line) use ($creditNormal, &$running) {
+        $running      = $openingBalance;
+        $items        = $allLines->map(function ($line) use ($creditNormal, &$running) {
             $running += $creditNormal
                 ? ((float)$line->credit - (float)$line->debit)
                 : ((float)$line->debit  - (float)$line->credit);
             return (object) array_merge((array) $line, ['running_balance' => $running]);
         });
 
-        // Totals for the period
-        $periodDebit  = $allLines->sum(fn($l) => (float)$l->debit);
-        $periodCredit = $allLines->sum(fn($l) => (float)$l->credit);
+        $periodDebit    = $allLines->sum(fn($l) => (float)$l->debit);
+        $periodCredit   = $allLines->sum(fn($l) => (float)$l->credit);
         $closingBalance = $running;
 
         return view('accounting.ledger_show', compact(
             'account', 'items', 'openingBalance', 'closingBalance',
-            'periodDebit', 'periodCredit', 'dateFrom', 'dateTo'
+            'periodDebit', 'periodCredit', 'dateFrom', 'dateTo',
+            'branches', 'branchId', 'branch'
         ));
     }
 }

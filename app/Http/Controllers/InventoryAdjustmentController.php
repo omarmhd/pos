@@ -8,6 +8,8 @@ use App\Models\JournalEntry;
 use App\Models\JournalEntryLine;
 use App\Models\Product;
 use App\Models\Setting;
+use App\Models\Warehouse;
+use App\Services\WarehouseService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -40,7 +42,13 @@ class InventoryAdjustmentController extends Controller
 
     public function create()
     {
-        return view('inventory.adjustments.create');
+        $warehouses = Warehouse::where('is_active', true)
+            ->with('branch:id,name')
+            ->orderBy('is_default', 'desc')
+            ->orderBy('name')
+            ->get(['id', 'name', 'code', 'branch_id', 'is_default']);
+        $defaultWarehouseId = WarehouseService::getDefault()->id;
+        return view('inventory.adjustments.create', compact('warehouses', 'defaultWarehouseId'));
     }
 
     /** AJAX product search for adjustment create form */
@@ -62,15 +70,23 @@ class InventoryAdjustmentController extends Controller
     {
         $data = $request->validate([
             'product_id'      => 'required|exists:products,id',
+            'warehouse_id'    => 'nullable|exists:warehouses,id',
             'quantity_after'  => 'required|numeric|min:0',
             'reason'          => 'required|in:' . implode(',', array_keys(InventoryAdjustment::$reasons)),
             'notes'           => 'nullable|string|max:500',
         ]);
 
-        DB::transaction(function () use ($data) {
+        $warehouseId = WarehouseService::resolveId($data['warehouse_id'] ?? null);
+
+        DB::transaction(function () use ($data, $warehouseId) {
             $product = Product::lockForUpdate()->findOrFail($data['product_id']);
 
-            $qBefore = (float) $product->quantity;
+            // For per-warehouse adjustment: use stock_level quantity as qBefore
+            $stockLevel = \App\Models\StockLevel::where('warehouse_id', $warehouseId)
+                ->where('product_id', $product->id)
+                ->first();
+
+            $qBefore = $stockLevel ? (float) $stockLevel->quantity : (float) $product->quantity;
             $qAfter  = (float) $data['quantity_after'];
             $change  = $qAfter - $qBefore;
             $cost    = (float) $product->cost_price;
@@ -78,6 +94,7 @@ class InventoryAdjustmentController extends Controller
 
             $adj = InventoryAdjustment::create([
                 'product_id'     => $product->id,
+                'warehouse_id'   => $warehouseId,
                 'quantity_before'=> $qBefore,
                 'quantity_after' => $qAfter,
                 'quantity_change'=> $change,
@@ -88,8 +105,13 @@ class InventoryAdjustmentController extends Controller
                 'created_by'     => Auth::id(),
             ]);
 
-            // Update product quantity
-            $product->update(['quantity' => $qAfter]);
+            // WarehouseService::in/out updates stock_levels AND recomputes products.quantity.
+            // products.quantity is now a CACHE — do NOT set it directly here.
+            if ($change >= 0) {
+                WarehouseService::in($warehouseId, $product->id, $change);
+            } elseif ($change < 0) {
+                WarehouseService::out($warehouseId, $product->id, abs($change));
+            }
 
             // Create GL journal entry if there is a value difference
             if ($total > 0) {

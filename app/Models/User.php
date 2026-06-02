@@ -31,6 +31,11 @@ class User extends Authenticatable
         'is_active' => 'boolean'
     ];
 
+    public function branch()
+    {
+        return $this->belongsTo(Branch::class);
+    }
+
     public function purchases()
     {
         return $this->hasMany(Purchase::class);

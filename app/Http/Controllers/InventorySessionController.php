@@ -240,11 +240,41 @@ class InventorySessionController extends Controller
                 $item->difference < 0 ? $totalShortage += $amount : $totalSurplus += $amount;
             }
 
-            // ── 1. Batch-update product quantities (one query per chunk of 500) ──
-            foreach (array_chunk($productUpdates, 500, true) as $chunk) {
-                foreach ($chunk as $pid => $qty) {
-                    DB::table('products')->where('id', $pid)->update(['quantity' => $qty]);
+            // ── 1. Lock products before bulk update (prevent concurrent race conditions) ──
+            $allProductIds = array_keys($productUpdates);
+            if (!empty($allProductIds)) {
+                \App\Models\Product::whereIn('id', $allProductIds)->lockForUpdate()->get();
+            }
+
+            // ── 2. Batch-update stock_levels (SET to counted quantity) ──
+            // inventory_sessions.warehouse_id will be added in Phase 3.
+            // For now: use default warehouse.
+            $defaultWarehouseId = (int) \App\Models\Setting::get('default_warehouse_id');
+
+            if ($defaultWarehouseId && !empty($productUpdates)) {
+                foreach (array_chunk($productUpdates, 500, true) as $chunk) {
+                    foreach ($chunk as $pid => $qty) {
+                        // SET stock_levels to the physically counted quantity
+                        DB::statement('
+                            INSERT INTO stock_levels (warehouse_id, product_id, quantity, min_quantity, created_at, updated_at)
+                            VALUES (?, ?, ?, 5, NOW(), NOW())
+                            ON DUPLICATE KEY UPDATE quantity = VALUES(quantity), updated_at = NOW()
+                        ', [$defaultWarehouseId, $pid, $qty]);
+                    }
                 }
+
+                // Recompute products.quantity for ALL affected products in one query.
+                // products.quantity = cache = SUM(stock_levels.quantity per product)
+                $pidList = implode(',', array_map('intval', array_keys($productUpdates)));
+                DB::statement("
+                    UPDATE products p
+                    SET p.quantity = (
+                        SELECT COALESCE(SUM(sl.quantity), 0)
+                        FROM stock_levels sl
+                        WHERE sl.product_id = p.id
+                    )
+                    WHERE p.id IN ({$pidList})
+                ");
             }
 
             // ── 2. Batch-insert adjustments ──

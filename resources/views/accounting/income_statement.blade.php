@@ -18,6 +18,7 @@
                     <input type="date" name="to" class="form-control form-control-sm"
                            value="{{ $to->toDateString() }}">
                 </div>
+                @include('components.branch-filter')
                 <div class="col-auto">
                     <button type="submit" class="btn btn-primary btn-sm">
                         <i class="bi bi-funnel"></i> عرض
@@ -27,7 +28,8 @@
                     </button>
                 </div>
                 <div class="col-auto ms-auto">
-                    <a href="{{ route('accounting.balance-sheet') }}" class="btn btn-outline-primary btn-sm">
+                    <a href="{{ route('accounting.balance-sheet') . (isset($branchId) && $branchId ? '?branch_id='.$branchId : '') }}"
+                       class="btn btn-outline-primary btn-sm">
                         <i class="bi bi-layout-split"></i> الميزانية العمومية
                     </a>
                 </div>
@@ -41,10 +43,18 @@
         {{-- Letterhead --}}
         <div class="card-header bg-dark text-white text-center py-3">
             <div class="fw-bold fs-5">{{ \App\Models\Setting::get('store_name', 'المتجر') }}</div>
-            <div class="fs-6 mt-1"><i class="bi bi-bar-chart-line me-1"></i>قائمة الدخل</div>
+            <div class="fs-6 mt-1">
+                <i class="bi bi-bar-chart-line me-1"></i>قائمة الدخل
+                @if(isset($branch) && $branch)
+                    — <span class="badge bg-primary">{{ $branch->name }}</span>
+                @endif
+            </div>
             <div class="small opacity-75 mt-1">
                 للفترة من <strong>{{ $from->format('Y/m/d') }}</strong>
                 إلى <strong>{{ $to->format('Y/m/d') }}</strong>
+                @if(!isset($branchId) || !$branchId)
+                    <span class="opacity-50">(جميع الفروع - موحد)</span>
+                @endif
             </div>
         </div>
 

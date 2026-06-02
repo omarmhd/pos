@@ -9,12 +9,18 @@ class Customer extends Model
     protected $fillable = [
         'name', 'phone', 'email', 'address',
         'credit_limit', 'notes', 'is_active',
+        'price_list_id',
     ];
 
     protected $casts = [
         'credit_limit' => 'decimal:2',
         'is_active'    => 'boolean',
     ];
+
+    public function priceList()
+    {
+        return $this->belongsTo(PriceList::class);
+    }
 
     public function sales()
     {

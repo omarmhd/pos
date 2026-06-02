@@ -28,6 +28,11 @@
                     </div>
                     <div class="col-md-6 text-end">
                         <p class="mb-1"><strong>رقم الفاتورة:</strong> {{ $purchase->invoice_number }}</p>
+                        @if($purchase->supplier_invoice_number)
+                        <p class="mb-1"><strong>رقم فاتورة المورد:</strong>
+                            <span class="text-primary fw-semibold">{{ $purchase->supplier_invoice_number }}</span>
+                        </p>
+                        @endif
                         <p class="mb-1"><strong>التاريخ:</strong> {{ $purchase->created_at->format('Y-m-d H:i') }}</p>
                         <p class="mb-1"><strong>المستخدم:</strong> {{ $purchase->user->name }}</p>
                         <p class="mb-0">

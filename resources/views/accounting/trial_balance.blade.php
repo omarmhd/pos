@@ -13,7 +13,14 @@ $typeMap = [
 
 @section('content')
 <div class="d-flex justify-content-between align-items-center mb-3">
-    <h4 class="mb-0"><i class="bi bi-table"></i> ميزان المراجعة</h4>
+    <h4 class="mb-0">
+        <i class="bi bi-table"></i> ميزان المراجعة
+        @if(isset($branch) && $branch)
+            <span class="badge bg-primary ms-2 fs-6">{{ $branch->name }}</span>
+        @else
+            <span class="badge bg-secondary ms-2">جميع الفروع (موحد)</span>
+        @endif
+    </h4>
     <a href="{{ route('accounting.index') }}" class="btn btn-outline-secondary btn-sm">
         <i class="bi bi-arrow-right"></i> لوحة المحاسبة
     </a>
@@ -28,6 +35,7 @@ $typeMap = [
                 <input type="date" name="as_of" class="form-control form-control-sm"
                        value="{{ $asOf->toDateString() }}">
             </div>
+            @include('components.branch-filter')
             <div class="col-auto">
                 <button type="submit" class="btn btn-primary btn-sm">
                     <i class="bi bi-funnel"></i> عرض

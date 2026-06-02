@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Branch;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -15,16 +16,21 @@ class TrialBalanceController extends Controller
 
     public function index(Request $request)
     {
-        $asOf = $request->filled('as_of')
+        $asOf     = $request->filled('as_of')
             ? Carbon::parse($request->input('as_of'))->endOfDay()
             : now()->endOfDay();
+        $branchId = $request->filled('branch_id') ? (int) $request->input('branch_id') : null;
+        $branches = Branch::where('is_active', true)->orderBy('name')->get(['id', 'name', 'code']);
+        $branch   = $branchId ? Branch::find($branchId) : null;
 
-        // One JOIN query — no N+1
         $raw = DB::table('accounts as a')
             ->leftJoin('journal_entry_lines as jel', 'a.id', '=', 'jel.account_id')
-            ->leftJoin('journal_entries as je', function ($join) use ($asOf) {
+            ->leftJoin('journal_entries as je', function ($join) use ($asOf, $branchId) {
                 $join->on('jel.journal_entry_id', '=', 'je.id')
                      ->whereDate('je.entry_date', '<=', $asOf->toDateString());
+                if ($branchId) {
+                    $join->where('je.branch_id', $branchId);
+                }
             })
             ->where('a.is_active', true)
             ->groupBy('a.id', 'a.code', 'a.name', 'a.type')
@@ -45,7 +51,6 @@ class TrialBalanceController extends Controller
                     ? ((float)$r->raw_credit - (float)$r->raw_debit)
                     : ((float)$r->raw_debit  - (float)$r->raw_credit);
 
-                // Positive net → normal side; negative → abnormal (opposite column)
                 if ($net >= 0) {
                     $debitCol  = $creditNormal ? 0.0 : $net;
                     $creditCol = $creditNormal ? $net : 0.0;
@@ -71,7 +76,9 @@ class TrialBalanceController extends Controller
         $isBalanced = abs($totalDebitCol - $totalCreditCol) < 0.01;
 
         return view('accounting.trial_balance', compact(
-            'rows', 'totalDebitCol', 'totalCreditCol', 'asOf', 'isBalanced'
+            'rows', 'totalDebitCol', 'totalCreditCol',
+            'asOf', 'isBalanced',
+            'branches', 'branchId', 'branch'
         ));
     }
 }

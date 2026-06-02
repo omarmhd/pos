@@ -10,7 +10,7 @@ class PayrollItem extends Model
         'payroll_run_id', 'employee_id',
         'base_salary', 'housing_allowance', 'transport_allowance',
         'other_allowances', 'overtime_pay',
-        'absence_deduction', 'other_deductions',
+        'absence_deduction', 'other_deductions', 'loan_deduction',
         'gross_pay', 'total_deductions', 'net_pay',
         'days_worked', 'days_absent', 'overtime_hours', 'notes',
     ];
@@ -23,6 +23,7 @@ class PayrollItem extends Model
         'overtime_pay'       => 'decimal:2',
         'absence_deduction'  => 'decimal:2',
         'other_deductions'   => 'decimal:2',
+        'loan_deduction'     => 'decimal:2',
         'gross_pay'          => 'decimal:2',
         'total_deductions'   => 'decimal:2',
         'net_pay'            => 'decimal:2',

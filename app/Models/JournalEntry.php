@@ -17,6 +17,7 @@ class JournalEntry extends Model
         'source_id',
         'description',
         'user_id',
+        'branch_id',
         'posted_at',
     ];
 
@@ -28,6 +29,11 @@ class JournalEntry extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function branch()
+    {
+        return $this->belongsTo(Branch::class);
     }
 
     public function lines()

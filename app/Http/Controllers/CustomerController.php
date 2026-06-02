@@ -62,15 +62,17 @@ class CustomerController extends Controller
     public function store(Request $request)
     {
         $data = $request->validate([
-            'name'         => 'required|string|max:255',
-            'phone'        => 'nullable|string|max:30',
-            'email'        => 'nullable|email|max:255',
-            'address'      => 'nullable|string',
-            'credit_limit' => 'nullable|numeric|min:0',
-            'notes'        => 'nullable|string',
+            'name'          => 'required|string|max:255',
+            'phone'         => 'nullable|string|max:30',
+            'email'         => 'nullable|email|max:255',
+            'address'       => 'nullable|string',
+            'credit_limit'  => 'nullable|numeric|min:0',
+            'notes'         => 'nullable|string',
+            'price_list_id' => 'nullable|exists:price_lists,id',
         ]);
 
-        $data['credit_limit'] = $data['credit_limit'] ?? 0;
+        $data['credit_limit']  = $data['credit_limit'] ?? 0;
+        $data['price_list_id'] = $data['price_list_id'] ?: null;
         Customer::create($data);
 
         return redirect()->route('customers.index')->with('success', 'تم إضافة العميل بنجاح');
@@ -115,16 +117,18 @@ class CustomerController extends Controller
     public function update(Request $request, Customer $customer)
     {
         $data = $request->validate([
-            'name'         => 'required|string|max:255',
-            'phone'        => 'nullable|string|max:30',
-            'email'        => 'nullable|email|max:255',
-            'address'      => 'nullable|string',
-            'credit_limit' => 'nullable|numeric|min:0',
-            'notes'        => 'nullable|string',
-            'is_active'    => 'nullable|boolean',
+            'name'          => 'required|string|max:255',
+            'phone'         => 'nullable|string|max:30',
+            'email'         => 'nullable|email|max:255',
+            'address'       => 'nullable|string',
+            'credit_limit'  => 'nullable|numeric|min:0',
+            'notes'         => 'nullable|string',
+            'is_active'     => 'nullable|boolean',
+            'price_list_id' => 'nullable|exists:price_lists,id',
         ]);
 
-        $data['is_active'] = $request->boolean('is_active');
+        $data['is_active']     = $request->boolean('is_active');
+        $data['price_list_id'] = $data['price_list_id'] ?: null;
         $customer->update($data);
 
         return redirect()->route('customers.show', $customer)->with('success', 'تم تحديث بيانات العميل');

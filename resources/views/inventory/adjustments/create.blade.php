@@ -17,6 +17,27 @@
         <form method="POST" action="{{ route('inventory.adjustments.store') }}" id="adjForm">
             @csrf
 
+            {{-- Warehouse selector (only shown when >1 warehouse) --}}
+            @if(isset($warehouses) && $warehouses->count() > 1)
+            <div class="mb-3">
+                <label class="form-label fw-bold">
+                    <i class="bi bi-archive text-success me-1"></i>المخزن
+                </label>
+                <select name="warehouse_id" id="warehouseSelect" class="form-select">
+                    @foreach($warehouses as $wh)
+                        <option value="{{ $wh->id }}"
+                            {{ old('warehouse_id', $defaultWarehouseId ?? '') == $wh->id ? 'selected' : '' }}>
+                            {{ $wh->name }}@if($wh->branch) ({{ $wh->branch->name }})@endif
+                            @if($wh->is_default) ⭐@endif
+                        </option>
+                    @endforeach
+                </select>
+                <div class="form-text">الكمية الحالية ستُعرض بناءً على رصيد المخزن المحدد</div>
+            </div>
+            @else
+            <input type="hidden" name="warehouse_id" value="{{ $defaultWarehouseId ?? '' }}">
+            @endif
+
             {{-- AJAX product search (no preload of all products) --}}
             <div class="mb-3">
                 <label class="form-label fw-bold">بحث بالاسم أو الباركود <span class="text-danger">*</span></label>

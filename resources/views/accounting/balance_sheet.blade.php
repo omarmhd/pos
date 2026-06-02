@@ -14,6 +14,7 @@
                     <input type="date" name="as_of" class="form-control form-control-sm"
                            value="{{ $asOf->toDateString() }}">
                 </div>
+                @include('components.branch-filter')
                 <div class="col-auto">
                     <button type="submit" class="btn btn-primary btn-sm">
                         <i class="bi bi-funnel"></i> عرض
@@ -23,7 +24,8 @@
                     </button>
                 </div>
                 <div class="col-auto ms-auto">
-                    <a href="{{ route('accounting.income-statement') }}" class="btn btn-outline-success btn-sm">
+                    <a href="{{ route('accounting.income-statement') . (isset($branchId) && $branchId ? '?branch_id='.$branchId : '') }}"
+                       class="btn btn-outline-success btn-sm">
                         <i class="bi bi-bar-chart-line"></i> قائمة الدخل
                     </a>
                 </div>
@@ -55,7 +57,9 @@
     {{-- Letterhead (print only) --}}
     <div class="text-center mb-3 d-none print-only">
         <h4>{{ \App\Models\Setting::get('store_name', 'المتجر') }}</h4>
-        <h5>الميزانية العمومية بتاريخ {{ $asOf->format('Y/m/d') }}</h5>
+        <h5>الميزانية العمومية بتاريخ {{ $asOf->format('Y/m/d') }}
+            @if(isset($branch) && $branch) — {{ $branch->name }} @endif
+        </h5>
     </div>
 
     @php

@@ -3,11 +3,42 @@
 
 @section('content')
 <div class="d-flex justify-content-between align-items-center mb-3">
-    <h4 class="mb-0"><i class="bi bi-journal-text"></i> دفتر الأستاذ العام</h4>
+    <h4 class="mb-0">
+        <i class="bi bi-journal-text"></i> دفتر الأستاذ العام
+        @if(isset($branchId) && $branchId)
+            @php $selectedBranch = $branches->firstWhere('id', $branchId); @endphp
+            @if($selectedBranch)
+                <span class="badge bg-primary ms-2">{{ $selectedBranch->name }}</span>
+            @endif
+        @else
+            <span class="badge bg-secondary ms-2 small">جميع الفروع (موحد)</span>
+        @endif
+    </h4>
     <a href="{{ route('accounting.index') }}" class="btn btn-outline-secondary btn-sm">
         <i class="bi bi-arrow-right"></i> لوحة المحاسبة
     </a>
 </div>
+
+{{-- Branch filter --}}
+@if(isset($branches) && $branches->count() >= 1)
+<div class="card mb-3 border-0 shadow-sm no-print">
+    <div class="card-body py-2">
+        <form method="GET" class="row g-2 align-items-end">
+            @include('components.branch-filter')
+            <div class="col-auto">
+                <button type="submit" class="btn btn-primary btn-sm">
+                    <i class="bi bi-funnel"></i> عرض
+                </button>
+                @if(isset($branchId) && $branchId)
+                <a href="{{ route('accounting.ledger.index') }}" class="btn btn-outline-secondary btn-sm">
+                    الكل
+                </a>
+                @endif
+            </div>
+        </form>
+    </div>
+</div>
+@endif
 
 <div class="card border-0 shadow-sm">
     <div class="card-body p-0">
@@ -33,7 +64,14 @@
 $('#ledger-table').DataTable($.extend(true, {}, window.dtDefaults, {
     processing: true,
     serverSide: true,
-    ajax: { url: '{{ route('accounting.ledger.index') }}' },
+    ajax: {
+        url: '{{ route('accounting.ledger.index') }}',
+        data: function(d) {
+            @if(isset($branchId) && $branchId)
+            d.branch_id = {{ $branchId }};
+            @endif
+        }
+    },
     order: [[0, 'asc']],
     columns: [
         { data: 'code',        name: 'a.code' },

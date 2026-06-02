@@ -6,10 +6,13 @@ use App\Models\Account;
 use App\Models\JournalEntry;
 use App\Models\JournalEntryLine;
 use App\Models\CustomerDeposit;
+use App\Models\EmployeeLoan;
 use App\Models\PaymentVoucher;
 use App\Models\Purchase;
+use App\Models\PurchaseReturn;
 use App\Models\ReceiptVoucher;
 use App\Models\Sale;
+use App\Models\SaleReturn;
 use App\Models\Setting;
 use App\Models\SupplierPayment;
 use Carbon\Carbon;
@@ -21,6 +24,35 @@ class LedgerPostingService
     private array $cache = [];
 
     // ── internal helpers ─────────────────────────────────────────────────────
+
+    /**
+     * Resolve branch_id for a journal entry from multiple fallback sources:
+     *   1. Source model warehouse → warehouse.branch_id
+     *   2. Authenticated user → user.branch_id
+     *   3. System default_branch_id setting
+     *   4. null (consolidated / single-branch company)
+     */
+    private function resolveBranchId(mixed $source = null): ?int
+    {
+        // 1. Source model has warehouse_id → derive branch from warehouse
+        if ($source && isset($source->warehouse_id) && $source->warehouse_id) {
+            $branchId = \App\Models\Warehouse::where('id', $source->warehouse_id)
+                ->value('branch_id');
+            if ($branchId) {
+                return (int) $branchId;
+            }
+        }
+
+        // 2. Authenticated user's branch
+        $user = auth()->user();
+        if ($user && $user->branch_id) {
+            return (int) $user->branch_id;
+        }
+
+        // 3. System default branch
+        $defaultId = (int) Setting::get('default_branch_id', 0);
+        return $defaultId ?: null;
+    }
 
     private function account(string $code): Account
     {
@@ -198,12 +230,158 @@ class LedgerPostingService
             'reference'   => $sale->invoice_number,
             'source_type' => Sale::class,
             'source_id'   => $sale->id,
+            'branch_id'   => $this->resolveBranchId($sale),
             'description' => 'قيد مبيعات – ' . $sale->invoice_number,
         ], $lines);
 
         $sale->update(['is_posted' => true]);
 
         return $entry;
+    }
+
+    /**
+     * مرتجع مبيعات — Sales Return
+     *
+     * cash/bank refund:
+     *   DR مردودات مبيعات (4100) = total
+     *   CR صندوق/بنك (1000/1100) = total
+     *
+     * credit note (reduces AR):
+     *   DR مردودات مبيعات (4100) = total
+     *   CR ذمم عملاء (1200)      = total
+     *
+     * Inventory reversal (all cases):
+     *   DR مخزون (1300)          = COGS
+     *   CR تكلفة بضاعة مباعة (5000) = COGS
+     */
+    public function postSaleReturn(SaleReturn $ret): JournalEntry
+    {
+        $ret->loadMissing('items.product', 'customer');
+
+        $total = round((float) $ret->total_amount, 2);
+        $cogs  = round(
+            $ret->items->sum(fn($i) => $i->quantity * (float) $i->cost_price),
+            2
+        );
+
+        $salesReturnsCode = Setting::get('account_sales_returns_code', '4200');
+        $cashCode         = Setting::get('account_cash_code',          '1000');
+        $bankCode         = Setting::get('account_bank_code',          '1100');
+        $arCode           = Setting::get('account_ar_code',            '1200');
+        $inventoryCode    = Setting::get('account_inventory_code',     '1300');
+        $cogsCode         = Setting::get('account_cogs_code',          '5000');
+
+        $customerName = $ret->customer?->name ?? 'عميل';
+
+        $lines = [];
+
+        // ── Debit: Sales Returns (contra-revenue) ──
+        $lines[] = [
+            'account_id'       => $this->account($salesReturnsCode)->id,
+            'debit'            => $total,
+            'credit'           => 0,
+            'line_description' => 'مردودات مبيعات – ' . $ret->return_number,
+        ];
+
+        // ── Credit: Cash/Bank or AR depending on refund method ──
+        if ($ret->refund_method === 'credit_note') {
+            $lines[] = [
+                'account_id'       => $this->account($arCode)->id,
+                'debit'            => 0,
+                'credit'           => $total,
+                'line_description' => 'تخفيض ذمة عميل – ' . $customerName,
+            ];
+        } else {
+            $crCode = $ret->refund_method === 'bank' ? $bankCode : $cashCode;
+            $label  = $ret->refund_method === 'bank' ? 'صرف استرداد بنكي' : 'صرف استرداد نقدي';
+            $lines[] = [
+                'account_id'       => $this->account($crCode)->id,
+                'debit'            => 0,
+                'credit'           => $total,
+                'line_description' => $label . ' – ' . ($ret->customer?->name ?? ''),
+            ];
+        }
+
+        // ── Inventory reversal (goods back in stock) ──
+        if ($cogs > 0) {
+            $lines[] = [
+                'account_id'       => $this->account($inventoryCode)->id,
+                'debit'            => $cogs,
+                'credit'           => 0,
+                'line_description' => 'إعادة بضاعة للمخزون – ' . $ret->return_number,
+            ];
+            $lines[] = [
+                'account_id'       => $this->account($cogsCode)->id,
+                'debit'            => 0,
+                'credit'           => $cogs,
+                'line_description' => 'عكس تكلفة بضاعة مباعة – ' . $ret->return_number,
+            ];
+        }
+
+        return $this->buildEntry([
+            'entry_date'  => $ret->return_date->toDateString(),
+            'reference'   => $ret->return_number,
+            'source_type' => SaleReturn::class,
+            'source_id'   => $ret->id,
+            'branch_id'   => $this->resolveBranchId($ret),
+            'description' => 'قيد مرتجع مبيعات – ' . $ret->return_number
+                             . ($ret->customer ? ' / ' . $customerName : ''),
+        ], $lines);
+    }
+
+    /**
+     * مرتجع مشتريات — Purchase Return (perpetual inventory)
+     *
+     * ap_deduction: DR AP (2000)      = total  |  CR Inventory (1300) = total
+     * cash refund:  DR Cash (1000)    = total  |  CR Inventory (1300) = total
+     * bank refund:  DR Bank (1100)    = total  |  CR Inventory (1300) = total
+     */
+    public function postPurchaseReturn(PurchaseReturn $ret): JournalEntry
+    {
+        $ret->loadMissing('items', 'supplier');
+
+        $total        = round((float) $ret->total_amount, 2);
+        $apCode       = Setting::get('account_ap_code',        '2000');
+        $cashCode     = Setting::get('account_cash_code',      '1000');
+        $bankCode     = Setting::get('account_bank_code',      '1100');
+        $inventoryCode = Setting::get('account_inventory_code', '1300');
+        $supplierName = $ret->supplier?->name ?? 'مورد';
+
+        // Debit side: what the supplier owes us (AP reduction or cash/bank inflow)
+        $drCode = match($ret->refund_method) {
+            'cash'         => $cashCode,
+            'bank'         => $bankCode,
+            default        => $apCode,   // ap_deduction
+        };
+        $drLabel = match($ret->refund_method) {
+            'cash'         => 'استرداد نقدي من مورد',
+            'bank'         => 'استرداد بنكي من مورد',
+            default        => 'تخفيض ذمة مورد – ' . $supplierName,
+        };
+
+        $lines = [
+            [
+                'account_id'       => $this->account($drCode)->id,
+                'debit'            => $total,
+                'credit'           => 0,
+                'line_description' => $drLabel,
+            ],
+            [
+                'account_id'       => $this->account($inventoryCode)->id,
+                'debit'            => 0,
+                'credit'           => $total,
+                'line_description' => 'إخراج بضاعة مرتجعة للمورد – ' . $ret->return_number,
+            ],
+        ];
+
+        return $this->buildEntry([
+            'entry_date'  => $ret->return_date->toDateString(),
+            'reference'   => $ret->return_number,
+            'source_type' => PurchaseReturn::class,
+            'source_id'   => $ret->id,
+            'branch_id'   => $this->resolveBranchId($ret),
+            'description' => 'قيد مرتجع مشتريات – ' . $ret->return_number . ' / ' . $supplierName,
+        ], $lines);
     }
 
     /**
@@ -265,6 +443,7 @@ class LedgerPostingService
             'reference'   => $purchase->invoice_number,
             'source_type' => Purchase::class,
             'source_id'   => $purchase->id,
+            'branch_id'   => $this->resolveBranchId($purchase),
             'description' => 'قيد مشتريات – ' . $purchase->invoice_number . ' / ' . $supplierName,
         ], $lines);
 
@@ -313,6 +492,7 @@ class LedgerPostingService
             'reference'   => $ref,
             'source_type' => SupplierPayment::class,
             'source_id'   => $payment->id,
+            'branch_id'   => $this->resolveBranchId($payment->purchase ?? null),
             'description' => 'سداد مورد – ' . $supplierName
                              . ($payment->purchase ? ' / فاتورة ' . $ref : ''),
         ], $lines);
@@ -358,6 +538,7 @@ class LedgerPostingService
             'reference'   => $ref,
             'source_type' => \App\Models\CustomerPayment::class,
             'source_id'   => $payment->id,
+            'branch_id'   => $this->resolveBranchId($payment->sale ?? null),
             'description' => 'تحصيل دفعة – ' . $customerName
                              . ($payment->sale ? ' / فاتورة ' . $ref : ''),
         ], $lines);
@@ -424,12 +605,34 @@ class LedgerPostingService
             'reference'   => $deposit->voucher_number,
             'source_type' => CustomerDeposit::class,
             'source_id'   => $deposit->id,
+            'branch_id'   => $this->resolveBranchId(),
             'description' => $typeLabel . ' رصيد عميل – ' . $deposit->voucher_number . ' / ' . $customerName,
         ], $lines);
 
         $deposit->update(['is_posted' => true, 'journal_entry_id' => $entry->id]);
 
         return $entry;
+    }
+
+    /**
+     * سلفة موظف — Employee Loan disbursement
+     * Lines are pre-built by the controller (DR Employee Loans / CR Cash)
+     *
+     * @param  array<array{account_id:int,debit:float,credit:float,line_description:string}> $lines
+     */
+    public function postEmployeeLoan(EmployeeLoan $loan, array $lines): JournalEntry
+    {
+        $loan->loadMissing('employee');
+        $empName = $loan->employee?->name ?? 'موظف';
+
+        return $this->buildEntry([
+            'entry_date'  => Carbon::parse($loan->loan_date),
+            'reference'   => 'LOAN-' . $loan->id,
+            'source_type' => EmployeeLoan::class,
+            'source_id'   => $loan->id,
+            'branch_id'   => $this->resolveBranchId(),
+            'description' => 'سلفة موظف – ' . $empName . ' / ' . number_format($loan->amount, 2),
+        ], $lines);
     }
 
     /**
@@ -478,6 +681,7 @@ class LedgerPostingService
             'reference'   => $voucher->voucher_number,
             'source_type' => ReceiptVoucher::class,
             'source_id'   => $voucher->id,
+            'branch_id'   => $this->resolveBranchId(),
             'description' => 'سند قبض – ' . $voucher->voucher_number . ' / ' . $voucher->received_from,
         ], $lines);
 
@@ -532,6 +736,7 @@ class LedgerPostingService
             'reference'   => $voucher->voucher_number,
             'source_type' => PaymentVoucher::class,
             'source_id'   => $voucher->id,
+            'branch_id'   => $this->resolveBranchId(),
             'description' => 'سند صرف – ' . $voucher->voucher_number . ' / ' . $voucher->paid_to,
         ], $lines);
 

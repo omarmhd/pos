@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Account;
 use App\Models\Attendance;
+use App\Models\EmployeeLoan;
 use App\Services\PdfService;
 use App\Models\Employee;
 use App\Models\JournalEntry;
@@ -125,9 +126,10 @@ class PayrollController extends Controller
         }
 
         DB::transaction(function () use ($payrollRun) {
-            $salaryCode  = Setting::get('account_salaries_code',         '6200');
-            $cashCode    = Setting::get('account_cash_code',             '1000');
-            $payableCode = Setting::get('account_salaries_payable_code', '2100');
+            $salaryCode  = Setting::get('account_salaries_code',           '6200');
+            $cashCode    = Setting::get('account_cash_code',               '1000');
+            $payableCode = Setting::get('account_salaries_payable_code',   '2100');
+            $loanCode    = Setting::get('account_employee_loans_code',     '1250');
 
             $resolveAccount = function (string $code): Account {
                 $account = Account::where('code', $code)
@@ -135,44 +137,55 @@ class PayrollController extends Controller
                     ->where('is_header', false)
                     ->first();
                 if (!$account) {
-                    throw new \RuntimeException("حساب الرواتب غير موجود أو غير نشط: كود [{$code}]");
+                    throw new \RuntimeException("حساب غير موجود أو غير نشط: [{$code}]");
                 }
                 return $account;
             };
 
-            $salaryAccount  = $resolveAccount($salaryCode);
-            $cashAccount    = $resolveAccount($cashCode);
-            $gross   = round((float) $payrollRun->total_gross, 2);
-            $net     = round((float) $payrollRun->total_net,   2);
-            $withheld = round($gross - $net, 2);
+            $payrollRun->loadMissing('items');
+
+            $gross          = round((float) $payrollRun->total_gross, 2);
+            $net            = round((float) $payrollRun->total_net,   2);
+            $totalLoanDeduct= round($payrollRun->items->sum('loan_deduction'), 2);
+
+            // Social insurance + absence = withheld (excludes loan deduction)
+            $siAndOther = round($gross - $net - $totalLoanDeduct, 2);
 
             $lines = [
                 [
-                    'account_id'       => $salaryAccount->id,
+                    'account_id'       => $resolveAccount($salaryCode)->id,
                     'debit'            => $gross,
                     'credit'           => 0,
                     'line_description' => 'إجمالي الرواتب – ' . $payrollRun->periodLabel(),
                 ],
                 [
-                    'account_id'       => $cashAccount->id,
+                    'account_id'       => $resolveAccount($cashCode)->id,
                     'debit'            => 0,
                     'credit'           => $net,
-                    'line_description' => 'صرف رواتب صافي – ' . $payrollRun->periodLabel(),
+                    'line_description' => 'صرف صافي الرواتب – ' . $payrollRun->periodLabel(),
                 ],
             ];
 
-            // CR Salaries Payable only when withheld > 0
-            if ($withheld > 0) {
-                $payableAccount = $resolveAccount($payableCode);
+            // CR رواتب مستحقة (تأمين اجتماعي + غيره)
+            if ($siAndOther > 0.005) {
                 $lines[] = [
-                    'account_id'       => $payableAccount->id,
+                    'account_id'       => $resolveAccount($payableCode)->id,
                     'debit'            => 0,
-                    'credit'           => $withheld,
-                    'line_description' => 'استقطاعات الرواتب – ' . $payrollRun->periodLabel(),
+                    'credit'           => $siAndOther,
+                    'line_description' => 'تأمين اجتماعي وخصومات – ' . $payrollRun->periodLabel(),
                 ];
             }
 
-            // Validate balance before persisting
+            // CR سلف الموظفين (يُقلّل الرصيد المدين على الموظف)
+            if ($totalLoanDeduct > 0.005) {
+                $lines[] = [
+                    'account_id'       => $resolveAccount($loanCode)->id,
+                    'debit'            => 0,
+                    'credit'           => $totalLoanDeduct,
+                    'line_description' => 'استقطاع أقساط سلف – ' . $payrollRun->periodLabel(),
+                ];
+            }
+
             $debits  = round(array_sum(array_column($lines, 'debit')),  2);
             $credits = round(array_sum(array_column($lines, 'credit')), 2);
             if (abs($debits - $credits) > 0.005) {
@@ -191,6 +204,35 @@ class PayrollController extends Controller
 
             foreach ($lines as $line) {
                 JournalEntryLine::create(array_merge(['journal_entry_id' => $entry->id], $line));
+            }
+
+            // ── تحديث أرصدة السلف بعد الاستقطاع ──────────────────────────
+            foreach ($payrollRun->items as $item) {
+                if ($item->loan_deduction <= 0) continue;
+
+                $activeLoans = EmployeeLoan::where('employee_id', $item->employee_id)
+                    ->where('status', 'active')
+                    ->where('remaining_balance', '>', 0)
+                    ->orderBy('loan_date')        // FIFO — سدّد الأقدم أولاً
+                    ->get();
+
+                $toDeduct = (float) $item->loan_deduction;
+
+                foreach ($activeLoans as $loan) {
+                    if ($toDeduct <= 0) break;
+
+                    $deductThisLoan = min($toDeduct, (float) $loan->remaining_balance);
+                    $newBalance     = round((float) $loan->remaining_balance - $deductThisLoan, 2);
+                    $newPaid        = $loan->installments_paid + 1;
+
+                    $loan->update([
+                        'remaining_balance'  => $newBalance,
+                        'installments_paid'  => $newPaid,
+                        'status'             => $newBalance <= 0.005 ? 'settled' : 'active',
+                    ]);
+
+                    $toDeduct -= $deductThisLoan;
+                }
             }
 
             $payrollRun->update([
@@ -266,7 +308,13 @@ class PayrollController extends Controller
             // Social insurance employee contribution (on gross pay)
             $siDeduction = round($grossPay * $siEmployeePct / 100, 2);
 
-            $totalDeductions = $absenceDeduction + $siDeduction;
+            // ── Loan installment deduction ──────────────────────────────────
+            $loanDeduction = round($emp->pendingLoanInstallment(), 2);
+            // Cap loan deduction so net pay >= 0
+            $netBeforeLoans  = max(0.0, $grossPay - $absenceDeduction - $siDeduction);
+            $loanDeduction   = min($loanDeduction, $netBeforeLoans);
+
+            $totalDeductions = $absenceDeduction + $siDeduction + $loanDeduction;
             $netPay          = max(0, $grossPay - $totalDeductions);
 
             $items[] = [
@@ -278,7 +326,8 @@ class PayrollController extends Controller
                 'other_allowances'    => $otherPay,
                 'overtime_pay'        => $overtimePay,
                 'absence_deduction'   => $absenceDeduction,
-                'other_deductions'    => $siDeduction,   // social insurance stored here
+                'other_deductions'    => $siDeduction,
+                'loan_deduction'      => $loanDeduction,
                 'gross_pay'           => round($grossPay, 2),
                 'total_deductions'    => round($totalDeductions, 2),
                 'net_pay'             => round($netPay, 2),

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Branch;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -60,7 +61,8 @@ class UserController extends Controller
     {
         $roles        = Role::orderBy('name')->get();
         $userRoles    = $user->roles->pluck('name')->toArray();
-        return view('users.edit', compact('user', 'roles', 'userRoles'));
+        $branches     = Branch::where('is_active', true)->orderBy('name')->get(['id', 'code', 'name', 'type']);
+        return view('users.edit', compact('user', 'roles', 'userRoles', 'branches'));
     }
 
     public function update(Request $request, User $user)
@@ -74,12 +76,14 @@ class UserController extends Controller
             'roles'     => 'required|array|min:1',
             'roles.*'   => 'string|in:' . implode(',', $roleNames),
             'is_active' => 'boolean',
+            'branch_id' => 'nullable|exists:branches,id',
         ]);
 
         $data = [
             'name'      => $request->name,
             'email'     => $request->email,
-            'role'      => $request->roles[0],  // primary role for legacy column
+            'role'      => $request->roles[0],
+            'branch_id' => $request->input('branch_id') ?: null,
             'is_active' => $request->has('is_active'),
         ];
         if ($request->filled('password')) {

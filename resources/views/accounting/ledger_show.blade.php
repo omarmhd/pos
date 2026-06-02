@@ -6,8 +6,12 @@
     <h4 class="mb-0">
         <i class="bi bi-journal-bookmark"></i>
         <code>{{ $account->code }}</code> — {{ $account->name }}
+        @if(isset($branch) && $branch)
+            <span class="badge bg-primary ms-2">{{ $branch->name }}</span>
+        @endif
     </h4>
-    <a href="{{ route('accounting.ledger.index') }}" class="btn btn-outline-secondary btn-sm">
+    <a href="{{ route('accounting.ledger.index') . (isset($branchId) && $branchId ? '?branch_id='.$branchId : '') }}"
+       class="btn btn-outline-secondary btn-sm">
         <i class="bi bi-arrow-right"></i> قائمة الحسابات
     </a>
 </div>
@@ -26,6 +30,7 @@
                 <input type="date" name="date_to" class="form-control form-control-sm"
                        value="{{ $dateTo?->toDateString() }}">
             </div>
+            @include('components.branch-filter')
             <div class="col-auto">
                 <button type="submit" class="btn btn-primary btn-sm">
                     <i class="bi bi-funnel"></i> تصفية

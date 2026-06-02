@@ -9,6 +9,27 @@ Arabic-first UI (RTL), Bootstrap 5 RTL, jQuery + DataTables, Yajra DataTables se
 
 ---
 
+## MANDATORY RULE: Tables with Accumulating Data → DataTables
+
+**Any table that can contain large or growing data MUST use DataTables (client-side `.dt-table` class or server-side Yajra).**
+
+### When to use DataTables
+- Any index page listing domain records: employees, loans, purchases, sales, customers, suppliers, vouchers, journal entries, audit logs, inventory, etc.
+- Any report table with potentially more than ~20 rows.
+- Any table inside a `show` page that lists related records (e.g., installments, payroll lines, ledger entries).
+
+### How to implement (client-side)
+1. Add `class="table table-hover dt-table"` and `style="width:100%"` to the `<table>`.
+2. Add `data-title="اسم الصفحة"` for correct export file names.
+3. Wrap the table in `<div class="table-responsive">`.
+4. In the controller use `->get()` — **not** `->paginate()`. DataTables handles pagination.
+5. Never add a Laravel `{{ $model->links() }}` pagination footer alongside a `dt-table`.
+
+### When to use server-side (Yajra)
+Use `DataTables::eloquent($query)` + a dedicated `data()` AJAX route when the table could exceed ~500 rows in production (e.g., journal entries, audit logs).
+
+---
+
 ## MANDATORY RULE: Feature → Manual Update
 
 **Every time a new feature, module, screen, or significant behavior change is implemented, you MUST update the user manual.**

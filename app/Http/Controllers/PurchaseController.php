@@ -7,8 +7,10 @@ use App\Models\Purchase;
 use App\Models\PurchaseItem;
 use App\Models\Setting;
 use App\Models\Supplier;
+use App\Models\Warehouse;
 use App\Services\LedgerPostingService;
 use App\Services\PdfService;
+use App\Services\WarehouseService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Yajra\DataTables\Facades\DataTables;
@@ -18,7 +20,7 @@ class PurchaseController extends Controller
     public function __construct()
     {
         $this->middleware('can:purchases.view')->only(['index', 'show', 'pdf']);
-        $this->middleware('can:purchases.create')->only(['create', 'store']);
+        $this->middleware('can:purchases.create')->only(['create', 'store', 'quickCreateProduct']);
         $this->middleware('can:purchases.delete')->only(['destroy']);
     }
 
@@ -49,10 +51,16 @@ class PurchaseController extends Controller
 
     public function create()
     {
-        $suppliers = Supplier::orderBy('name')->get();
-        $currency  = Setting::get('currency_symbol', 'ج.م');
+        $suppliers  = Supplier::orderBy('name')->get();
+        $currency   = Setting::get('currency_symbol', 'ج.م');
+        $warehouses = Warehouse::where('is_active', true)
+            ->with('branch:id,name')
+            ->orderBy('is_default', 'desc')
+            ->orderBy('name')
+            ->get(['id', 'name', 'code', 'branch_id', 'is_default']);
+        $defaultWarehouseId = WarehouseService::getDefault()->id;
 
-        return view('purchases.create', compact('suppliers', 'currency'));
+        return view('purchases.create', compact('suppliers', 'currency', 'warehouses', 'defaultWarehouseId'));
     }
 
     public function searchProducts(Request $request)
@@ -68,17 +76,16 @@ class PurchaseController extends Controller
             ->get(['id', 'name', 'barcode', 'cost_price']);
 
         return response()->json($products->map(fn($p) => [
-            'id'         => $p->id,
-            'text'       => $p->name . ($p->barcode ? ' — ' . $p->barcode : ''),
-            'name'       => $p->name,
-            'cost_price' => (float) $p->cost_price,
+            'id'            => $p->id,
+            'text'          => $p->name . ($p->barcode ? ' — ' . $p->barcode : ''),
+            'name'          => $p->name,
+            'cost_price'    => (float) $p->cost_price,
+            'selling_price' => (float) $p->selling_price,
         ]));
     }
 
     public function quickCreateProduct(Request $request)
     {
-        $this->middleware('can:products.create');
-
         $request->validate([
             'name'          => 'required|string|max:255',
             'barcode'       => 'nullable|string|max:100|unique:products,barcode',
@@ -107,31 +114,42 @@ class PurchaseController extends Controller
 
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'supplier_id' => 'required|exists:suppliers,id',
-            'payment_status' => 'required|in:paid,partial,unpaid',
-            'paid_amount' => 'required|numeric|min:0',
-            'notes' => 'nullable|string',
-            'items' => 'required|array|min:1',
-            'items.*.product_id' => 'required|exists:products,id',
-            'items.*.quantity' => 'required|numeric|min:0.001',
-            'items.*.unit_price' => 'required|numeric|min:0'
+        $request->validate([
+            'supplier_id'              => 'required|exists:suppliers,id',
+            'supplier_invoice_number'  => 'nullable|string|max:100',
+            'warehouse_id'             => 'nullable|exists:warehouses,id',
+            'payment_status'           => 'required|in:paid,partial,unpaid',
+            'paid_amount'              => 'required|numeric|min:0',
+            'notes'                    => 'nullable|string',
+            'items'                    => 'required|array|min:1',
+            'items.*.product_id'       => 'required|exists:products,id',
+            'items.*.quantity'         => 'required|numeric|min:0.001',
+            'items.*.unit_price'       => 'required|numeric|min:0',
         ]);
+
+        $warehouseId = WarehouseService::resolveId($request->input('warehouse_id'));
 
         DB::beginTransaction();
         try {
+            // Lock products to prevent concurrent stock manipulation
+            $productIds = collect($request->items)->pluck('product_id')->unique()->values()->all();
+            Product::whereIn('id', $productIds)->lockForUpdate()->get();
+
             $totalAmount = 0;
             foreach ($request->items as $item) {
                 $totalAmount += $item['quantity'] * $item['unit_price'];
             }
 
+            /** @var Purchase $purchase */
             $purchase = Purchase::create([
-                'supplier_id' => $request->supplier_id,
-                'user_id' => auth()->id(),
-                'total_amount' => $totalAmount,
-                'payment_status' => $request->payment_status,
-                'paid_amount' => $request->paid_amount,
-                'notes' => $request->notes
+                'supplier_id'             => $request->supplier_id,
+                'supplier_invoice_number' => $request->supplier_invoice_number ?: null,
+                'user_id'                 => auth()->id(),
+                'warehouse_id'            => $warehouseId,
+                'total_amount'            => $totalAmount,
+                'payment_status'          => $request->payment_status,
+                'paid_amount'             => $request->paid_amount,
+                'notes'                   => $request->notes,
             ]);
 
             foreach ($request->items as $item) {
@@ -142,6 +160,8 @@ class PurchaseController extends Controller
                     'unit_price'  => $item['unit_price'],
                     'total_price' => $item['quantity'] * $item['unit_price'],
                 ]);
+                // Update per-warehouse stock level (products.quantity handled by model boot)
+                WarehouseService::in($warehouseId, $item['product_id'], $item['quantity']);
             }
 
             // Post to GL — inside the transaction so it rolls back on failure
@@ -182,10 +202,10 @@ class PurchaseController extends Controller
 
         DB::beginTransaction();
         try {
-            foreach ($purchase->items as $item) {
-                Product::where('id', $item->product_id)->decrement('quantity', $item->quantity);
-            }
-
+            // PurchaseItem::deleting() fires on cascade:
+            //   → creates reversal StockMovement
+            //   → calls WarehouseService::out() → updates stock_levels + products.quantity
+            // No manual quantity update needed here.
             $purchase->delete();
 
             \App\Models\AuditLog::create([

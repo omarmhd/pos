@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\ProductUnit;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -32,11 +33,17 @@ class Product extends Model
         'selling_price'   => 'decimal:2',
         'quantity'        => 'decimal:3',
         'allow_fractions' => 'boolean',
+        'unit'            => ProductUnit::class,
     ];
 
     public function category()
     {
         return $this->belongsTo(Category::class);
+    }
+
+    public function prices()
+    {
+        return $this->hasMany(ProductPrice::class);
     }
 
     public function purchaseItems()

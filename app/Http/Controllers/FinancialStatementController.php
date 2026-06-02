@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Branch;
 use App\Services\FinancialStatementService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -15,25 +16,36 @@ class FinancialStatementController extends Controller
 
     public function incomeStatement(Request $request)
     {
-        $from = Carbon::parse($request->input('from', now()->startOfYear()->toDateString()));
-        $to   = Carbon::parse($request->input('to',   now()->toDateString()));
+        $from     = Carbon::parse($request->input('from', now()->startOfYear()->toDateString()));
+        $to       = Carbon::parse($request->input('to',   now()->toDateString()));
+        $branchId = $request->filled('branch_id') ? (int) $request->input('branch_id') : null;
+        $branches = Branch::where('is_active', true)->orderBy('name')->get(['id', 'name', 'code']);
+        $branch   = $branchId ? Branch::find($branchId) : null;
 
-        $data = $this->service->getIncomeStatement($from, $to);
+        $data = $this->service->getIncomeStatement($from, $to, $branchId);
 
-        return view('accounting.income_statement', array_merge($data, compact('from', 'to')));
+        return view('accounting.income_statement', array_merge(
+            $data,
+            compact('from', 'to', 'branches', 'branchId', 'branch')
+        ));
     }
 
     public function balanceSheet(Request $request)
     {
-        $asOf    = Carbon::parse($request->input('as_of', now()->toDateString()));
-        $ytdFrom = $asOf->copy()->startOfYear();
+        $asOf     = Carbon::parse($request->input('as_of', now()->toDateString()));
+        $ytdFrom  = $asOf->copy()->startOfYear();
+        $branchId = $request->filled('branch_id') ? (int) $request->input('branch_id') : null;
+        $branches = Branch::where('is_active', true)->orderBy('name')->get(['id', 'name', 'code']);
+        $branch   = $branchId ? Branch::find($branchId) : null;
 
-        // Net income is year-to-date up to the balance sheet date
-        $incomeData = $this->service->getIncomeStatement($ytdFrom, $asOf);
+        $incomeData = $this->service->getIncomeStatement($ytdFrom, $asOf, $branchId);
         $netIncome  = $incomeData['netIncome'];
 
-        $data = $this->service->getBalanceSheet($asOf, $netIncome);
+        $data = $this->service->getBalanceSheet($asOf, $netIncome, $branchId);
 
-        return view('accounting.balance_sheet', array_merge($data, compact('asOf', 'ytdFrom', 'netIncome')));
+        return view('accounting.balance_sheet', array_merge(
+            $data,
+            compact('asOf', 'ytdFrom', 'netIncome', 'branches', 'branchId', 'branch')
+        ));
     }
 }

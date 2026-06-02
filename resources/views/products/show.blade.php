@@ -44,10 +44,7 @@
                                 <tr>
                                     <th>الوحدة:</th>
                                     <td>
-                                        @if($product->unit == 'piece') قطعة
-                                        @elseif($product->unit == 'kg') كيلوجرام
-                                        @else لتر
-                                        @endif
+                                        {{ $product->unit instanceof \App\Enums\ProductUnit ? $product->unit->label() : $product->unit }}
                                     </td>
                                 </tr>
                                 <tr>

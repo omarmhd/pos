@@ -41,8 +41,14 @@ class PermissionSeeder extends Seeder
             'dashboard.view',
             // Sales
             'sales.view', 'sales.create', 'sales.edit', 'sales.delete', 'sales.reverse',
+            'sales.returns.view', 'sales.returns.create',
             // Purchases
             'purchases.view', 'purchases.create', 'purchases.edit', 'purchases.delete',
+            'purchases.returns.view', 'purchases.returns.create',
+            // Branches & Warehouses
+            'branches.view', 'branches.manage',
+            // Price Lists
+            'price_lists.view', 'price_lists.manage',
             // Customers
             'customers.view', 'customers.create', 'customers.edit', 'customers.delete', 'customers.payments',
             // Suppliers
@@ -65,6 +71,7 @@ class PermissionSeeder extends Seeder
             'hr.view_payroll', 'hr.create_payroll', 'hr.approve_payroll',
             'hr.view_attendance', 'hr.manage_attendance',
             'hr.view_shifts', 'hr.manage_shifts',
+            'hr.manage_loans',
             // Reversals
             'reversals.view', 'reversals.create',
         ]);
@@ -73,6 +80,7 @@ class PermissionSeeder extends Seeder
         $cashier->syncPermissions([
             'dashboard.view',
             'sales.view', 'sales.create',
+            'sales.returns.view', 'sales.returns.create',
             'customers.view', 'customers.create',
             'products.view',
             'inventory.view',
@@ -82,7 +90,11 @@ class PermissionSeeder extends Seeder
         $accountant->syncPermissions([
             'dashboard.view',
             'sales.view', 'sales.post',
+            'sales.returns.view', 'sales.returns.create',
             'purchases.view', 'purchases.post',
+            'purchases.returns.view', 'purchases.returns.create',
+            'branches.view',
+            'price_lists.view',
             'customers.view', 'customers.payments',
             'suppliers.view', 'suppliers.payments',
             'vouchers.view', 'vouchers.create', 'vouchers.delete',

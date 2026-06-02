@@ -90,6 +90,7 @@
                         <th class="text-end">أخرى</th>
                         <th class="text-end">أوفرتايم</th>
                         <th class="text-end text-danger">خصم غياب</th>
+                        <th class="text-end text-warning">قسط سلفة</th>
                         <th class="text-end">إجمالي</th>
                         <th class="text-end fw-bold">صافي</th>
                         <th></th>
@@ -107,6 +108,13 @@
                         <td class="text-end">{{ number_format($item->other_allowances, 2) }}</td>
                         <td class="text-end">{{ number_format($item->overtime_pay, 2) }}</td>
                         <td class="text-end text-danger">({{ number_format($item->absence_deduction, 2) }})</td>
+                        <td class="text-end text-warning">
+                            @if($item->loan_deduction > 0)
+                                ({{ number_format($item->loan_deduction, 2) }})
+                            @else
+                                —
+                            @endif
+                        </td>
                         <td class="text-end">{{ number_format($item->gross_pay, 2) }}</td>
                         <td class="text-end fw-bold text-success">{{ number_format($item->net_pay, 2) }}</td>
                         <td>
@@ -120,7 +128,7 @@
                 </tbody>
                 <tfoot class="table-secondary fw-bold">
                     <tr>
-                        <td colspan="9" class="ps-3">الإجمالي</td>
+                        <td colspan="10" class="ps-3">الإجمالي</td>
                         <td class="text-end">{{ number_format($payrollRun->total_gross, 2) }}</td>
                         <td class="text-end text-success">{{ number_format($payrollRun->total_net, 2) }}</td>
                         <td></td>

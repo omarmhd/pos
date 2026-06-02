@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Account;
+use App\Models\Branch;
 use App\Models\JournalEntry;
 use App\Models\JournalEntryLine;
 use App\Services\PdfService;
@@ -20,11 +21,13 @@ class JournalEntryController extends Controller
 
     public function index(Request $request)
     {
+        $branchId = $request->filled('branch_id') ? (int) $request->input('branch_id') : null;
+
         if ($request->ajax()) {
-            // select() must come BEFORE withSum() — otherwise it resets the added subquery selects
             $query = JournalEntry::query()
                 ->select('journal_entries.*')
                 ->with('user:id,name')
+                ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
                 ->withSum('lines as total_debit',  'debit')
                 ->withSum('lines as total_credit', 'credit');
 
@@ -59,7 +62,8 @@ class JournalEntryController extends Controller
                 ->make(true);
         }
 
-        return view('journal_entries.index');
+        $branches = Branch::where('is_active', true)->orderBy('name')->get(['id', 'name', 'code']);
+        return view('journal_entries.index', compact('branches', 'branchId'));
     }
 
     public function create()

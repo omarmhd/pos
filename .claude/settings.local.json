@@ -27,7 +27,8 @@
       "Bash(composer show *)",
       "Bash(Get-ChildItem -Path . -Force)",
       "Bash(grep -rn \"currency\\\\|currencySymbol\\\\|currency_symbol\\\\|ج\\\\.م\\\\|SAR\\\\|₪\\\\|\\\\$\" app/ resources/ database/ --include=\"*.php\" --include=\"*.blade.php\" --include=\"*.js\")",
-      "PowerShell(cd \"d:\\\\2026\\\\supermarket-pos\"; Invoke-WebRequest -Uri \"http://127.0.0.1:8000/vouchers/receipts\" -Headers @{\"X-Requested-With\"=\"XMLHttpRequest\"; \"Accept\"=\"application/json\"} -UseBasicParsing 2>&1 | Select-Object StatusCode, Content | ForEach-Object { \"Status: $\\($_.StatusCode\\)\"; \"Body: $\\($_.Content.Substring\\(0, [Math]::Min\\(300, $_.Content.Length\\)\\)\\)\" })"
+      "PowerShell(cd \"d:\\\\2026\\\\supermarket-pos\"; Invoke-WebRequest -Uri \"http://127.0.0.1:8000/vouchers/receipts\" -Headers @{\"X-Requested-With\"=\"XMLHttpRequest\"; \"Accept\"=\"application/json\"} -UseBasicParsing 2>&1 | Select-Object StatusCode, Content | ForEach-Object { \"Status: $\\($_.StatusCode\\)\"; \"Body: $\\($_.Content.Substring\\(0, [Math]::Min\\(300, $_.Content.Length\\)\\)\\)\" })",
+      "Bash(xargs grep -l \"EmployeeLoan\\\\|employee.*loan\\\\|advance\")"
     ]
   }
 }
