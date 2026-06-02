@@ -163,21 +163,33 @@ class ReportController extends Controller
 
     public function apAging()
     {
-        $purchases = Purchase::with('supplier')
-            ->whereIn('payment_status', ['unpaid', 'partial'])
-            ->get();
+        $branchId = $this->effectiveBranchId(request());
+        $cur      = Setting::get('currency_symbol', 'ج.م');
 
-        $rows = $purchases->map(function ($purchase) {
-            $remaining = (float) $purchase->remainingAmount();
-            if ($remaining < 0.01) return null;
-            $ageInDays = (int) now()->diffInDays($purchase->created_at, false) * -1;
+        $makeRow = function ($invoice, $reference, $vendorName, $vendorId, $type) {
+            $remaining = round((float) $invoice->total_amount - (float) $invoice->paid_amount, 2);
+            if ($remaining < 0.01) {
+                return null;
+            }
+            $date      = method_exists($invoice, 'invoice_date')
+                ? ($invoice->invoice_date ?? $invoice->created_at)
+                : $invoice->created_at;
+            if ($date instanceof \Carbon\Carbon) {
+                $dateStr = $date->toDateString();
+            } else {
+                $dateStr = \Carbon\Carbon::parse($date)->toDateString();
+                $date    = \Carbon\Carbon::parse($date);
+            }
+            $ageInDays = (int) now()->diffInDays($date, false) * -1;
+
             return [
-                'supplier'     => $purchase->supplier->name ?? '—',
-                'supplier_id'  => $purchase->supplier_id,
-                'invoice'      => $purchase->invoice_number,
-                'invoice_date' => $purchase->created_at->toDateString(),
-                'total'        => (float) $purchase->total_amount,
-                'paid'         => (float) $purchase->paid_amount,
+                'type'         => $type,
+                'vendor'       => $vendorName,
+                'vendor_id'    => $vendorId,
+                'invoice'      => $reference,
+                'invoice_date' => $dateStr,
+                'total'        => (float) $invoice->total_amount,
+                'paid'         => (float) $invoice->paid_amount,
                 'outstanding'  => $remaining,
                 'age_days'     => $ageInDays,
                 'bucket'       => match (true) {
@@ -187,7 +199,35 @@ class ReportController extends Controller
                     default          => 'over_90',
                 },
             ];
-        })->filter()->sortByDesc('age_days')->values()->all();
+        };
+
+        // 1. Purchase invoices (بضاعة)
+        $purchaseRows = Purchase::with('supplier')
+            ->whereIn('payment_status', ['unpaid', 'partial'])
+            ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
+            ->get()
+            ->map(fn($p) => $makeRow(
+                $p, $p->invoice_number,
+                $p->supplier->name ?? '—', $p->supplier_id,
+                'purchase'
+            ))
+            ->filter();
+
+        // 2. Expense invoices (مصروفات) — THE NEW ADDITION
+        $expenseRows = \App\Models\ExpenseInvoice::whereIn('payment_status', ['unpaid', 'partial'])
+            ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
+            ->get()
+            ->map(fn($e) => $makeRow(
+                $e, $e->invoice_number,
+                $e->vendor_name, null,
+                'expense'
+            ))
+            ->filter();
+
+        $rows = $purchaseRows->concat($expenseRows)
+            ->sortByDesc('age_days')
+            ->values()
+            ->all();
 
         $buckets = [
             'current' => collect($rows)->where('bucket', 'current')->sum('outstanding'),
@@ -197,7 +237,6 @@ class ReportController extends Controller
         ];
         $totalOutstanding = array_sum($buckets);
 
-        $cur = Setting::get('currency_symbol', 'ج.م');
         return view('reports.ap_aging', compact('rows', 'buckets', 'totalOutstanding', 'cur'));
     }
 

@@ -8,6 +8,7 @@ use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\PurchaseController;
+use App\Http\Controllers\ExpenseInvoiceController;
 use App\Http\Controllers\PurchaseReturnController;
 use App\Http\Controllers\PosController;
 use App\Http\Controllers\SaleController;
@@ -142,6 +143,14 @@ Route::middleware(['auth'])->group(function () {
     // ── Purchase Returns ──────────────────────────────────────────────────────
     Route::resource('purchase-returns', PurchaseReturnController::class)
         ->only(['index', 'create', 'store', 'show']);
+
+    // ── Expense Invoices (فواتير المصروفات) ──────────────────────────────────
+    Route::resource('expense-invoices', ExpenseInvoiceController::class)
+        ->only(['index', 'create', 'store', 'show']);
+    Route::get('expense-invoices/{expenseInvoice}/pay',
+        [ExpenseInvoiceController::class, 'payForm'])->name('expense-invoices.pay-form');
+    Route::post('expense-invoices/{expenseInvoice}/pay',
+        [ExpenseInvoiceController::class, 'pay'])->name('expense-invoices.pay');
 
     // ── Vouchers (سندات القبض والصرف) ────────────────────────────────────────
     Route::prefix('vouchers')->name('vouchers.')->group(function () {

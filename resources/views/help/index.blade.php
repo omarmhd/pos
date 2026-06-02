@@ -78,6 +78,7 @@
                 <a class="nav-link" href="#sec-pricing">قوائم الأسعار (جملة / تجزئة)</a>
                 <a class="nav-link" href="#sec-purchases">المشتريات والموردون</a>
                 <a class="nav-link" href="#sec-purchase-returns">مرتجعات المشتريات</a>
+                <a class="nav-link" href="#sec-expenses">فواتير المصروفات</a>
                 <a class="nav-link" href="#sec-customers">العملاء والذمم المدينة</a>
                 <a class="nav-link" href="#sec-hr">الموارد البشرية والرواتب</a>
                 <a class="nav-link" href="#sec-zkteco"><i class="bi bi-fingerprint"></i> ربط جهاز البصمة</a>
@@ -571,6 +572,53 @@
                         <tr><td class="gl-debit">مدين: الصندوق / البنك (1000/1100)</td><td>المبلغ المسترد</td></tr>
                         <tr><td class="gl-credit">دائن: المخزون (1300)</td><td>المبلغ المسترد</td></tr>
                     </table>
+                </div>
+            </div>
+        </div>
+
+        {{-- ══════════════════════════════════════════════════════════ --}}
+        {{-- Expense Invoices --}}
+        {{-- ══════════════════════════════════════════════════════════ --}}
+        <div class="help-section" id="sec-expenses">
+            <div class="section-header">
+                <i class="bi bi-receipt-cutoff fs-5"></i> فواتير المصروفات
+            </div>
+            <div class="section-body">
+                <p>تُستخدم لتسجيل فواتير الخدمات والمصاريف التشغيلية كالإيجار والكهرباء والصيانة — <strong>غير مرتبطة بالمخزون</strong>، بل بحساب مصروف مباشرة.</p>
+
+                <div class="alert-tip">
+                    <strong>الفرق الجوهري:</strong>
+                    فاتورة الشراء → مدين: مخزون / دائن: ذمم موردين.<br>
+                    فاتورة المصروف → مدين: حساب مصروف / دائن: ذمم موردين.
+                </div>
+
+                <div class="subsection-title mt-3">الدورة المحاسبية</div>
+                <p><strong>1) عند استلام الفاتورة:</strong></p>
+                <div class="gl-example">
+                    <table class="w-100">
+                        <tr><td class="gl-debit">مدين: حساب المصروف (مثال: مصاريف إيجار 6100)</td><td>قيمة الفاتورة</td></tr>
+                        <tr><td class="gl-credit">دائن: ذمم الموردين (2000)</td><td>قيمة الفاتورة</td></tr>
+                    </table>
+                </div>
+                <p class="mt-2"><strong>2) عند الدفع:</strong></p>
+                <div class="gl-example">
+                    <table class="w-100">
+                        <tr><td class="gl-debit">مدين: ذمم الموردين (2000)</td><td>المبلغ المدفوع</td></tr>
+                        <tr><td class="gl-credit">دائن: الصندوق / البنك (1000/1100)</td><td>المبلغ المدفوع</td></tr>
+                    </table>
+                </div>
+
+                <div class="subsection-title mt-3">أمثلة على المصروفات</div>
+                <ul>
+                    <li>6100 — مصاريف إيجار المحل</li>
+                    <li>6200 — مصاريف رواتب (يُفضَّل عبر الرواتب)</li>
+                    <li>6300 — مصاريف كهرباء وماء واتصالات</li>
+                    <li>6400 — مصاريف صيانة وإصلاح</li>
+                    <li>6500 — مصاريف متنوعة</li>
+                </ul>
+
+                <div class="alert-warn mt-2">
+                    تظهر الفواتير غير المسددة تلقائياً في <strong>تقرير الذمم الدائنة (AP Aging)</strong> مع تمييزها بلون أحمر.
                 </div>
             </div>
         </div>

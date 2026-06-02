@@ -9,6 +9,8 @@ use App\Models\CustomerDeposit;
 use App\Models\EmployeeLoan;
 use App\Models\PaymentVoucher;
 use App\Models\Purchase;
+use App\Models\ExpenseInvoice;
+use App\Models\ExpensePayment;
 use App\Models\PurchaseReturn;
 use App\Models\ReceiptVoucher;
 use App\Models\Sale;
@@ -44,7 +46,8 @@ class LedgerPostingService
         }
 
         // 2. Authenticated user's branch
-        $user = auth()->user();
+        /** @var \App\Models\User|null $user */
+        $user = \Illuminate\Support\Facades\Auth::user();
         if ($user && $user->branch_id) {
             return (int) $user->branch_id;
         }
@@ -89,8 +92,9 @@ class LedgerPostingService
             );
         }
 
+        /** @var JournalEntry $entry */
         $entry = JournalEntry::create(array_merge($header, [
-            'user_id'   => auth()->id() ?? 1,
+            'user_id'   => \Illuminate\Support\Facades\Auth::id() ?? 1,
             'posted_at' => now(),
         ]));
 
@@ -743,6 +747,102 @@ class LedgerPostingService
         $voucher->update(['is_posted' => true, 'journal_entry_id' => $entry->id]);
 
         return $entry;
+    }
+
+    /**
+     * فاتورة مصروفات — Expense Invoice (Accrual Basis)
+     *
+     * On invoice creation:
+     *   DR expense_account  = total_amount   (e.g., rent, utilities, maintenance)
+     *   CR AP (2000)        = total_amount   (liability — we owe the vendor)
+     *
+     * This records the OBLIGATION when invoice is received, before payment.
+     * Compare with purchase invoices (DR inventory) and payment vouchers (DR AP / CR cash).
+     */
+    public function postExpenseInvoice(ExpenseInvoice $invoice): JournalEntry
+    {
+        if ($invoice->is_posted) {
+            throw new RuntimeException("فاتورة المصروف [{$invoice->invoice_number}] مُرحَّلة مسبقاً");
+        }
+
+        $invoice->loadMissing('expenseAccount');
+
+        $amount       = round((float) $invoice->total_amount, 2);
+        $apCode       = Setting::get('account_ap_code', '2000');
+        $vendorName   = $invoice->vendor_name;
+
+        $lines = [
+            [
+                'account_id'       => $invoice->expense_account_id,
+                'debit'            => $amount,
+                'credit'           => 0,
+                'line_description' => ($invoice->expenseAccount->name ?? 'مصروف')
+                                      . ' — ' . $vendorName,
+            ],
+            [
+                'account_id'       => $this->account($apCode)->id,
+                'debit'            => 0,
+                'credit'           => $amount,
+                'line_description' => 'فاتورة مصروف مستلمة — ' . $vendorName
+                                      . ' / ' . $invoice->invoice_number,
+            ],
+        ];
+
+        return $this->buildEntry([
+            'entry_date'  => $invoice->invoice_date->toDateString(),
+            'reference'   => $invoice->invoice_number,
+            'source_type' => ExpenseInvoice::class,
+            'source_id'   => $invoice->id,
+            'branch_id'   => $invoice->branch_id ?? $this->resolveBranchId(),
+            'description' => 'فاتورة مصروفات — ' . $invoice->invoice_number
+                             . ' / ' . $vendorName,
+        ], $lines);
+    }
+
+    /**
+     * دفع فاتورة مصروفات — Expense Payment
+     *
+     * On payment:
+     *   DR AP (2000)        = amount   (clears the liability)
+     *   CR Cash/Bank        = amount   (cash goes out)
+     */
+    public function postExpensePayment(ExpensePayment $payment): JournalEntry
+    {
+        $payment->loadMissing('expenseInvoice');
+
+        $amount   = round((float) $payment->amount, 2);
+        $apCode   = Setting::get('account_ap_code',   '2000');
+        $cashCode = Setting::get('account_cash_code', '1000');
+        $bankCode = Setting::get('account_bank_code', '1100');
+
+        $crCode = $payment->payment_method === 'bank' ? $bankCode : $cashCode;
+        $label  = $payment->payment_method === 'bank' ? 'دفع بنكي' : 'دفع نقدي';
+
+        $vendorName = $payment->expenseInvoice->vendor_name ?? 'مورد';
+
+        $lines = [
+            [
+                'account_id'       => $this->account($apCode)->id,
+                'debit'            => $amount,
+                'credit'           => 0,
+                'line_description' => 'سداد فاتورة مصروف — ' . $vendorName,
+            ],
+            [
+                'account_id'       => $this->account($crCode)->id,
+                'debit'            => 0,
+                'credit'           => $amount,
+                'line_description' => $label . ' — ' . $vendorName,
+            ],
+        ];
+
+        return $this->buildEntry([
+            'entry_date'  => $payment->payment_date->toDateString(),
+            'reference'   => $payment->expenseInvoice->invoice_number ?? 'EXP-PAY-' . $payment->id,
+            'source_type' => ExpensePayment::class,
+            'source_id'   => $payment->id,
+            'branch_id'   => $payment->branch_id ?? $this->resolveBranchId(),
+            'description' => 'دفع فاتورة مصروفات — ' . $vendorName,
+        ], $lines);
     }
 
     /**

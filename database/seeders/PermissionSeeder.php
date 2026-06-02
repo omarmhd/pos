@@ -45,6 +45,7 @@ class PermissionSeeder extends Seeder
             // Purchases
             'purchases.view', 'purchases.create', 'purchases.edit', 'purchases.delete',
             'purchases.returns.view', 'purchases.returns.create',
+            'expenses.view', 'expenses.create', 'expenses.pay',
             // Branches & Warehouses
             'branches.view', 'branches.manage',
             // Price Lists
@@ -93,6 +94,7 @@ class PermissionSeeder extends Seeder
             'sales.returns.view', 'sales.returns.create',
             'purchases.view', 'purchases.post',
             'purchases.returns.view', 'purchases.returns.create',
+            'expenses.view', 'expenses.create', 'expenses.pay',
             'branches.view',
             'price_lists.view',
             'customers.view', 'customers.payments',

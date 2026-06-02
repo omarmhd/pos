@@ -37,6 +37,9 @@ return [
             'purchases.post'            => 'ترحيل قيود المشتريات',
             'purchases.returns.view'    => 'عرض مرتجعات المشتريات',
             'purchases.returns.create'  => 'إنشاء مرتجع مشتريات',
+            'expenses.view'             => 'عرض فواتير المصروفات',
+            'expenses.create'           => 'إنشاء فاتورة مصروف',
+            'expenses.pay'              => 'تسجيل دفعة لفاتورة مصروف',
         ],
     ],
     'customers' => [

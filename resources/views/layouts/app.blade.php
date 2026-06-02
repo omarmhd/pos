@@ -468,6 +468,14 @@
                             </a>
                         </li>
                         @endcan
+                        @can('expenses.view')
+                        <li class="nav-item">
+                            <a class="nav-link {{ request()->routeIs('expense-invoices.*') ? 'active' : '' }}"
+                               href="{{ route('expense-invoices.index') }}">
+                                <i class="bi bi-receipt-cutoff"></i> فواتير المصروفات
+                            </a>
+                        </li>
+                        @endcan
                     </ul>
                 </div>
                 @endcanany
@@ -963,7 +971,7 @@
         var p = window.location.pathname;
         var map = [
             { id: 'ns1', paths: ['/products', '/categories', '/sales', '/sale-returns', '/inventory'] },
-            { id: 'ns2', paths: ['/purchases', '/purchase-returns', '/suppliers'] },
+            { id: 'ns2', paths: ['/purchases', '/purchase-returns', '/suppliers', '/expense-invoices'] },
             { id: 'nsv', paths: ['/vouchers'] },
             { id: 'ns3', paths: ['/customers'] },
             { id: 'ns4', paths: ['/hr'] },

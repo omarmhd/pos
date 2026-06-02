@@ -93,9 +93,17 @@
                     @foreach($rows as $row)
                         <tr>
                             <td class="fw-semibold">
-                                <a href="{{ route('suppliers.show', $row['supplier_id']) }}" class="text-decoration-none">
-                                    {{ $row['supplier'] }}
-                                </a>
+                                @if(isset($row['type']) && $row['type'] === 'expense')
+                                    <span class="badge bg-danger me-1 small">مصروف</span>
+                                    {{ $row['vendor'] ?? $row['supplier'] ?? '—' }}
+                                @elseif($row['supplier_id'])
+                                    <span class="badge bg-primary me-1 small">شراء</span>
+                                    <a href="{{ route('suppliers.show', $row['supplier_id']) }}" class="text-decoration-none">
+                                        {{ $row['vendor'] ?? $row['supplier'] ?? '—' }}
+                                    </a>
+                                @else
+                                    {{ $row['vendor'] ?? $row['supplier'] ?? '—' }}
+                                @endif
                             </td>
                             <td><span class="badge bg-light text-dark">{{ $row['invoice'] }}</span></td>
                             <td>{{ $row['invoice_date'] }}</td>
