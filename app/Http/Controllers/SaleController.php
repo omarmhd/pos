@@ -20,7 +20,10 @@ class SaleController extends Controller
     public function index(Request $request)
     {
         if ($request->ajax()) {
-            $query = Sale::with('user')->select('sales.*');
+            $branchId = $this->effectiveBranchId($request);
+            $query = Sale::with('user')
+                ->select('sales.*')
+                ->when($branchId, fn($q) => $q->where('branch_id', $branchId));
 
             return DataTables::eloquent($query)
                 ->addColumn('user_name', fn($s) => e($s->user?->name ?? '—'))

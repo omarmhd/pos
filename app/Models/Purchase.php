@@ -14,6 +14,8 @@ class Purchase extends Model
         'supplier_invoice_number',
         'supplier_id',
         'user_id',
+        'warehouse_id',
+        'branch_id',
         'total_amount',
         'payment_status',
         'paid_amount',

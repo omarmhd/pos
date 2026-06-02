@@ -9,6 +9,7 @@ class CustomerPayment extends Model
     protected $fillable = [
         'customer_id', 'sale_id', 'amount',
         'payment_method', 'received_at', 'notes', 'user_id',
+        'branch_id',
     ];
 
     protected $casts = [

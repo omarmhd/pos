@@ -16,27 +16,29 @@ class FinancialStatementController extends Controller
 
     public function incomeStatement(Request $request)
     {
-        $from     = Carbon::parse($request->input('from', now()->startOfYear()->toDateString()));
-        $to       = Carbon::parse($request->input('to',   now()->toDateString()));
-        $branchId = $request->filled('branch_id') ? (int) $request->input('branch_id') : null;
-        $branches = Branch::where('is_active', true)->orderBy('name')->get(['id', 'name', 'code']);
-        $branch   = $branchId ? Branch::find($branchId) : null;
+        $from         = Carbon::parse($request->input('from', now()->startOfYear()->toDateString()));
+        $to           = Carbon::parse($request->input('to',   now()->toDateString()));
+        $branchId     = $this->effectiveBranchId($request);
+        $branchLocked = $this->isBranchLocked();
+        $branches     = Branch::where('is_active', true)->orderBy('name')->get(['id', 'name', 'code']);
+        $branch       = $branchId ? Branch::find($branchId) : null;
 
         $data = $this->service->getIncomeStatement($from, $to, $branchId);
 
         return view('accounting.income_statement', array_merge(
             $data,
-            compact('from', 'to', 'branches', 'branchId', 'branch')
+            compact('from', 'to', 'branches', 'branchId', 'branch', 'branchLocked')
         ));
     }
 
     public function balanceSheet(Request $request)
     {
-        $asOf     = Carbon::parse($request->input('as_of', now()->toDateString()));
-        $ytdFrom  = $asOf->copy()->startOfYear();
-        $branchId = $request->filled('branch_id') ? (int) $request->input('branch_id') : null;
-        $branches = Branch::where('is_active', true)->orderBy('name')->get(['id', 'name', 'code']);
-        $branch   = $branchId ? Branch::find($branchId) : null;
+        $asOf         = Carbon::parse($request->input('as_of', now()->toDateString()));
+        $ytdFrom      = $asOf->copy()->startOfYear();
+        $branchId     = $this->effectiveBranchId($request);
+        $branchLocked = $this->isBranchLocked();
+        $branches     = Branch::where('is_active', true)->orderBy('name')->get(['id', 'name', 'code']);
+        $branch       = $branchId ? Branch::find($branchId) : null;
 
         $incomeData = $this->service->getIncomeStatement($ytdFrom, $asOf, $branchId);
         $netIncome  = $incomeData['netIncome'];
@@ -45,7 +47,7 @@ class FinancialStatementController extends Controller
 
         return view('accounting.balance_sheet', array_merge(
             $data,
-            compact('asOf', 'ytdFrom', 'netIncome', 'branches', 'branchId', 'branch')
+            compact('asOf', 'ytdFrom', 'netIncome', 'branches', 'branchId', 'branch', 'branchLocked')
         ));
     }
 }

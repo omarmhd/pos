@@ -75,6 +75,10 @@ class SupplierPaymentController extends Controller
                 'paid_at'        => $data['paid_at'],
                 'notes'          => $data['notes'] ?? null,
                 'user_id'        => auth()->id(),
+                // Branch from the original purchase (payment belongs to the branch that purchased)
+                'branch_id'      => $purchase->branch_id
+                                    ?? auth()->user()->branch_id
+                                    ?? \App\Models\Setting::get('default_branch_id'),
             ]);
 
             // 2. Update purchase paid_amount and payment_status

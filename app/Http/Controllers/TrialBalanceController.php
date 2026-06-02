@@ -19,9 +19,10 @@ class TrialBalanceController extends Controller
         $asOf     = $request->filled('as_of')
             ? Carbon::parse($request->input('as_of'))->endOfDay()
             : now()->endOfDay();
-        $branchId = $request->filled('branch_id') ? (int) $request->input('branch_id') : null;
-        $branches = Branch::where('is_active', true)->orderBy('name')->get(['id', 'name', 'code']);
-        $branch   = $branchId ? Branch::find($branchId) : null;
+        $branchId     = $this->effectiveBranchId($request);
+        $branchLocked = $this->isBranchLocked();
+        $branches     = Branch::where('is_active', true)->orderBy('name')->get(['id', 'name', 'code']);
+        $branch       = $branchId ? Branch::find($branchId) : null;
 
         $raw = DB::table('accounts as a')
             ->leftJoin('journal_entry_lines as jel', 'a.id', '=', 'jel.account_id')
@@ -78,7 +79,7 @@ class TrialBalanceController extends Controller
         return view('accounting.trial_balance', compact(
             'rows', 'totalDebitCol', 'totalCreditCol',
             'asOf', 'isBalanced',
-            'branches', 'branchId', 'branch'
+            'branches', 'branchId', 'branch', 'branchLocked'
         ));
     }
 }

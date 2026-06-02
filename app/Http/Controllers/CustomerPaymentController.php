@@ -65,6 +65,10 @@ class CustomerPaymentController extends Controller
                 'received_at'    => $data['received_at'],
                 'notes'          => $data['notes'] ?? null,
                 'user_id'        => auth()->id(),
+                // Branch from the original sale (payment belongs to the branch that sold)
+                'branch_id'      => $sale->branch_id
+                                    ?? auth()->user()->branch_id
+                                    ?? \App\Models\Setting::get('default_branch_id'),
             ]);
 
             // DR Cash/Bank → CR AR  (via shared service for consistency)

@@ -10,6 +10,7 @@ class EmployeeLoan extends Model
         'employee_id', 'loan_date', 'amount', 'remaining_balance',
         'monthly_installment', 'installments_total', 'installments_paid',
         'status', 'notes', 'user_id', 'journal_entry_id',
+        'branch_id',
     ];
 
     protected $casts = [

@@ -17,7 +17,8 @@ class LedgerController extends Controller
 
     public function index(Request $request)
     {
-        $branchId = $request->filled('branch_id') ? (int) $request->input('branch_id') : null;
+        $branchId    = $this->effectiveBranchId($request);
+        $branchLocked = $this->isBranchLocked();
 
         if ($request->ajax()) {
             $query = DB::table('accounts as a')
@@ -71,7 +72,7 @@ class LedgerController extends Controller
         }
 
         $branches = Branch::where('is_active', true)->orderBy('name')->get(['id', 'name', 'code']);
-        return view('accounting.ledger_index', compact('branches', 'branchId'));
+        return view('accounting.ledger_index', compact('branches', 'branchId', 'branchLocked'));
     }
 
     public function show(Request $request, int $accountId)
@@ -79,7 +80,8 @@ class LedgerController extends Controller
         $account  = DB::table('accounts')->where('id', $accountId)->first();
         abort_if(!$account, 404);
 
-        $branchId = $request->filled('branch_id') ? (int) $request->input('branch_id') : null;
+        $branchId     = $this->effectiveBranchId($request);
+        $branchLocked = $this->isBranchLocked();
         $branches = Branch::where('is_active', true)->orderBy('name')->get(['id', 'name', 'code']);
         $branch   = $branchId ? Branch::find($branchId) : null;
 
@@ -140,7 +142,7 @@ class LedgerController extends Controller
         return view('accounting.ledger_show', compact(
             'account', 'items', 'openingBalance', 'closingBalance',
             'periodDebit', 'periodCredit', 'dateFrom', 'dateTo',
-            'branches', 'branchId', 'branch'
+            'branches', 'branchId', 'branch', 'branchLocked'
         ));
     }
 }

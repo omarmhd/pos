@@ -13,6 +13,8 @@ class Sale extends Model
         'invoice_number',
         'user_id',
         'customer_id',
+        'warehouse_id',
+        'branch_id',
         'is_credit',
         'subtotal',
         'discount',

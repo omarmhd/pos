@@ -10,6 +10,7 @@ class ReceiptVoucher extends Model
         'voucher_number', 'voucher_date', 'received_from', 'customer_id',
         'account_id', 'cash_account_id', 'amount', 'payment_method',
         'reference', 'notes', 'user_id', 'is_posted', 'journal_entry_id',
+        'branch_id',
     ];
 
     protected $casts = [

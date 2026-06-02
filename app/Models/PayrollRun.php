@@ -10,6 +10,7 @@ class PayrollRun extends Model
         'reference', 'month', 'year', 'pay_date', 'status',
         'total_gross', 'total_deductions', 'total_net',
         'notes', 'created_by', 'approved_by', 'journal_entry_id',
+        'branch_id',
     ];
 
     protected $casts = [

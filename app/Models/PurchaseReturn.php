@@ -12,6 +12,8 @@ class PurchaseReturn extends Model
         'supplier_id',
         'user_id',
         'journal_entry_id',
+        'warehouse_id',
+        'branch_id',
         'return_date',
         'refund_method',
         'total_amount',

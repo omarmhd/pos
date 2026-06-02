@@ -28,11 +28,12 @@ class ReportController extends Controller
 
     public function sales(Request $request)
     {
-        $dateFrom = $request->input('date_from', now()->startOfMonth());
-        $dateTo   = $request->input('date_to',   now()->endOfMonth());
-        $branchId = $request->filled('branch_id') ? (int) $request->input('branch_id') : null;
-        $branches = Branch::where('is_active', true)->orderBy('name')->get(['id', 'name', 'code']);
-        $cur      = Setting::get('currency_symbol', 'ج.م');
+        $dateFrom     = $request->input('date_from', now()->startOfMonth());
+        $dateTo       = $request->input('date_to',   now()->endOfMonth());
+        $branchId     = $this->effectiveBranchId($request);
+        $branchLocked = $this->isBranchLocked();
+        $branches     = Branch::where('is_active', true)->orderBy('name')->get(['id', 'name', 'code']);
+        $cur          = Setting::get('currency_symbol', 'ج.م');
 
         $sales = Sale::whereBetween('created_at', [$dateFrom, $dateTo])
             ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
@@ -53,17 +54,18 @@ class ReportController extends Controller
         return view('reports.sales', compact(
             'sales', 'totalSales', 'totalTransactions',
             'totalDiscount', 'totalTax', 'dateFrom', 'dateTo',
-            'cur', 'branches', 'branchId'
+            'cur', 'branches', 'branchId', 'branchLocked'
         ));
     }
 
     public function purchases(Request $request)
     {
-        $dateFrom = $request->input('date_from', now()->startOfMonth());
-        $dateTo   = $request->input('date_to',   now()->endOfMonth());
-        $branchId = $request->filled('branch_id') ? (int) $request->input('branch_id') : null;
-        $branches = Branch::where('is_active', true)->orderBy('name')->get(['id', 'name', 'code']);
-        $cur      = Setting::get('currency_symbol', 'ج.م');
+        $dateFrom     = $request->input('date_from', now()->startOfMonth());
+        $dateTo       = $request->input('date_to',   now()->endOfMonth());
+        $branchId     = $this->effectiveBranchId($request);
+        $branchLocked = $this->isBranchLocked();
+        $branches     = Branch::where('is_active', true)->orderBy('name')->get(['id', 'name', 'code']);
+        $cur          = Setting::get('currency_symbol', 'ج.م');
 
         $purchases = Purchase::with('supplier')
             ->whereBetween('created_at', [$dateFrom, $dateTo])
@@ -77,7 +79,7 @@ class ReportController extends Controller
         return view('reports.purchases', compact(
             'purchases', 'totalPurchases', 'totalPaid',
             'totalRemaining', 'dateFrom', 'dateTo',
-            'cur', 'branches', 'branchId'
+            'cur', 'branches', 'branchId', 'branchLocked'
         ));
     }
 

@@ -69,6 +69,9 @@ class EmployeeLoanController extends Controller
                 'status'               => 'active',
                 'notes'                => $request->notes,
                 'user_id'              => auth()->id(),
+                // Branch from the user issuing the loan (HR operation)
+                'branch_id'            => auth()->user()->branch_id
+                                          ?? Setting::get('default_branch_id'),
             ]);
 
             // GL: DR سلف الموظفين (1250) / CR صندوق/بنك (1000/1100)

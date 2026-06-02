@@ -21,7 +21,8 @@ class JournalEntryController extends Controller
 
     public function index(Request $request)
     {
-        $branchId = $request->filled('branch_id') ? (int) $request->input('branch_id') : null;
+        $branchId     = $this->effectiveBranchId($request);
+        $branchLocked = $this->isBranchLocked();
 
         if ($request->ajax()) {
             $query = JournalEntry::query()
@@ -110,6 +111,7 @@ class JournalEntryController extends Controller
         }
 
         DB::transaction(function () use ($request) {
+            /** @var \App\Models\JournalEntry $entry */
             $entry = JournalEntry::create([
                 'entry_date'  => $request->entry_date,
                 'description' => $request->description,
@@ -196,7 +198,9 @@ class JournalEntryController extends Controller
                    <i class="bi bi-file-earmark-pdf"></i></a>';
 
         $delete = '';
-        if (is_null($e->source_type) && auth()->user()?->can('journal_entries.create')) {
+        /** @var \App\Models\User|null $currentUser */
+        $currentUser = auth()->user();
+        if (is_null($e->source_type) && $currentUser?->can('journal_entries.create')) {
             $token = csrf_token();
             $url   = route('journal_entries.destroy', $e->id);
             $delete = <<<HTML

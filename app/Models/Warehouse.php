@@ -53,17 +53,27 @@ class Warehouse extends Model
             : $this->name;
     }
 
-    // Ensure only one system-wide default warehouse
     protected static function boot(): void
     {
         parent::boot();
 
         static::saving(function (Warehouse $wh) {
-            if ($wh->is_default) {
-                static::where('id', '!=', $wh->id ?? 0)
-                    ->where('is_default', true)
-                    ->update(['is_default' => false]);
+            if (!$wh->is_default) {
+                return;
             }
+
+            $query = static::where('id', '!=', $wh->id ?? 0)
+                           ->where('is_default', true);
+
+            if ($wh->branch_id) {
+                // Per-branch rule: one default per branch, other branches unaffected
+                $query->where('branch_id', $wh->branch_id);
+            } else {
+                // No branch: one default among unassigned warehouses only
+                $query->whereNull('branch_id');
+            }
+
+            $query->update(['is_default' => false]);
         });
     }
 }

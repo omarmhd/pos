@@ -14,6 +14,7 @@ class SupplierPayment extends Model
         'paid_at',
         'notes',
         'user_id',
+        'branch_id',
     ];
 
     protected $casts = [

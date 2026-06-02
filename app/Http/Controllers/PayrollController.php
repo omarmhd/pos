@@ -93,6 +93,9 @@ class PayrollController extends Controller
                 'total_net'        => $totalNet,
                 'notes'            => $request->notes,
                 'created_by'       => auth()->id(),
+                // Payroll run branch: admin with no branch = company-wide (null = all branches)
+                'branch_id'        => auth()->user()->branch_id
+                                      ?? null,
             ]);
 
             foreach ($items as $item) {

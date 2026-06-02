@@ -27,7 +27,10 @@ class PurchaseController extends Controller
     public function index(Request $request)
     {
         if ($request->ajax()) {
-            $query = Purchase::with('supplier', 'user')->select('purchases.*');
+            $branchId = $this->effectiveBranchId($request);
+            $query = Purchase::with('supplier', 'user')
+                ->select('purchases.*')
+                ->when($branchId, fn($q) => $q->where('branch_id', $branchId));
 
             return DataTables::eloquent($query)
                 ->addColumn('supplier_name', fn($p) => e($p->supplier?->name ?? '—'))
