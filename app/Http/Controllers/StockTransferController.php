@@ -58,10 +58,18 @@ class StockTransferController extends Controller
             ->orderBy('is_default', 'desc')
             ->orderBy('name')
             ->get();
+
+        // Pre-load ALL stock levels indexed by [warehouse_id][product_id] = quantity
+        // This eliminates per-row AJAX calls and makes the balance display instant.
+        $stockLevels = StockLevel::select('warehouse_id', 'product_id', 'quantity')
+            ->get()
+            ->groupBy('warehouse_id')
+            ->map(fn($rows) => $rows->pluck('quantity', 'product_id'));
+
         $currency = Setting::get('currency_symbol', 'ج.م');
         $branches = Branch::where('is_active', true)->orderBy('name')->get(['id','name','code']);
 
-        return view('stock-transfers.create', compact('warehouses', 'currency', 'branches'));
+        return view('stock-transfers.create', compact('warehouses', 'currency', 'branches', 'stockLevels'));
     }
 
     public function store(Request $request)

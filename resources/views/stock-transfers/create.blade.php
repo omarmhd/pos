@@ -125,45 +125,49 @@
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
 const SEARCH_URL = "{{ route('purchases.products.search') }}";
-const LEVEL_URL  = "{{ route('stock-transfers.level') }}";
-let rowCount = 0;
 
-// ── Core helper: fetch stock level for a product in a warehouse ───────────
-function fetchLevel(warehouseId, productId, $targetSpan) {
-    if (!warehouseId || !productId) {
-        $targetSpan.text('—').removeClass('text-success text-danger').addClass('text-muted');
-        return;
-    }
-    $targetSpan.html('<i class="bi bi-hourglass-split"></i>');
+// ── Pre-loaded stock levels: { warehouseId: { productId: qty } } ─────────
+// No AJAX needed — data is embedded directly in the page
+const STOCK_DATA = @json($stockLevels);
 
-    $.ajax({
-        url: LEVEL_URL,
-        method: 'GET',
-        dataType: 'json',
-        headers: { 'X-Requested-With': 'XMLHttpRequest' },
-        data: { warehouse_id: warehouseId, product_id: productId },
-        success: function(data) {
-            const qty = parseFloat(data.quantity) || 0;
-            $targetSpan
-                .text(qty.toFixed(2))
-                .removeClass('text-muted text-danger')
-                .addClass(qty > 0 ? 'text-success fw-bold' : 'text-danger fw-bold');
-        },
-        error: function(xhr) {
-            $targetSpan.text('!').addClass('text-danger');
-            console.warn('fetchLevel failed:', xhr.status, xhr.responseText);
-        }
-    });
+function getStockLevel(warehouseId, productId) {
+    if (!warehouseId || !productId) return null;
+    const wh = STOCK_DATA[warehouseId];
+    if (!wh) return 0;
+    const qty = wh[productId];
+    return qty !== undefined ? parseFloat(qty) : 0;
 }
 
-// ── Refresh all rows (called when from-warehouse changes) ─────────────────
+// ── Show balance in the span ──────────────────────────────────────────────
+function showLevel($span, warehouseId, productId) {
+    if (!warehouseId) {
+        $span.text('—').attr('class', 'badge bg-light text-dark border trf-available text-muted fs-6');
+        return;
+    }
+    if (!productId) {
+        $span.text('—').attr('class', 'badge bg-light text-dark border trf-available text-muted fs-6');
+        return;
+    }
+    const qty = getStockLevel(warehouseId, productId);
+    if (qty === null) {
+        $span.text('—').attr('class', 'badge bg-light text-dark border trf-available text-muted fs-6');
+        return;
+    }
+    if (qty > 0) {
+        $span.text(qty.toFixed(2)).attr('class', 'badge bg-success trf-available fs-6 fw-bold');
+    } else {
+        $span.text('0').attr('class', 'badge bg-danger trf-available fs-6 fw-bold');
+    }
+}
+
+// ── Refresh all rows when warehouse changes ───────────────────────────────
 function refreshAllLevels() {
     const fromWH = parseInt($('#fromWH').val()) || 0;
     $('#trf-rows tr').each(function() {
         const rowId    = $(this).attr('id')?.replace('trf_row_', '');
         if (!rowId) return;
-        const productId = $(`#trf_ps_${rowId}`).val();
-        fetchLevel(fromWH, productId, $(`#trf_avail_${rowId}`));
+        const productId = parseInt($(`#trf_ps_${rowId}`).val()) || 0;
+        showLevel($(`#trf_avail_${rowId}`), fromWH, productId);
     });
 }
 
@@ -230,23 +234,22 @@ function addTrfRow() {
         },
     });
 
-    // When a product is selected, fetch its level in the chosen warehouse
+    // When a product is selected → show balance instantly from pre-loaded data
     $(`#trf_ps_${id}`).on('select2:select', function(e) {
-        const productId = e.params.data.id;
+        const productId = parseInt(e.params.data.id) || 0;
         const fromWH    = parseInt($('#fromWH').val()) || 0;
 
         if (!fromWH) {
-            // Warehouse not chosen yet — highlight the selector
             $('#fromWH').addClass('is-invalid');
             setTimeout(function() { $('#fromWH').removeClass('is-invalid'); }, 2000);
         }
 
-        fetchLevel(fromWH, productId, $(`#trf_avail_${id}`));
+        showLevel($(`#trf_avail_${id}`), fromWH, productId);
     });
 
-    // When product is cleared, reset the balance display
+    // When product cleared → reset display
     $(`#trf_ps_${id}`).on('select2:unselect', function() {
-        $(`#trf_avail_${id}`).text('—').removeClass('text-success text-danger fw-bold').addClass('text-muted');
+        $(`#trf_avail_${id}`).text('—').attr('class', 'badge bg-light text-dark border trf-available text-muted fs-6');
     });
 }
 
