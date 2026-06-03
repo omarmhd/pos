@@ -598,9 +598,9 @@
                 {{-- ══════════════════════════════════════════════════════════════════ --}}
                 {{-- 6. المحاسبة — GL → Reports → Fixed Assets → Closing → Audit       --}}
                 {{-- ══════════════════════════════════════════════════════════════════ --}}
-                @canany(['accounts.view','journal_entries.view','ledger.view','trial_balance.view','financial_statements.view','accounting.year_end_close','accounting.periods.view','fixed_assets.view','reversals.view','audit_logs.view'])
-                @php $ns_acc = request()->routeIs('accounting.*','accounts.*','reversals.*','journal_entries.*','audit.*','fixed-assets.*','fixed-asset-categories.*')
-                           || request()->is('accounting*','accounts*','journal-entries*','reversals*','audit-logs*','fixed-assets*','fixed-asset-categories*'); @endphp
+                @canany(['accounts.view','journal_entries.view','ledger.view','trial_balance.view','financial_statements.view','accounting.year_end_close','accounting.periods.view','fixed_assets.view','reversals.view'])
+                @php $ns_acc = request()->routeIs('accounting.*','accounts.*','reversals.*','journal_entries.*','fixed-assets.*','fixed-asset-categories.*')
+                           || request()->is('accounting*','accounts*','journal-entries*','reversals*','fixed-assets*','fixed-asset-categories*'); @endphp
                 <li class="nav-item">
                     <button class="nav-section-toggle {{ !$ns_acc ? 'collapsed' : '' }}"
                             data-bs-toggle="collapse" data-bs-target="#ns-acc"
@@ -667,9 +667,17 @@
                         @can('fixed_assets.view')
                         <div class="sidebar-sep"></div>
                         <li class="nav-item">
-                            <a class="nav-link {{ request()->routeIs('fixed-assets.*','fixed-asset-categories.*') ? 'active' : '' }}"
+                            <a class="nav-link {{ request()->routeIs('fixed-assets.*') && !request()->routeIs('fixed-asset-categories.*') ? 'active' : '' }}"
                                href="{{ route('fixed-assets.index') }}">
                                 <i class="bi bi-building-gear"></i> الأصول الثابتة
+                            </a>
+                        </li>
+                        @endcan
+                        @can('fixed_assets.create')
+                        <li class="nav-item">
+                            <a class="nav-link {{ request()->routeIs('fixed-asset-categories.*') ? 'active' : '' }}"
+                               href="{{ route('fixed-asset-categories.index') }}">
+                                <i class="bi bi-tags"></i> فئات الأصول الثابتة
                             </a>
                         </li>
                         @endcan
@@ -704,15 +712,6 @@
                             <a class="nav-link {{ request()->routeIs('reversals.*') ? 'active' : '' }}"
                                href="{{ route('reversals.index') }}">
                                 <i class="bi bi-arrow-counterclockwise"></i> قيود التصحيح
-                            </a>
-                        </li>
-                        @endcan
-                        @can('audit_logs.view')
-                        <div class="sidebar-sep"></div>
-                        <li class="nav-item">
-                            <a class="nav-link {{ request()->routeIs('audit.*') ? 'active' : '' }}"
-                               href="{{ route('audit.logs.index') }}">
-                                <i class="bi bi-shield-check"></i> سجل التدقيق
                             </a>
                         </li>
                         @endcan
@@ -754,9 +753,21 @@
                         @endcan
                         @can('hr.view_attendance')
                         <li class="nav-item">
-                            <a class="nav-link {{ request()->routeIs('hr.attendance.*') ? 'active' : '' }}"
+                            <a class="nav-link {{ request()->routeIs('hr.attendance.daily') ? 'active' : '' }}"
                                href="{{ route('hr.attendance.daily') }}">
-                                <i class="bi bi-calendar-check"></i> الحضور والانصراف
+                                <i class="bi bi-calendar-check"></i> الحضور اليومي
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {{ request()->routeIs('hr.attendance.monthly') ? 'active' : '' }}"
+                               href="{{ route('hr.attendance.monthly') }}">
+                                <i class="bi bi-calendar-month"></i> سجل الحضور الشهري
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {{ request()->routeIs('hr.attendance.sync*') ? 'active' : '' }}"
+                               href="{{ route('hr.attendance.sync') }}">
+                                <i class="bi bi-fingerprint"></i> مزامنة جهاز البصمة
                             </a>
                         </li>
                         @endcan
@@ -840,6 +851,12 @@
                                 <i class="bi bi-boxes"></i> تقرير المخزون
                             </a>
                         </li>
+                        <li class="nav-item">
+                            <a class="nav-link {{ request()->routeIs('reports.top-products') ? 'active' : '' }}"
+                               href="{{ route('reports.top-products') }}">
+                                <i class="bi bi-star-fill text-warning"></i> أعلى الأصناف مبيعاً
+                            </a>
+                        </li>
                     </ul>
                 </div>
                 @endcan
@@ -847,9 +864,9 @@
                 {{-- ══════════════════════════════════════════════════════════════════ --}}
                 {{-- 9. الإعدادات — System Administration Only                         --}}
                 {{-- ══════════════════════════════════════════════════════════════════ --}}
-                @canany(['users.view','roles.view','settings.view','branches.view','pos_terminals.view','price_lists.view'])
-                @php $ns_set = request()->routeIs('users.*','roles.*','permissions.*','settings.*','branches.*','warehouses.*','pos-terminals.*','price-lists.*')
-                           || request()->is('users*','roles*','permissions*','settings*','branches*','warehouses*','pos-terminals*','price-lists*'); @endphp
+                @canany(['users.view','roles.view','settings.view','branches.view','pos_terminals.view','price_lists.view','audit_logs.view'])
+                @php $ns_set = request()->routeIs('users.*','roles.*','permissions.*','settings.*','branches.*','warehouses.*','pos-terminals.*','price-lists.*','audit.*')
+                           || request()->is('users*','roles*','permissions*','settings*','branches*','warehouses*','pos-terminals*','price-lists*','audit-logs*'); @endphp
                 <li class="nav-item">
                     <button class="nav-section-toggle {{ !$ns_set ? 'collapsed' : '' }}"
                             data-bs-toggle="collapse" data-bs-target="#ns-set"
@@ -919,6 +936,16 @@
                             <a class="nav-link {{ request()->routeIs('settings.*') ? 'active' : '' }}"
                                href="{{ route('settings.edit') }}">
                                 <i class="bi bi-sliders"></i> إعدادات النظام
+                            </a>
+                        </li>
+                        @endcan
+                        {{-- سجل التدقيق — هنا وليس في المحاسبة (SAP/Oracle: Administration → Security) --}}
+                        @can('audit_logs.view')
+                        <div class="sidebar-sep"></div>
+                        <li class="nav-item">
+                            <a class="nav-link {{ request()->routeIs('audit.*') ? 'active' : '' }}"
+                               href="{{ route('audit.logs.index') }}">
+                                <i class="bi bi-shield-check"></i> سجل التدقيق
                             </a>
                         </li>
                         @endcan
@@ -1042,9 +1069,8 @@
         if (window.innerWidth >= 768) closeSidebar();
     });
 
-    // ── Auto-dismiss alerts ──────────────────────────────────
-    // Auto-dismiss alerts
-    setTimeout(function() { $('.alert').fadeOut('slow'); }, 5000);
+    // ── Alerts: stay until user closes them manually ──────────
+    // Alerts do NOT auto-dismiss — user must click ✕ to close
 
     // Shared DT config used by both client-side and server-side tables
     window.dtDefaults = {
@@ -1092,10 +1118,10 @@
             { id: 'ns-purch',  paths: ['/purchases', '/purchase-orders', '/purchase-returns', '/suppliers', '/expense-invoices'] },
             { id: 'ns-inv',    paths: ['/products', '/categories', '/inventory', '/stock-transfers'] },
             { id: 'ns-treas',  paths: ['/vouchers'] },
-            { id: 'ns-acc',    paths: ['/accounting', '/accounts', '/journal-entries', '/reversals', '/audit-logs', '/fixed-assets', '/fixed-asset-categories'] },
+            { id: 'ns-acc',    paths: ['/accounting', '/accounts', '/journal-entries', '/reversals', '/fixed-assets', '/fixed-asset-categories'] },
             { id: 'ns-hr',     paths: ['/hr'] },
             { id: 'ns-rep',    paths: ['/reports'] },
-            { id: 'ns-set',    paths: ['/users', '/roles', '/permissions', '/settings', '/branches', '/warehouses', '/pos-terminals', '/price-lists'] },
+            { id: 'ns-set',    paths: ['/users', '/roles', '/permissions', '/settings', '/branches', '/warehouses', '/pos-terminals', '/price-lists', '/audit-logs'] },
         ];
 
         for (var i = 0; i < map.length; i++) {
