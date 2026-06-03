@@ -85,25 +85,28 @@ class ReportController extends Controller
 
     public function profit(Request $request)
     {
-        $dateFrom = $request->input('date_from', now()->startOfMonth());
-        $dateTo   = $request->input('date_to',   now()->endOfMonth());
-        $cur      = Setting::get('currency_symbol', 'ج.م');
+        $dateFrom     = $request->input('date_from', now()->startOfMonth());
+        $dateTo       = $request->input('date_to',   now()->endOfMonth());
+        $branchId     = $this->effectiveBranchId($request);
+        $branchLocked = $this->isBranchLocked();
+        $branches     = Branch::where('is_active', true)->orderBy('name')->get(['id', 'name', 'code']);
+        $cur          = Setting::get('currency_symbol', 'ج.م');
 
-        $salesData = SaleItem::join('sales', 'sale_items.sale_id', '=', 'sales.id')
+        $baseQuery = SaleItem::join('sales', 'sale_items.sale_id', '=', 'sales.id')
             ->whereBetween('sales.created_at', [$dateFrom, $dateTo])
-            ->select(
-                DB::raw('SUM(sale_items.total_price) as revenue'),
-                DB::raw('SUM(sale_items.quantity * sale_items.cost_price) as cost')
-            )
-            ->first();
+            ->when($branchId, fn($q) => $q->where('sales.branch_id', $branchId));
+
+        $salesData = (clone $baseQuery)->select(
+            DB::raw('SUM(sale_items.total_price) as revenue'),
+            DB::raw('SUM(sale_items.quantity * sale_items.cost_price) as cost')
+        )->first();
 
         $revenue      = $salesData->revenue ?? 0;
         $cost         = $salesData->cost    ?? 0;
         $profit       = $revenue - $cost;
         $profitMargin = $revenue > 0 ? ($profit / $revenue) * 100 : 0;
 
-        $dailyProfit = SaleItem::join('sales', 'sale_items.sale_id', '=', 'sales.id')
-            ->whereBetween('sales.created_at', [$dateFrom, $dateTo])
+        $dailyProfit = (clone $baseQuery)
             ->selectRaw('DATE(sales.created_at) as date')
             ->selectRaw('COUNT(DISTINCT sales.id) as tx_count')
             ->selectRaw('SUM(sale_items.total_price) as revenue')
@@ -115,38 +118,75 @@ class ReportController extends Controller
 
         return view('reports.profit', compact(
             'revenue', 'cost', 'profit', 'profitMargin',
-            'dailyProfit', 'dateFrom', 'dateTo', 'cur'
+            'dailyProfit', 'dateFrom', 'dateTo', 'cur',
+            'branches', 'branchId', 'branchLocked'
         ));
     }
 
-    public function inventory()
+    public function inventory(Request $request)
     {
-        $cur = Setting::get('currency_symbol', 'ج.م');
+        $branchId     = $this->effectiveBranchId($request);
+        $branchLocked = $this->isBranchLocked();
+        $branches     = Branch::where('is_active', true)->orderBy('name')->get(['id', 'name', 'code']);
+        $warehouseId  = $request->filled('warehouse_id') ? (int) $request->warehouse_id : null;
+        $warehouses   = \App\Models\Warehouse::where('is_active', true)
+                          ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
+                          ->orderBy('name')->get(['id', 'name', 'branch_id']);
+        $cur          = Setting::get('currency_symbol', 'ج.م');
 
-        $products = Product::with('category')
-            ->select('products.*')
-            ->selectRaw('(selling_price - cost_price) * quantity as potential_profit')
-            ->selectRaw('cost_price * quantity as inventory_value')
-            ->get();
+        if ($branchId || $warehouseId) {
+            // Per-branch/warehouse: quantities from stock_levels (IAS 2 per-location)
+            $products = DB::table('products')
+                ->leftJoin('categories', 'products.category_id', '=', 'categories.id')
+                ->join('stock_levels', 'products.id', '=', 'stock_levels.product_id')
+                ->join('warehouses', 'stock_levels.warehouse_id', '=', 'warehouses.id')
+                ->when($branchId,    fn($q) => $q->where('warehouses.branch_id', $branchId))
+                ->when($warehouseId, fn($q) => $q->where('stock_levels.warehouse_id', $warehouseId))
+                ->selectRaw('products.id, products.name, products.barcode,
+                    products.selling_price, products.cost_price, products.min_quantity,
+                    categories.name as category_name,
+                    SUM(stock_levels.quantity) as quantity,
+                    SUM(stock_levels.quantity * products.cost_price) as inventory_value,
+                    SUM(stock_levels.quantity * (products.selling_price - products.cost_price)) as potential_profit')
+                ->groupBy('products.id', 'products.name', 'products.barcode',
+                          'products.selling_price', 'products.cost_price',
+                          'products.min_quantity', 'categories.name')
+                ->get();
+
+            $lowStockCount = $products->filter(fn($p) => $p->quantity <= $p->min_quantity)->count();
+        } else {
+            // Global view: use products.quantity (SUM cache)
+            $products = Product::with('category')
+                ->select('products.*')
+                ->selectRaw('(selling_price - cost_price) * quantity as potential_profit')
+                ->selectRaw('cost_price * quantity as inventory_value')
+                ->get();
+
+            $lowStockCount = $products->filter(fn($p) => $p->quantity <= $p->min_quantity)->count();
+        }
 
         $totalValue           = $products->sum('inventory_value');
         $totalPotentialProfit = $products->sum('potential_profit');
-        $lowStockCount        = $products->filter(fn($p) => $p->quantity <= $p->min_quantity)->count();
 
         return view('reports.inventory', compact(
-            'products', 'totalValue', 'totalPotentialProfit', 'lowStockCount', 'cur'
+            'products', 'totalValue', 'totalPotentialProfit', 'lowStockCount', 'cur',
+            'branches', 'branchId', 'branchLocked', 'warehouses', 'warehouseId'
         ));
     }
 
     public function topProducts(Request $request)
     {
-        $dateFrom = $request->input('date_from', now()->startOfMonth());
-        $dateTo   = $request->input('date_to',   now()->endOfMonth());
-        $cur      = Setting::get('currency_symbol', 'ج.م');
+        $dateFrom     = $request->input('date_from', now()->startOfMonth());
+        $dateTo       = $request->input('date_to',   now()->endOfMonth());
+        $branchId     = $this->effectiveBranchId($request);
+        $branchLocked = $this->isBranchLocked();
+        $branches     = Branch::where('is_active', true)->orderBy('name')->get(['id', 'name', 'code']);
+        $cur          = Setting::get('currency_symbol', 'ج.م');
 
         $products = Product::join('sale_items', 'products.id', '=', 'sale_items.product_id')
             ->join('sales', 'sale_items.sale_id', '=', 'sales.id')
             ->whereBetween('sales.created_at', [$dateFrom, $dateTo])
+            ->when($branchId, fn($q) => $q->where('sales.branch_id', $branchId))
             ->select(
                 'products.*',
                 DB::raw('SUM(sale_items.quantity) as total_quantity'),
@@ -158,7 +198,10 @@ class ReportController extends Controller
             ->take(20)
             ->get();
 
-        return view('reports.top-products', compact('products', 'dateFrom', 'dateTo', 'cur'));
+        return view('reports.top-products', compact(
+            'products', 'dateFrom', 'dateTo', 'cur',
+            'branches', 'branchId', 'branchLocked'
+        ));
     }
 
     public function apAging()
@@ -240,8 +283,13 @@ class ReportController extends Controller
         return view('reports.ap_aging', compact('rows', 'buckets', 'totalOutstanding', 'cur'));
     }
 
-    public function arAging()
+    public function arAging(Request $request)
     {
+        $branchId     = $this->effectiveBranchId($request);
+        $branchLocked = $this->isBranchLocked();
+        $branches     = Branch::where('is_active', true)->orderBy('name')->get(['id', 'name', 'code']);
+        $cur          = Setting::get('currency_symbol', 'ج.م');
+
         // Single query: credit sales + pre-aggregated payments — no PHP-side looping over payments
         $data = DB::table('sales')
             ->join('customers', 'sales.customer_id', '=', 'customers.id')
@@ -250,6 +298,7 @@ class ReportController extends Controller
                 'cp.sale_id', '=', 'sales.id'
             )
             ->where('sales.is_credit', true)
+            ->when($branchId, fn($q) => $q->where('sales.branch_id', $branchId))
             ->select(
                 'customers.id as customer_id',
                 'customers.name as customer',
@@ -291,7 +340,9 @@ class ReportController extends Controller
         ];
         $totalOutstanding = array_sum($buckets);
 
-        $cur = Setting::get('currency_symbol', 'ج.م');
-        return view('reports.ar_aging', compact('rows', 'buckets', 'totalOutstanding', 'cur'));
+        return view('reports.ar_aging', compact(
+            'rows', 'buckets', 'totalOutstanding', 'cur',
+            'branches', 'branchId', 'branchLocked'
+        ));
     }
 }

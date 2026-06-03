@@ -11,20 +11,21 @@
     </div>
     <div class="card-body">
 
-        <form method="GET" class="row g-3 mb-4 no-print">
-            <div class="col-md-4">
+        <form method="GET" class="row g-2 mb-4 no-print align-items-end">
+            @include('components.branch-filter')
+            <div class="col-md-3">
                 <label class="form-label fw-semibold small">من تاريخ</label>
                 <input type="date" name="date_from" class="form-control"
                        value="{{ request('date_from', \Carbon\Carbon::parse($dateFrom)->format('Y-m-d')) }}">
             </div>
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <label class="form-label fw-semibold small">إلى تاريخ</label>
                 <input type="date" name="date_to" class="form-control"
                        value="{{ request('date_to', \Carbon\Carbon::parse($dateTo)->format('Y-m-d')) }}">
             </div>
-            <div class="col-md-4 d-flex align-items-end">
-                <button type="submit" class="btn btn-primary w-100">
-                    <i class="bi bi-search"></i> عرض التقرير
+            <div class="col-auto">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-search"></i> عرض
                 </button>
             </div>
         </form>

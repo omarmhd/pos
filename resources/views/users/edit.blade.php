@@ -93,51 +93,17 @@
                         </div>
                     </div>
 
-                    {{-- Branch + POS Terminal assignment --}}
-                    @if(isset($branches) && $branches->count() > 0)
-                    <div class="row mb-3 mt-3">
-                        <div class="col-md-6">
-                            <label class="form-label">
-                                <i class="bi bi-building-fill-check text-primary me-1"></i>
-                                الفرع المرتبط
-                            </label>
-                            <select name="branch_id" id="userBranch" class="form-select">
-                                <option value="">— بدون فرع —</option>
-                                @foreach($branches as $b)
-                                    <option value="{{ $b->id }}"
-                                        {{ old('branch_id', $user->branch_id) == $b->id ? 'selected' : '' }}>
-                                        [{{ $b->code }}] {{ $b->name }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">
-                                <i class="bi bi-cash-register text-warning me-1"></i>
-                                نقطة البيع (Terminal)
-                                <small class="text-muted">← تحدد مخزن الخصم عند البيع</small>
-                            </label>
-                            <select name="pos_terminal_id" class="form-select">
-                                <option value="">— بدون terminal (يستخدم مخزن الفرع) —</option>
-                                @foreach(\App\Models\PosTerminal::where('is_active', true)->with('warehouse')->orderBy('branch_id')->get() as $pt)
-                                    <option value="{{ $pt->id }}"
-                                        {{ old('pos_terminal_id', $user->pos_terminal_id) == $pt->id ? 'selected' : '' }}>
-                                        {{ $pt->code }} — {{ $pt->name }}
-                                        ({{ $pt->warehouse?->name }})
-                                    </option>
-                                @endforeach
-                            </select>
-                            <div class="form-text">اختر terminal لتحديد مصدر المخزون بدقة (معرض، رف، مخزن خلفي)</div>
-                        </div>
-                    </div>
-                    @endif
+                    {{-- Organizational Assignment (Branch / Warehouse / POS Terminal) --}}
+                    @include('users._org_assignment')
 
-                    <button type="submit" class="btn btn-primary">
-                        <i class="bi bi-save"></i> حفظ التعديلات
-                    </button>
-                    <a href="{{ route('users.index') }}" class="btn btn-secondary">
-                        <i class="bi bi-x-circle"></i> إلغاء
-                    </a>
+                    <div class="mt-4">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-save"></i> حفظ التعديلات
+                        </button>
+                        <a href="{{ route('users.index') }}" class="btn btn-secondary">
+                            <i class="bi bi-x-circle"></i> إلغاء
+                        </a>
+                    </div>
                 </form>
             </div>
         </div>

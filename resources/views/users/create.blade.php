@@ -90,12 +90,18 @@
                         </div>
                     </div>
 
-                    <button type="submit" class="btn btn-primary">
-                        <i class="bi bi-save"></i> حفظ
-                    </button>
-                    <a href="{{ route('users.index') }}" class="btn btn-secondary">
-                        <i class="bi bi-x-circle"></i> إلغاء
-                    </a>
+                    {{-- Organizational Assignment (Branch / Warehouse / POS Terminal) --}}
+                    @php $user = new \App\Models\User(); @endphp
+                    @include('users._org_assignment')
+
+                    <div class="mt-4">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-save"></i> حفظ
+                        </button>
+                        <a href="{{ route('users.index') }}" class="btn btn-secondary">
+                            <i class="bi bi-x-circle"></i> إلغاء
+                        </a>
+                    </div>
                 </form>
             </div>
         </div>

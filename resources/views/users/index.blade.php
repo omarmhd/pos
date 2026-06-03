@@ -20,8 +20,9 @@
                         <th>الاسم</th>
                         <th>البريد الإلكتروني</th>
                         <th>الصلاحية</th>
+                        <th>الفرع</th>
+                        <th>المخزن الافتراضي</th>
                         <th>الحالة</th>
-                        <th>تاريخ التسجيل</th>
                         <th>إجراءات</th>
                     </tr>
                     </thead>
@@ -47,13 +48,30 @@
                                     @endif
                             </td>
                             <td>
+                                @if($user->branch)
+                                    <span class="badge bg-light text-dark border">
+                                        <i class="bi bi-building me-1"></i>{{ $user->branch->name }}
+                                    </span>
+                                @else
+                                    <span class="text-muted small">— عام —</span>
+                                @endif
+                            </td>
+                            <td>
+                                @if($user->defaultWarehouse)
+                                    <span class="badge bg-light text-dark border">
+                                        <i class="bi bi-archive me-1"></i>{{ $user->defaultWarehouse->name }}
+                                    </span>
+                                @else
+                                    <span class="text-muted small">—</span>
+                                @endif
+                            </td>
+                            <td>
                                 @if($user->is_active)
                                     <span class="badge bg-success">نشط</span>
                                 @else
                                     <span class="badge bg-secondary">معطل</span>
                                 @endif
                             </td>
-                            <td>{{ $user->created_at->format('Y-m-d') }}</td>
                             <td>
                                 <a href="{{ route('users.edit', $user) }}" class="btn btn-sm btn-primary btn-action">
                                     <i class="bi bi-pencil"></i>

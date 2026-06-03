@@ -13,11 +13,8 @@ class User extends Authenticatable
     use  HasFactory, Notifiable, HasRoles;
 
     protected $fillable = [
-        'name',
-        'email',
-        'password',
-        'role',
-        'is_active'
+        'name', 'email', 'password', 'role', 'is_active',
+        'branch_id', 'pos_terminal_id', 'default_warehouse_id',
     ];
 
     protected $hidden = [
@@ -39,6 +36,11 @@ class User extends Authenticatable
     public function posTerminal()
     {
         return $this->belongsTo(PosTerminal::class, 'pos_terminal_id');
+    }
+
+    public function defaultWarehouse()
+    {
+        return $this->belongsTo(\App\Models\Warehouse::class, 'default_warehouse_id');
     }
 
     public function purchases()

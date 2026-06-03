@@ -160,6 +160,13 @@ class PaymentVoucherController extends Controller
 
         DB::beginTransaction();
         try {
+            // Branch resolution (SAP: Company Code selection):
+            // - Locked users (branch employees): always their own branch
+            // - Global users (admin/manager): branch from form, fallback to default
+            $resolvedBranch = $this->isBranchLocked()
+                ? (auth()->user()?->branch_id ?? \App\Models\Setting::get('default_branch_id'))
+                : ($request->input('branch_id') ?: auth()->user()?->branch_id ?: \App\Models\Setting::get('default_branch_id'));
+
             $voucher = PaymentVoucher::create([
                 'voucher_date'    => $request->voucher_date,
                 'paid_to'         => $request->paid_to,
@@ -171,8 +178,7 @@ class PaymentVoucherController extends Controller
                 'reference'       => $request->reference,
                 'notes'           => $request->notes,
                 'user_id'         => auth()->id(),
-                'branch_id'       => auth()->user()->branch_id
-                                     ?? \App\Models\Setting::get('default_branch_id'),
+                'branch_id'       => $resolvedBranch,
             ]);
 
             (new LedgerPostingService())->postPaymentVoucher($voucher);

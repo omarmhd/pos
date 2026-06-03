@@ -5,9 +5,21 @@
 @section('content')
 <div class="container-fluid">
 
-    {{-- Header --}}
-    <div class="d-flex justify-content-between align-items-center mb-3 no-print">
-        <span></span>
+    {{-- Header + Filters --}}
+    <div class="d-flex justify-content-between align-items-center mb-3 no-print flex-wrap gap-2">
+        <form method="GET" class="row g-2 align-items-end mb-0">
+            @include('components.branch-filter')
+            <div class="col-auto">
+                <button type="submit" class="btn btn-primary btn-sm">
+                    <i class="bi bi-funnel"></i> تصفية
+                </button>
+                @if(request('branch_id'))
+                    <a href="{{ route('reports.ar_aging') }}" class="btn btn-outline-danger btn-sm ms-1">
+                        <i class="bi bi-x"></i>
+                    </a>
+                @endif
+            </div>
+        </form>
         <a href="{{ route('reports.index') }}" class="btn btn-sm btn-outline-secondary">
             <i class="bi bi-arrow-right"></i> رجوع
         </a>
