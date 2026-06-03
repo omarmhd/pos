@@ -18,7 +18,20 @@
 <div class="card mb-3">
     <div class="card-body py-2">
         <form method="GET" class="row g-2 align-items-end">
-            <div class="col-md-4">
+            @include('components.branch-filter')
+            @if(isset($warehouses) && $warehouses->count() > 1)
+            <div class="col-auto">
+                <select name="warehouse_id" class="form-select form-select-sm" style="min-width:150px">
+                    <option value="">كل المخازن</option>
+                    @foreach($warehouses as $wh)
+                        <option value="{{ $wh->id }}" {{ ($warehouseId ?? null) == $wh->id ? 'selected':'' }}>
+                            {{ $wh->name }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+            @endif
+            <div class="col-md-3">
                 <select name="product_id" class="form-select form-select-sm">
                     <option value="">— كل المنتجات —</option>
                     @foreach($products as $p)
@@ -28,7 +41,7 @@
                     @endforeach
                 </select>
             </div>
-            <div class="col-md-3">
+            <div class="col-auto">
                 <select name="reason" class="form-select form-select-sm">
                     <option value="">— كل الأسباب —</option>
                     @foreach(\App\Models\InventoryAdjustment::$reasons as $k => $v)
@@ -40,7 +53,7 @@
                 <button type="submit" class="btn btn-outline-secondary btn-sm">
                     <i class="bi bi-funnel"></i> تصفية
                 </button>
-                @if(request()->hasAny(['product_id','reason']))
+                @if(request()->hasAny(['product_id','reason','warehouse_id','branch_id']))
                     <a href="{{ route('inventory.adjustments.index') }}" class="btn btn-outline-danger btn-sm ms-1">
                         <i class="bi bi-x"></i>
                     </a>
@@ -58,6 +71,7 @@
                 <tr>
                     <th>التاريخ</th>
                     <th>المنتج</th>
+                    <th>المخزن</th>
                     <th class="text-center">قبل</th>
                     <th class="text-center">بعد</th>
                     <th class="text-center">الفرق</th>
@@ -77,6 +91,11 @@
                         @if($adj->inventory_session_id)
                             <span class="badge bg-info ms-1">جرد</span>
                         @endif
+                    </td>
+                    <td>
+                        <span class="badge bg-secondary small">
+                            {{ $adj->warehouse?->name ?? '—' }}
+                        </span>
                     </td>
                     <td class="text-center">{{ number_format($adj->quantity_before, 2) }}</td>
                     <td class="text-center">{{ number_format($adj->quantity_after, 2) }}</td>

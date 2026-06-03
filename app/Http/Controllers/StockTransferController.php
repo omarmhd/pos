@@ -86,10 +86,20 @@ class StockTransferController extends Controller
 
         DB::beginTransaction();
         try {
+            // Resolve branch from the SOURCE warehouse (intra-branch transfer)
+            // If the two warehouses belong to different branches = inter-branch transfer.
+            // For accounting: no GL entry either way (same legal entity).
+            // The branch_id on the transfer represents where the goods CAME FROM.
+            $fromWarehouse = \App\Models\Warehouse::find($request->from_warehouse_id);
+            $toWarehouse   = \App\Models\Warehouse::find($request->to_warehouse_id);
+            $transferBranch = $fromWarehouse?->branch_id
+                ?? auth()->user()->branch_id
+                ?? Setting::get('default_branch_id');
+
             $transfer = StockTransfer::create([
                 'from_warehouse_id' => $request->from_warehouse_id,
                 'to_warehouse_id'   => $request->to_warehouse_id,
-                'branch_id'         => auth()->user()->branch_id ?? Setting::get('default_branch_id'),
+                'branch_id'         => $transferBranch,
                 'user_id'           => auth()->id(),
                 'transfer_date'     => $request->transfer_date,
                 'status'            => 'draft',

@@ -159,10 +159,33 @@ class ProductController extends Controller
         return response()->json($product);
     }
 
-    public function lowStock()
+    public function lowStock(Request $request)
     {
-        $products = Product::with('category')->whereRaw('quantity <= min_quantity')->paginate(20);
-        return view('products.low-stock', compact('products'));
+        // International standard (SAP/Oracle): Low-stock alerts are per-warehouse,
+        // NOT based on global total. A product may be critical in WH-FLOOR (2 units)
+        // even if WH-MAIN has 100 units.
+        //
+        // We use stock_levels.quantity <= stock_levels.min_quantity per warehouse.
+        // Fallback: if no stock_level record → fall back to products global check.
+
+        $branchId = $this->effectiveBranchId($request);
+
+        // Get all stock_levels that are at or below their minimum
+        $lowLevels = \App\Models\StockLevel::with([
+                'product.category',
+                'warehouse.branch',
+            ])
+            ->whereColumn('quantity', '<=', 'min_quantity')
+            ->when($branchId, function ($q) use ($branchId) {
+                $q->whereHas('warehouse', fn($wq) => $wq->where('branch_id', $branchId));
+            })
+            ->orderBy('quantity')
+            ->paginate(25);
+
+        $branches     = \App\Models\Branch::where('is_active', true)->orderBy('name')->get(['id','name','code']);
+        $branchLocked = $this->isBranchLocked();
+
+        return view('products.low-stock', compact('lowLevels', 'branches', 'branchId', 'branchLocked'));
     }
 
     public function expiring()

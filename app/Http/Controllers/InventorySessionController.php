@@ -22,17 +22,28 @@ class InventorySessionController extends Controller
 
     public function index()
     {
-        $sessions = InventorySession::with('createdBy:id,name', 'warehouse:id,name')
+        $branchId     = $this->effectiveBranchId(request());
+        $branchLocked = $this->isBranchLocked();
+        $warehouseId  = request()->filled('warehouse_id') ? (int) request('warehouse_id') : null;
+
+        $sessions = InventorySession::with('createdBy:id,name', 'warehouse:id,name,branch_id', 'warehouse.branch:id,name')
             ->withCount([
                 'items as total_items',
                 'items as counted_items'  => fn($q) => $q->whereNotNull('counted_quantity'),
                 'items as variance_items' => fn($q) => $q->whereNotNull('counted_quantity')
                                                          ->where('difference', '!=', 0),
             ])
+            ->when($branchId, fn($q) => $q->whereHas('warehouse', fn($wq) => $wq->where('branch_id', $branchId)))
+            ->when($warehouseId, fn($q) => $q->where('warehouse_id', $warehouseId))
             ->orderByDesc('created_at')
             ->paginate(20);
 
-        return view('inventory.sessions.index', compact('sessions'));
+        $branches   = \App\Models\Branch::where('is_active', true)->orderBy('name')->get(['id','name','code']);
+        $warehouses = \App\Models\Warehouse::where('is_active', true)
+            ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
+            ->orderBy('name')->get(['id','name','branch_id']);
+
+        return view('inventory.sessions.index', compact('sessions', 'branches', 'branchId', 'branchLocked', 'warehouses', 'warehouseId'));
     }
 
     public function create()

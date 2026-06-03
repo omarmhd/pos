@@ -15,6 +15,32 @@
 </div>
 
 <div class="card">
+    {{-- Filters --}}
+    @if(isset($branches) && $branches->count() >= 1)
+    <div class="card-body border-bottom py-2">
+        <form method="GET" class="row g-2 align-items-end">
+            @include('components.branch-filter')
+            @if(isset($warehouses) && $warehouses->count() > 1)
+            <div class="col-auto">
+                <label class="form-label small mb-1"><i class="bi bi-archive me-1"></i>المخزن</label>
+                <select name="warehouse_id" class="form-select form-select-sm" style="min-width:160px" onchange="this.form.submit()">
+                    <option value="">كل المخازن</option>
+                    @foreach($warehouses as $wh)
+                        <option value="{{ $wh->id }}" {{ ($warehouseId ?? null) == $wh->id ? 'selected':'' }}>
+                            {{ $wh->name }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+            @endif
+            <div class="col-auto">
+                <button type="submit" class="btn btn-sm btn-outline-primary"><i class="bi bi-funnel"></i></button>
+                <a href="{{ route('inventory.sessions.index') }}" class="btn btn-sm btn-outline-secondary">كل الجلسات</a>
+            </div>
+        </form>
+    </div>
+    @endif
+
     <div class="card-body p-0">
         <div class="table-responsive">
         <table class="table table-hover align-middle mb-0">
@@ -22,6 +48,7 @@
                 <tr>
                     <th>المرجع</th>
                     <th>العنوان</th>
+                    <th>المخزن</th>
                     <th class="text-center">الحالة</th>
                     <th class="text-center">المنتجات</th>
                     <th class="text-center">مُعدّ</th>
@@ -41,6 +68,15 @@
                 <tr>
                     <td><strong class="font-monospace">{{ $session->reference }}</strong></td>
                     <td>{{ $session->title }}</td>
+                    <td>
+                        @if($session->warehouse)
+                            <span class="badge bg-secondary small">
+                                <i class="bi bi-archive me-1"></i>{{ $session->warehouse->name }}
+                            </span>
+                        @else
+                            <span class="text-muted small">—</span>
+                        @endif
+                    </td>
                     <td class="text-center">
                         <span class="badge bg-{{ $session->statusColor() }}">{{ $session->statusLabel() }}</span>
                     </td>

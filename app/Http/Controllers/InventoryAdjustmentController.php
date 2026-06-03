@@ -23,7 +23,16 @@ class InventoryAdjustmentController extends Controller
 
     public function index(Request $request)
     {
-        $query = InventoryAdjustment::with('product:id,name', 'createdBy:id,name', 'journalEntry:id,entry_number')
+        $branchId     = $this->effectiveBranchId($request);
+        $branchLocked = $this->isBranchLocked();
+        $warehouseId  = $request->filled('warehouse_id') ? (int) $request->warehouse_id : null;
+
+        $query = InventoryAdjustment::with(
+                'product:id,name',
+                'warehouse:id,name',
+                'createdBy:id,name',
+                'journalEntry:id,entry_number'
+            )
             ->orderByDesc('created_at');
 
         if ($request->filled('product_id')) {
@@ -32,12 +41,27 @@ class InventoryAdjustmentController extends Controller
         if ($request->filled('reason')) {
             $query->where('reason', $request->reason);
         }
+        // Branch-scoped: filter by warehouses belonging to the user's branch
+        if ($branchId) {
+            $query->whereHas('warehouse', fn($q) => $q->where('branch_id', $branchId));
+        }
+        if ($warehouseId) {
+            $query->where('warehouse_id', $warehouseId);
+        }
 
         $adjustments = $query->paginate(25)->withQueryString();
         $products    = Product::orderBy('name')->get(['id', 'name', 'barcode']);
         $currency    = Setting::get('currency_symbol', 'ج.م');
+        $branches    = \App\Models\Branch::where('is_active', true)->orderBy('name')->get(['id','name','code']);
+        $warehouses  = \App\Models\Warehouse::where('is_active', true)
+            ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
+            ->orderBy('name')->get(['id','name']);
 
-        return view('inventory.adjustments.index', compact('adjustments', 'products', 'currency'));
+        return view('inventory.adjustments.index', compact(
+            'adjustments', 'products', 'currency',
+            'branches', 'branchId', 'branchLocked',
+            'warehouses', 'warehouseId'
+        ));
     }
 
     public function create()
