@@ -16,7 +16,11 @@ class BranchController extends Controller
 
     public function index()
     {
-        $branches = Branch::withCount('warehouses')->orderBy('is_default', 'desc')->orderBy('name')->get();
+        $branches = Branch::with('cashAccount:id,code,name', 'bankAccount:id,code,name')
+            ->withCount('warehouses')
+            ->orderBy('is_default', 'desc')
+            ->orderBy('name')
+            ->get();
         return view('settings.branches.index', compact('branches'));
     }
 

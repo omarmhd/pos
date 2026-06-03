@@ -10,6 +10,9 @@ class Branch extends Model
         'code', 'name', 'type',
         'address', 'phone',
         'is_default', 'is_active', 'notes',
+        'price_list_id',
+        'cash_account_id',
+        'bank_account_id',
     ];
 
     protected $casts = [
@@ -30,10 +33,11 @@ class Branch extends Model
         return self::$types[$this->type] ?? $this->type;
     }
 
-    public function warehouses()
-    {
-        return $this->hasMany(Warehouse::class);
-    }
+    public function cashAccount()   { return $this->belongsTo(Account::class, 'cash_account_id'); }
+    public function bankAccount()   { return $this->belongsTo(Account::class, 'bank_account_id'); }
+    public function priceList()     { return $this->belongsTo(PriceList::class); }
+    public function warehouses()    { return $this->hasMany(Warehouse::class); }
+    public function users()         { return $this->hasMany(User::class); }
 
     public function activeWarehouses()
     {
@@ -46,17 +50,6 @@ class Branch extends Model
             ?? $this->warehouses()->where('is_active', true)->first();
     }
 
-    public function priceList()
-    {
-        return $this->belongsTo(PriceList::class);
-    }
-
-    public function users()
-    {
-        return $this->hasMany(User::class);
-    }
-
-    // Ensure only one default branch exists
     protected static function boot(): void
     {
         parent::boot();
@@ -67,6 +60,11 @@ class Branch extends Model
                     ->where('is_default', true)
                     ->update(['is_default' => false]);
             }
+        });
+
+        // Auto-create cash and bank accounts when a new branch is created
+        static::created(function (Branch $branch) {
+            \App\Services\BranchAccountingService::setupAccounts($branch);
         });
     }
 }

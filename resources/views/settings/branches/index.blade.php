@@ -20,6 +20,8 @@
                     <th>الاسم</th>
                     <th>النوع</th>
                     <th class="text-center">المخازن</th>
+                    <th>حساب الصندوق</th>
+                    <th>حساب البنك</th>
                     <th class="text-center">الحالة</th>
                     <th class="text-center">افتراضي</th>
                     <th class="text-center">إجراءات</th>
@@ -35,6 +37,22 @@
                         <a href="{{ route('warehouses.index') }}?branch={{ $branch->id }}" class="badge bg-info text-dark">
                             {{ $branch->warehouses_count }} مخزن
                         </a>
+                    </td>
+                    <td class="small text-success">
+                        @if($branch->cashAccount)
+                            <code>{{ $branch->cashAccount->code }}</code><br>
+                            <span class="text-muted">{{ $branch->cashAccount->name }}</span>
+                        @else
+                            <span class="text-danger">غير مُعيَّن</span>
+                        @endif
+                    </td>
+                    <td class="small text-info">
+                        @if($branch->bankAccount)
+                            <code>{{ $branch->bankAccount->code }}</code><br>
+                            <span class="text-muted">{{ $branch->bankAccount->name }}</span>
+                        @else
+                            <span class="text-muted">—</span>
+                        @endif
                     </td>
                     <td class="text-center">
                         @if($branch->is_active)

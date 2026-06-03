@@ -30,6 +30,31 @@ class LedgerPostingService
     // ── internal helpers ─────────────────────────────────────────────────────
 
     /**
+     * Get cash account ID for a branch (falls back to generic 1000.00).
+     * Called from every post*() method that involves cash.
+     */
+    private function cashId(?int $branchId = null): int
+    {
+        return \App\Services\BranchAccountingService::cashAccountId($branchId);
+    }
+
+    /**
+     * Get bank account ID for a branch (falls back to generic 1100.00).
+     */
+    private function bankId(?int $branchId = null): int
+    {
+        return \App\Services\BranchAccountingService::bankAccountId($branchId);
+    }
+
+    /**
+     * Resolve cash or bank account ID based on payment method + branch.
+     */
+    private function cashOrBankId(string $paymentMethod, ?int $branchId = null): int
+    {
+        return \App\Services\BranchAccountingService::cashOrBankId($paymentMethod, $branchId);
+    }
+
+    /**
      * Resolve branch_id for a journal entry from multiple fallback sources:
      *   1. Source model warehouse → warehouse.branch_id
      *   2. Authenticated user → user.branch_id
@@ -145,8 +170,8 @@ class LedgerPostingService
             2
         );
 
-        $cashCode      = Setting::get('account_cash_code',        '1000');
-        $bankCode      = Setting::get('account_bank_code',        '1100');
+        // Resolve per-branch accounts for cash/bank
+        $saleBranchId  = $this->resolveBranchId($sale);
         $arCode        = Setting::get('account_ar_code',          '1200');
         $inventoryCode = Setting::get('account_inventory_code',   '1300');
         $taxCode       = Setting::get('account_tax_payable_code', '2200');
@@ -154,12 +179,12 @@ class LedgerPostingService
         $discountCode  = Setting::get('account_discount_code',    '4300');
         $cogsCode      = Setting::get('account_cogs_code',        '5000');
 
-        $balanceUsed     = round((float) ($sale->balance_used ?? 0), 2);
-        $depositsCode    = Setting::get('account_customer_deposits_code', '2050');
+        $balanceUsed  = round((float) ($sale->balance_used ?? 0), 2);
+        $depositsCode = Setting::get('account_customer_deposits_code', '2050');
 
         $lines = [];
 
-        // ── Debit: Cash/Bank, AR, or Customer Deposits ──
+        // ── Debit: Cash/Bank (per-branch), AR, or Customer Deposits ──
         if ($sale->is_credit) {
             $lines[] = [
                 'account_id'       => $this->account($arCode)->id,
@@ -180,14 +205,14 @@ class LedgerPostingService
             // Remaining paid in cash/card (nothing if fully from deposit)
             $cashPaid = round($total - $balanceUsed, 2);
             if ($cashPaid > 0 && $sale->payment_method !== 'deposit_balance') {
-                $drCode = $sale->payment_method === 'card' ? $bankCode : $cashCode;
+                $drAccountId = $this->cashOrBankId($sale->payment_method, $saleBranchId);
                 $label  = match ($sale->payment_method) {
                     'card'          => 'تحصيل بطاقة',
                     'mobile_wallet' => 'تحصيل محفظة',
                     default         => 'تحصيل نقدي',
                 };
                 $lines[] = [
-                    'account_id'       => $this->account($drCode)->id,
+                    'account_id'       => $drAccountId,
                     'debit'            => $cashPaid,
                     'credit'           => 0,
                     'line_description' => $label,
@@ -278,9 +303,8 @@ class LedgerPostingService
             2
         );
 
+        $retBranchId      = $this->resolveBranchId($ret);
         $salesReturnsCode = Setting::get('account_sales_returns_code', '4200');
-        $cashCode         = Setting::get('account_cash_code',          '1000');
-        $bankCode         = Setting::get('account_bank_code',          '1100');
         $arCode           = Setting::get('account_ar_code',            '1200');
         $inventoryCode    = Setting::get('account_inventory_code',     '1300');
         $cogsCode         = Setting::get('account_cogs_code',          '5000');
@@ -306,10 +330,10 @@ class LedgerPostingService
                 'line_description' => 'تخفيض ذمة عميل – ' . $customerName,
             ];
         } else {
-            $crCode = $ret->refund_method === 'bank' ? $bankCode : $cashCode;
+            $crAccountId = $this->cashOrBankId($ret->refund_method, $retBranchId);
             $label  = $ret->refund_method === 'bank' ? 'صرف استرداد بنكي' : 'صرف استرداد نقدي';
             $lines[] = [
-                'account_id'       => $this->account($crCode)->id,
+                'account_id'       => $crAccountId,
                 'debit'            => 0,
                 'credit'           => $total,
                 'line_description' => $label . ' – ' . ($ret->customer?->name ?? ''),
@@ -354,28 +378,27 @@ class LedgerPostingService
     {
         $ret->loadMissing('items', 'supplier');
 
-        $total        = round((float) $ret->total_amount, 2);
-        $apCode       = Setting::get('account_ap_code',        '2000');
-        $cashCode     = Setting::get('account_cash_code',      '1000');
-        $bankCode     = Setting::get('account_bank_code',      '1100');
+        $prBranchId    = $this->resolveBranchId($ret);
+        $total         = round((float) $ret->total_amount, 2);
+        $apCode        = Setting::get('account_ap_code',        '2000');
         $inventoryCode = Setting::get('account_inventory_code', '1300');
-        $supplierName = $ret->supplier?->name ?? 'مورد';
+        $supplierName  = $ret->supplier?->name ?? 'مورد';
 
         // Debit side: what the supplier owes us (AP reduction or cash/bank inflow)
-        $drCode = match($ret->refund_method) {
-            'cash'         => $cashCode,
-            'bank'         => $bankCode,
-            default        => $apCode,   // ap_deduction
+        $drAccountId = match($ret->refund_method) {
+            'cash'  => $this->cashId($prBranchId),
+            'bank'  => $this->bankId($prBranchId),
+            default => $this->account($apCode)->id,   // ap_deduction
         };
         $drLabel = match($ret->refund_method) {
-            'cash'         => 'استرداد نقدي من مورد',
-            'bank'         => 'استرداد بنكي من مورد',
-            default        => 'تخفيض ذمة مورد – ' . $supplierName,
+            'cash'  => 'استرداد نقدي من مورد',
+            'bank'  => 'استرداد بنكي من مورد',
+            default => 'تخفيض ذمة مورد – ' . $supplierName,
         };
 
         $lines = [
             [
-                'account_id'       => $this->account($drCode)->id,
+                'account_id'       => $drAccountId,
                 'debit'            => $total,
                 'credit'           => 0,
                 'line_description' => $drLabel,
@@ -417,7 +440,7 @@ class LedgerPostingService
         $paid   = round((float) $purchase->paid_amount,  2);
         $unpaid = round($total - $paid, 2);
 
-        $cashCode      = Setting::get('account_cash_code',      '1000');
+        $purchBranchId = $this->resolveBranchId($purchase);
         $apCode        = Setting::get('account_ap_code',        '2000');
         $inventoryCode = Setting::get('account_inventory_code', '1300');
 
@@ -442,10 +465,10 @@ class LedgerPostingService
             ];
         }
 
-        // ── Credit: Cash for any immediate payment ──
+        // ── Credit: Cash for any immediate payment (branch cash account) ──
         if ($paid > 0) {
             $lines[] = [
-                'account_id'       => $this->account($cashCode)->id,
+                'account_id'       => $this->cashId($purchBranchId),
                 'debit'            => 0,
                 'credit'           => $paid,
                 'line_description' => 'دفعة فورية عند الشراء',
@@ -476,13 +499,10 @@ class LedgerPostingService
     {
         $payment->loadMissing('supplier', 'purchase');
 
-        $amount = round((float) $payment->amount, 2);
-
-        $apCode   = Setting::get('account_ap_code',   '2000');
-        $cashCode = Setting::get('account_cash_code', '1000');
-        $bankCode = Setting::get('account_bank_code', '1100');
-
-        $crCode       = $payment->payment_method === 'card' ? $bankCode : $cashCode;
+        $spBranchId   = $this->resolveBranchId($payment->purchase ?? null);
+        $amount       = round((float) $payment->amount, 2);
+        $apCode       = Setting::get('account_ap_code', '2000');
+        $crAccountId  = $this->cashOrBankId($payment->payment_method, $spBranchId);
         $supplierName = $payment->supplier?->name ?? 'مورد';
         $ref          = $payment->purchase?->invoice_number ?? ('PMT-' . $payment->id);
 
@@ -494,7 +514,7 @@ class LedgerPostingService
                 'line_description' => 'سداد ذمة مورد – ' . $supplierName,
             ],
             [
-                'account_id'       => $this->account($crCode)->id,
+                'account_id'       => $crAccountId,
                 'debit'            => 0,
                 'credit'           => $amount,
                 'line_description' => 'دفع للمورد – ' . $supplierName,
@@ -522,19 +542,16 @@ class LedgerPostingService
     {
         $payment->loadMissing('customer', 'sale');
 
-        $amount = round((float) $payment->amount, 2);
-
-        $arCode   = Setting::get('account_ar_code',   '1200');
-        $cashCode = Setting::get('account_cash_code', '1000');
-        $bankCode = Setting::get('account_bank_code', '1100');
-
-        $drCode       = $payment->payment_method === 'card' ? $bankCode : $cashCode;
+        $cpBranchId   = $this->resolveBranchId($payment->sale ?? null);
+        $amount       = round((float) $payment->amount, 2);
+        $arCode       = Setting::get('account_ar_code', '1200');
+        $drAccountId  = $this->cashOrBankId($payment->payment_method, $cpBranchId);
         $customerName = $payment->customer?->name ?? 'عميل';
         $ref          = $payment->sale?->invoice_number ?? ('CPM-' . $payment->id);
 
         $lines = [
             [
-                'account_id'       => $this->account($drCode)->id,
+                'account_id'       => $drAccountId,
                 'debit'            => $amount,
                 'credit'           => 0,
                 'line_description' => 'تحصيل من عميل – ' . $customerName,
@@ -572,19 +589,17 @@ class LedgerPostingService
 
         $deposit->loadMissing('customer');
 
+        $cdBranchId   = $this->resolveBranchId();
         $amount       = round((float) $deposit->amount, 2);
-        $cashCode     = Setting::get('account_cash_code', '1000');
-        $bankCode     = Setting::get('account_bank_code', '1100');
         $depositCode  = Setting::get('account_customer_deposits_code', '2050');
-
-        $cashOrBankCode = $deposit->payment_method === 'bank' ? $bankCode : $cashCode;
-        $customerName   = $deposit->customer?->name ?? 'عميل';
-        $typeLabel      = $deposit->type === 'deposit' ? 'إيداع' : 'استرداد';
+        $cashOrBankId = $this->cashOrBankId($deposit->payment_method, $cdBranchId);
+        $customerName = $deposit->customer?->name ?? 'عميل';
+        $typeLabel    = $deposit->type === 'deposit' ? 'إيداع' : 'استرداد';
 
         if ($deposit->type === 'deposit') {
             $lines = [
                 [
-                    'account_id'       => $this->account($cashOrBankCode)->id,
+                    'account_id'       => $cashOrBankId,
                     'debit'            => $amount,
                     'credit'           => 0,
                     'line_description' => 'استلام إيداع من ' . $customerName,
@@ -606,7 +621,7 @@ class LedgerPostingService
                     'line_description' => 'استرداد إيداع – ' . $customerName,
                 ],
                 [
-                    'account_id'       => $this->account($cashOrBankCode)->id,
+                    'account_id'       => $cashOrBankId,
                     'debit'            => 0,
                     'credit'           => $amount,
                     'line_description' => 'صرف استرداد لـ ' . $customerName,
@@ -820,15 +835,12 @@ class LedgerPostingService
     {
         $payment->loadMissing('expenseInvoice');
 
-        $amount   = round((float) $payment->amount, 2);
-        $apCode   = Setting::get('account_ap_code',   '2000');
-        $cashCode = Setting::get('account_cash_code', '1000');
-        $bankCode = Setting::get('account_bank_code', '1100');
-
-        $crCode = $payment->payment_method === 'bank' ? $bankCode : $cashCode;
-        $label  = $payment->payment_method === 'bank' ? 'دفع بنكي' : 'دفع نقدي';
-
-        $vendorName = $payment->expenseInvoice->vendor_name ?? 'مورد';
+        $epBranchId   = $payment->branch_id ?? $this->resolveBranchId();
+        $amount       = round((float) $payment->amount, 2);
+        $apCode       = Setting::get('account_ap_code', '2000');
+        $crAccountId  = $this->cashOrBankId($payment->payment_method, $epBranchId);
+        $label        = $payment->payment_method === 'bank' ? 'دفع بنكي' : 'دفع نقدي';
+        $vendorName   = $payment->expenseInvoice->vendor_name ?? 'مورد';
 
         $lines = [
             [
@@ -838,7 +850,7 @@ class LedgerPostingService
                 'line_description' => 'سداد فاتورة مصروف — ' . $vendorName,
             ],
             [
-                'account_id'       => $this->account($crCode)->id,
+                'account_id'       => $crAccountId,
                 'debit'            => 0,
                 'credit'           => $amount,
                 'line_description' => $label . ' — ' . $vendorName,
@@ -872,12 +884,10 @@ class LedgerPostingService
     {
         $asset->loadMissing('category.assetAccount');
 
-        $assetAccountId = $asset->category->asset_account_id;
-        $amount         = round((float) $asset->purchase_cost, 2);
-
-        $cashCode = $paymentMethod === 'bank'
-            ? Setting::get('account_bank_code', '1100')
-            : Setting::get('account_cash_code', '1000');
+        $assetAccountId  = $asset->category->asset_account_id;
+        $amount          = round((float) $asset->purchase_cost, 2);
+        $assetBranchId   = $asset->branch_id ?? $this->resolveBranchId();
+        $crAccountId     = $this->cashOrBankId($paymentMethod, $assetBranchId);
 
         $lines = [
             [
@@ -887,7 +897,7 @@ class LedgerPostingService
                 'line_description' => 'شراء أصل ثابت — ' . $asset->name,
             ],
             [
-                'account_id'       => $this->account($cashCode)->id,
+                'account_id'       => $crAccountId,
                 'debit'            => 0,
                 'credit'           => $amount,
                 'line_description' => ($paymentMethod === 'bank' ? 'دفع بنكي' : 'دفع نقدي')
@@ -972,20 +982,19 @@ class LedgerPostingService
         $salePrice       = round($salePrice, 2);
         $gainLoss        = round($salePrice - $nbv, 2);
 
-        $assetAccountId  = $asset->category->asset_account_id;
-        $accumDepAccId   = $asset->category->accumulated_dep_account_id;
-        $gainCode        = Setting::get('account_asset_gain_code', '4150');
-        $lossCode        = Setting::get('account_asset_loss_code', '6520');
-        $cashCode        = $paymentMethod === 'bank'
-            ? Setting::get('account_bank_code', '1100')
-            : Setting::get('account_cash_code', '1000');
+        $disposalBranchId = $asset->branch_id ?? $this->resolveBranchId();
+        $assetAccountId   = $asset->category->asset_account_id;
+        $accumDepAccId    = $asset->category->accumulated_dep_account_id;
+        $gainCode         = Setting::get('account_asset_gain_code', '4150');
+        $lossCode         = Setting::get('account_asset_loss_code', '6520');
+        $cashOrBankAccId  = $this->cashOrBankId($paymentMethod, $disposalBranchId);
 
         $lines = [];
 
         // Cash/bank inflow (if any sale proceeds)
         if ($salePrice > 0) {
             $lines[] = [
-                'account_id'       => $this->account($cashCode)->id,
+                'account_id'       => $cashOrBankAccId,
                 'debit'            => $salePrice,
                 'credit'           => 0,
                 'line_description' => 'حصيلة بيع أصل — ' . $asset->name,
