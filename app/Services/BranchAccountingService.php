@@ -24,8 +24,7 @@ class BranchAccountingService
      */
     public static function setupAccounts(Branch $branch): void
     {
-        $seq  = str_pad((string) $branch->id, 2, '0', STR_PAD_LEFT);
-        $now  = now();
+        $seq = str_pad((string) $branch->id, 2, '0', STR_PAD_LEFT);
 
         // Parent accounts
         $cashParent = Account::where('code', '1000')->first();
@@ -123,25 +122,39 @@ class BranchAccountingService
 
     private static function fallbackCashId(): int
     {
-        // Try 1000.00 (generic sub-account) first
-        $id = Account::where('code', '1000.00')->where('is_active', true)->value('id');
+        // Try 1000.00 (generic sub-account) first — leaf accounts only
+        $id = Account::where('code', '1000.00')
+            ->where('is_active', true)
+            ->where('is_header', false)
+            ->value('id');
         if ($id) return (int) $id;
 
-        // Fallback to 1000 itself (backward compat for non-header case)
-        $id = Account::where('code', '1000')->where('is_active', true)->value('id');
+        // Fallback to 1000 — ONLY if it is a leaf account (not header).
+        // If 1000 is a header account, posting to it would exclude it from
+        // the balance sheet (getBalanceSheet filters out is_header=true).
+        $id = Account::where('code', '1000')
+            ->where('is_active', true)
+            ->where('is_header', false)
+            ->value('id');
         if ($id) return (int) $id;
 
-        throw new \RuntimeException('لا يوجد حساب صندوق مُفعَّل في النظام — تحقق من شجرة الحسابات');
+        throw new \RuntimeException('لا يوجد حساب صندوق مُفعَّل (غير رئيسي) في النظام — تحقق من شجرة الحسابات');
     }
 
     private static function fallbackBankId(): int
     {
-        $id = Account::where('code', '1100.00')->where('is_active', true)->value('id');
+        $id = Account::where('code', '1100.00')
+            ->where('is_active', true)
+            ->where('is_header', false)
+            ->value('id');
         if ($id) return (int) $id;
 
-        $id = Account::where('code', '1100')->where('is_active', true)->value('id');
+        $id = Account::where('code', '1100')
+            ->where('is_active', true)
+            ->where('is_header', false)
+            ->value('id');
         if ($id) return (int) $id;
 
-        throw new \RuntimeException('لا يوجد حساب بنك مُفعَّل في النظام — تحقق من شجرة الحسابات');
+        throw new \RuntimeException('لا يوجد حساب بنك مُفعَّل (غير رئيسي) في النظام — تحقق من شجرة الحسابات');
     }
 }
