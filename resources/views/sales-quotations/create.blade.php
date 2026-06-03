@@ -37,7 +37,7 @@
                 </div>
                 <div class="col-md-4">
                     <label class="form-label">قائمة الأسعار</label>
-                    <select name="price_list_id" class="form-select">
+                    <select name="price_list_id" id="priceListSelect" class="form-select">
                         <option value="">— الافتراضي —</option>
                         @foreach($priceLists as $pl)
                             <option value="{{ $pl->id }}" {{ old('price_list_id') == $pl->id ? 'selected':'' }}>
@@ -116,15 +116,67 @@
 @section('scripts')
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
-const SEARCH_URL = "{{ route('purchases.products.search') }}";
-const CURRENCY   = "{{ $currency }}";
+const SEARCH_URL   = "{{ route('purchases.products.search') }}";
+const PRICE_URL    = "{{ route('sales-quotations.product-price') }}";
+const CURRENCY     = "{{ $currency }}";
 let rowCount = 0;
+
+// ── Get selected price list ID ────────────────────────────────────────────
+function getPriceListId() {
+    return parseInt($('#priceListSelect').val()) || 0;
+}
+
+// ── Fetch the correct price for a product under the chosen price list ─────
+function fetchProductPrice(productId, $priceInput) {
+    if (!productId) return;
+    const priceListId = getPriceListId();
+
+    $.ajax({
+        url: PRICE_URL,
+        method: 'GET',
+        dataType: 'json',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        data: { product_id: productId, price_list_id: priceListId || '' },
+        success: function(data) {
+            $priceInput.val(data.price.toFixed(2));
+            // Visual indicator: different color if price overridden by list
+            if (data.is_overridden) {
+                $priceInput.addClass('text-primary fw-bold').attr('title', 'سعر من قائمة: ' + data.price_list_name);
+            } else {
+                $priceInput.removeClass('text-primary fw-bold').attr('title', 'السعر الأساسي');
+            }
+            // Recalculate row total
+            const rowId = $priceInput.closest('tr').attr('id')?.replace('qt_row_', '');
+            if (rowId) calcQT(rowId);
+        },
+        error: function() {
+            // Fallback: keep existing price
+        }
+    });
+}
+
+// ── Re-fetch prices for ALL rows when price list changes ──────────────────
+function refreshAllPrices() {
+    $('#qt-rows tr').each(function() {
+        const rowId    = $(this).attr('id')?.replace('qt_row_', '');
+        if (!rowId) return;
+        const productId = $(`#qt_ps_${rowId}`).val();
+        if (productId) {
+            fetchProductPrice(productId, $(`#qt_row_${rowId} .qt-price`));
+        }
+    });
+}
 
 // Toggle customer name field
 $('#customerSelect').on('change', function() {
     $('#customerNameWrap').toggle(!$(this).val());
 });
 $('#customerSelect').trigger('change');
+
+// When price list changes → re-price all existing rows
+$(document).on('change', '#priceListSelect', function() {
+    refreshAllPrices();
+});
 
 function addQTRow() {
     rowCount++;
@@ -142,14 +194,27 @@ function addQTRow() {
     $(`#qt_ps_${id}`).select2({
         theme:'bootstrap-5', dir:'rtl', width:'100%', placeholder:'ابحث عن صنف…',
         allowClear:true, minimumInputLength:0,
-        ajax:{ url:SEARCH_URL, dataType:'json', delay:200,
-               data:p=>({q:p.term||''}),
-               processResults:data=>({results:data.map(d=>({id:d.id,text:d.text,selling_price:d.selling_price||0}))}),
-               cache:true },
+        ajax:{
+            url: SEARCH_URL,
+            dataType: 'json',
+            delay: 200,
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            data: p => ({ q: p.term || '' }),
+            processResults: data => ({
+                results: data.map(d => ({ id: d.id, text: d.text }))
+            }),
+            cache: true,
+        },
         language:{noResults:()=>'لا نتائج', searching:()=>'بحث…', inputTooShort:()=>'اكتب للبحث…'},
     });
+
     $(`#qt_ps_${id}`).on('select2:select', function(e) {
-        $(`#qt_row_${id} .qt-price`).val(e.params.data.selling_price||0);
+        // Fetch price respecting the selected price list
+        fetchProductPrice(e.params.data.id, $(`#qt_row_${id} .qt-price`));
+    });
+
+    $(`#qt_ps_${id}`).on('select2:unselect', function() {
+        $(`#qt_row_${id} .qt-price`).val('0').removeClass('text-primary fw-bold');
         calcQT(id);
     });
 }

@@ -85,7 +85,7 @@ class AttendanceController extends Controller
         $year       = (int) $request->input('year',  now()->year);
         $employees  = Employee::where('is_active', true)->orderBy('name')->get(['id', 'name']);
 
-        $records = [];
+        $records = collect();
         $summary = ['present' => 0, 'absent' => 0, 'half_day' => 0, 'holiday' => 0, 'leave' => 0,
                     'total_hours' => 0, 'overtime_hours' => 0];
 

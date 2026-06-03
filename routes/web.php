@@ -194,6 +194,8 @@ Route::middleware(['auth'])->group(function () {
     Route::delete('sales/{sale}',     [SaleController::class, 'destroy'])->name('sales.destroy');
 
     // ── Sales Quotations (عروض الأسعار) ──────────────────────────────────────
+    Route::get('sales-quotations/product-price',
+        [SalesQuotationController::class, 'productPrice'])->name('sales-quotations.product-price');
     Route::resource('sales-quotations', SalesQuotationController::class)
         ->only(['index', 'create', 'store', 'show']);
     Route::post('sales-quotations/{salesQuotation}/send',

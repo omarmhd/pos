@@ -225,6 +225,36 @@ class SalesQuotationController extends Controller
         }
     }
 
+    /**
+     * AJAX: Get the selling price for a product under a given price list.
+     * Used by the quotation create form to show the correct price when:
+     *   a) A product is selected, or
+     *   b) The price list changes (re-prices all rows)
+     *
+     * GET /sales-quotations/product-price?product_id=X&price_list_id=Y
+     * Returns: { price: float, price_list_name: string }
+     */
+    public function productPrice(Request $request)
+    {
+        $product = Product::find($request->integer('product_id'));
+        if (!$product) {
+            return response()->json(['price' => 0, 'price_list_name' => '—']);
+        }
+
+        $priceList = $request->filled('price_list_id')
+            ? \App\Models\PriceList::find($request->integer('price_list_id'))
+            : null;
+
+        $price = PricingService::getPrice($product, $priceList);
+
+        return response()->json([
+            'price'           => round($price, 2),
+            'price_list_name' => $priceList ? $priceList->name : 'السعر الأساسي',
+            'base_price'      => (float) $product->selling_price,
+            'is_overridden'   => $priceList && abs($price - (float) $product->selling_price) > 0.005,
+        ]);
+    }
+
     // ── Helpers ──────────────────────────────────────────────────────────────
 
     private function statusBadge(SalesQuotation $q): string

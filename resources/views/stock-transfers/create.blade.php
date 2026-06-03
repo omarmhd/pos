@@ -124,27 +124,65 @@
 @section('scripts')
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
-const SEARCH_URL  = "{{ route('purchases.products.search') }}";
-const LEVEL_URL   = "{{ route('stock-transfers.level') }}";
+const SEARCH_URL = "{{ route('purchases.products.search') }}";
+const LEVEL_URL  = "{{ route('stock-transfers.level') }}";
 let rowCount = 0;
 
-function getFromWarehouseId() {
-    return parseInt($('#fromWH').val()) || 0;
+// ── Core helper: fetch stock level for a product in a warehouse ───────────
+function fetchLevel(warehouseId, productId, $targetSpan) {
+    if (!warehouseId || !productId) {
+        $targetSpan.text('—').removeClass('text-success text-danger').addClass('text-muted');
+        return;
+    }
+    $targetSpan.html('<i class="bi bi-hourglass-split"></i>');
+
+    $.ajax({
+        url: LEVEL_URL,
+        method: 'GET',
+        dataType: 'json',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        data: { warehouse_id: warehouseId, product_id: productId },
+        success: function(data) {
+            const qty = parseFloat(data.quantity) || 0;
+            $targetSpan
+                .text(qty.toFixed(2))
+                .removeClass('text-muted text-danger')
+                .addClass(qty > 0 ? 'text-success fw-bold' : 'text-danger fw-bold');
+        },
+        error: function(xhr) {
+            $targetSpan.text('!').addClass('text-danger');
+            console.warn('fetchLevel failed:', xhr.status, xhr.responseText);
+        }
+    });
 }
 
+// ── Refresh all rows (called when from-warehouse changes) ─────────────────
+function refreshAllLevels() {
+    const fromWH = parseInt($('#fromWH').val()) || 0;
+    $('#trf-rows tr').each(function() {
+        const rowId    = $(this).attr('id')?.replace('trf_row_', '');
+        if (!rowId) return;
+        const productId = $(`#trf_ps_${rowId}`).val();
+        fetchLevel(fromWH, productId, $(`#trf_avail_${rowId}`));
+    });
+}
+
+// ── Add a new row ─────────────────────────────────────────────────────────
 function addTrfRow() {
     rowCount++;
     const id = rowCount;
     const tr = `
     <tr id="trf_row_${id}">
         <td>
-            <select name="items[${id}][product_id]" class="form-select trf-product"
+            <select name="items[${id}][product_id]"
+                    class="form-select trf-product"
                     id="trf_ps_${id}" required></select>
         </td>
         <td>
-            <div class="input-group input-group-sm">
-                <span class="input-group-text trf-available text-muted" id="trf_avail_${id}">—</span>
-                <span class="input-group-text small text-muted">متاح</span>
+            <div class="d-flex align-items-center gap-1">
+                <span class="badge bg-light text-dark border trf-available text-muted fs-6"
+                      id="trf_avail_${id}">—</span>
+                <small class="text-muted">متاح</small>
             </div>
         </td>
         <td>
@@ -159,52 +197,78 @@ function addTrfRow() {
             </button>
         </td>
     </tr>`;
+
     $('#trf-rows').append(tr);
 
+    // Initialize Select2 on the new product select
     $(`#trf_ps_${id}`).select2({
-        theme: 'bootstrap-5', dir: 'rtl', width: '100%',
-        placeholder: 'ابحث عن صنف…', allowClear: true, minimumInputLength: 0,
+        theme: 'bootstrap-5',
+        dir: 'rtl',
+        width: '100%',
+        placeholder: 'ابحث عن صنف…',
+        allowClear: true,
+        minimumInputLength: 0,
         ajax: {
-            url: SEARCH_URL, dataType: 'json', delay: 200,
-            data: p => ({ q: p.term || '' }),
-            processResults: data => ({ results: data.map(d => ({ id: d.id, text: d.text })) }),
+            url: SEARCH_URL,
+            dataType: 'json',
+            delay: 200,
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            data: function(params) { return { q: params.term || '' }; },
+            processResults: function(data) {
+                return {
+                    results: data.map(function(d) {
+                        return { id: d.id, text: d.text };
+                    })
+                };
+            },
             cache: true,
         },
-        language: { noResults: () => 'لا نتائج', searching: () => 'بحث…', inputTooShort: () => 'اكتب…' },
+        language: {
+            noResults:     function() { return 'لا توجد نتائج'; },
+            searching:     function() { return 'جاري البحث…'; },
+            inputTooShort: function() { return 'اكتب للبحث…'; },
+        },
     });
 
+    // When a product is selected, fetch its level in the chosen warehouse
     $(`#trf_ps_${id}`).on('select2:select', function(e) {
         const productId = e.params.data.id;
-        const fromWH    = getFromWarehouseId();
-        if (fromWH && productId) {
-            $.get(LEVEL_URL, { warehouse_id: fromWH, product_id: productId }, function(data) {
-                $(`#trf_avail_${id}`).text(parseFloat(data.quantity).toFixed(2));
-            });
+        const fromWH    = parseInt($('#fromWH').val()) || 0;
+
+        if (!fromWH) {
+            // Warehouse not chosen yet — highlight the selector
+            $('#fromWH').addClass('is-invalid');
+            setTimeout(function() { $('#fromWH').removeClass('is-invalid'); }, 2000);
         }
+
+        fetchLevel(fromWH, productId, $(`#trf_avail_${id}`));
+    });
+
+    // When product is cleared, reset the balance display
+    $(`#trf_ps_${id}`).on('select2:unselect', function() {
+        $(`#trf_avail_${id}`).text('—').removeClass('text-success text-danger fw-bold').addClass('text-muted');
     });
 }
 
-// When from-warehouse changes, refresh all available quantities
-$('#fromWH').on('change', function() {
-    const fromWH = parseInt($(this).val()) || 0;
-    if (!fromWH) return;
-    $('#trf-rows tr').each(function() {
-        const rowId = $(this).attr('id')?.replace('trf_row_', '');
-        if (!rowId) return;
-        const productId = $(`#trf_ps_${rowId}`).val();
-        if (productId) {
-            $.get(LEVEL_URL, { warehouse_id: fromWH, product_id: productId }, function(data) {
-                $(`#trf_avail_${rowId}`).text(parseFloat(data.quantity).toFixed(2));
-            });
-        }
-    });
+// ── When from-warehouse changes → refresh all balances immediately ─────────
+$(document).on('change', '#fromWH', function() {
+    refreshAllLevels();
 });
 
+// ── Form submit validation ─────────────────────────────────────────────────
 $('#transfer-form').on('submit', function(e) {
-    if (!$('#trf-rows tr').length) { e.preventDefault(); alert('أضف صنفاً واحداً!'); }
-    if ($('#fromWH').val() === $('#toWH').val()) { e.preventDefault(); alert('المخزن المصدر والوجهة لا يمكن أن يكونا نفس المخزن!'); }
+    if (!$('#trf-rows tr').length) {
+        e.preventDefault();
+        alert('أضف صنفاً واحداً على الأقل!');
+        return;
+    }
+    if ($('#fromWH').val() === $('#toWH').val() && $('#fromWH').val() !== '') {
+        e.preventDefault();
+        alert('المخزن المصدر والوجهة لا يمكن أن يكونا نفس المخزن!');
+    }
 });
 
+// ── Init first row on page load ────────────────────────────────────────────
 $(function() { addTrfRow(); });
 </script>
 @endsection
