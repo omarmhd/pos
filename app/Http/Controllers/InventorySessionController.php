@@ -4,11 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\Account;
 use App\Models\Category;
-use App\Models\InventoryAdjustment;
 use App\Models\InventorySession;
 use App\Models\InventorySessionItem;
 use App\Models\JournalEntry;
-use App\Models\JournalEntryLine;
 use App\Models\Product;
 use App\Models\Setting;
 use Illuminate\Http\Request;
@@ -24,7 +22,7 @@ class InventorySessionController extends Controller
 
     public function index()
     {
-        $sessions = InventorySession::with('createdBy:id,name')
+        $sessions = InventorySession::with('createdBy:id,name', 'warehouse:id,name')
             ->withCount([
                 'items as total_items',
                 'items as counted_items'  => fn($q) => $q->whereNotNull('counted_quantity'),
@@ -40,43 +38,60 @@ class InventorySessionController extends Controller
     public function create()
     {
         $categories = Category::orderBy('name')->get(['id', 'name']);
-        return view('inventory.sessions.create', compact('categories'));
+        $warehouses = \App\Models\Warehouse::where('is_active', true)
+            ->with('branch:id,name')
+            ->orderBy('is_default', 'desc')
+            ->orderBy('name')
+            ->get(['id', 'name', 'type', 'branch_id', 'is_default']);
+        $defaultWarehouseId = \App\Services\WarehouseService::getDefault()->id;
+        return view('inventory.sessions.create', compact('categories', 'warehouses', 'defaultWarehouseId'));
     }
 
     public function store(Request $request)
     {
         $data = $request->validate([
-            'title'       => 'required|string|max:200',
-            'category_id' => 'nullable|exists:categories,id',
-            'notes'       => 'nullable|string|max:500',
+            'title'        => 'required|string|max:200',
+            'warehouse_id' => 'required|exists:warehouses,id',
+            'category_id'  => 'nullable|exists:categories,id',
+            'notes'        => 'nullable|string|max:500',
         ]);
 
         DB::transaction(function () use ($data) {
+            $warehouseId = (int) $data['warehouse_id'];
+
             $session = InventorySession::create([
-                'title'       => $data['title'],
-                'category_id' => $data['category_id'] ?? null,
-                'notes'       => $data['notes'] ?? null,
-                'status'      => 'in_progress',
-                'started_at'  => now(),
-                'created_by'  => Auth::id(),
+                'title'        => $data['title'],
+                'warehouse_id' => $warehouseId,
+                'category_id'  => $data['category_id'] ?? null,
+                'notes'        => $data['notes'] ?? null,
+                'status'       => 'in_progress',
+                'started_at'   => now(),
+                'created_by'   => Auth::id(),
             ]);
 
-            // Snapshot current quantities
+            // Snapshot quantities from THIS warehouse's stock_levels (not global products.quantity)
+            // IAS 2: Physical count must reflect the specific location being counted.
             $query = Product::query();
             if ($session->category_id) {
                 $query->where('category_id', $session->category_id);
             }
-
             $products = $query->get(['id', 'quantity', 'cost_price']);
+
+            // Pre-load stock levels for this specific warehouse
+            $stockLevels = \App\Models\StockLevel::where('warehouse_id', $warehouseId)
+                ->whereIn('product_id', $products->pluck('id'))
+                ->pluck('quantity', 'product_id');
+
             $items = $products->map(fn($p) => [
-                'session_id'      => $session->id,
-                'product_id'      => $p->id,
-                'system_quantity' => $p->quantity,
-                'counted_quantity'=> null,
-                'difference'      => 0,
-                'cost_per_unit'   => $p->cost_price,
-                'created_at'      => now(),
-                'updated_at'      => now(),
+                'session_id'       => $session->id,
+                'product_id'       => $p->id,
+                // system_quantity from THIS warehouse, fallback to 0 if not found
+                'system_quantity'  => (float) ($stockLevels[$p->id] ?? 0),
+                'counted_quantity' => null,
+                'difference'       => 0,
+                'cost_per_unit'    => $p->cost_price,
+                'created_at'       => now(),
+                'updated_at'       => now(),
             ])->all();
 
             foreach (array_chunk($items, 200) as $chunk) {
@@ -221,9 +236,10 @@ class InventorySessionController extends Controller
                 // Collect product quantity updates
                 $productUpdates[$item->product_id] = $item->counted_quantity;
 
-                // Collect adjustment rows for batch insert
+                // Collect adjustment rows — include warehouse_id from session
                 $adjRows[] = [
                     'product_id'          => $item->product_id,
+                    'warehouse_id'        => $session->warehouse_id,   // ← FIXED
                     'quantity_before'     => $item->system_quantity,
                     'quantity_after'      => $item->counted_quantity,
                     'quantity_change'     => $item->difference,
@@ -246,25 +262,26 @@ class InventorySessionController extends Controller
                 \App\Models\Product::whereIn('id', $allProductIds)->lockForUpdate()->get();
             }
 
-            // ── 2. Batch-update stock_levels (SET to counted quantity) ──
-            // inventory_sessions.warehouse_id will be added in Phase 3.
-            // For now: use default warehouse.
-            $defaultWarehouseId = (int) \App\Models\Setting::get('default_warehouse_id');
+            // ── 2. Update stock_levels for THIS SESSION'S WAREHOUSE ──────────
+            // IAS 2: The count updates inventory for the specific location counted.
+            // We use session.warehouse_id (now properly stored), NOT the system default.
+            $sessionWarehouseId = $session->warehouse_id
+                ?? (int) \App\Models\Setting::get('default_warehouse_id');
 
-            if ($defaultWarehouseId && !empty($productUpdates)) {
+            if ($sessionWarehouseId && !empty($productUpdates)) {
                 foreach (array_chunk($productUpdates, 500, true) as $chunk) {
                     foreach ($chunk as $pid => $qty) {
-                        // SET stock_levels to the physically counted quantity
+                        // SET stock_levels[session_warehouse][product] = counted_quantity
                         DB::statement('
                             INSERT INTO stock_levels (warehouse_id, product_id, quantity, min_quantity, created_at, updated_at)
                             VALUES (?, ?, ?, 5, NOW(), NOW())
                             ON DUPLICATE KEY UPDATE quantity = VALUES(quantity), updated_at = NOW()
-                        ', [$defaultWarehouseId, $pid, $qty]);
+                        ', [$sessionWarehouseId, $pid, $qty]);
                     }
                 }
 
-                // Recompute products.quantity for ALL affected products in one query.
-                // products.quantity = cache = SUM(stock_levels.quantity per product)
+                // Recompute products.quantity = SUM(all warehouses stock_levels)
+                // This preserves stock in OTHER warehouses untouched.
                 $pidList = implode(',', array_map('intval', array_keys($productUpdates)));
                 DB::statement("
                     UPDATE products p

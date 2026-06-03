@@ -10,7 +10,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class InventorySession extends Model
 {
     protected $fillable = [
-        'reference', 'title', 'status', 'category_id', 'notes',
+        'reference', 'title', 'status',
+        'warehouse_id',              // ← which warehouse is being counted
+        'category_id', 'notes',
         'started_at', 'approved_at', 'approved_by', 'journal_entry_id', 'created_by',
     ];
 
@@ -49,6 +51,7 @@ class InventorySession extends Model
     public function statusLabel(): string  { return self::$statuses[$this->status] ?? $this->status; }
     public function statusColor(): string  { return self::$statusColors[$this->status] ?? 'secondary'; }
 
+    public function warehouse(): BelongsTo    { return $this->belongsTo(Warehouse::class); }
     public function items(): HasMany         { return $this->hasMany(InventorySessionItem::class, 'session_id'); }
     public function adjustments(): HasMany   { return $this->hasMany(InventoryAdjustment::class, 'inventory_session_id'); }
     public function journalEntry(): BelongsTo { return $this->belongsTo(JournalEntry::class); }

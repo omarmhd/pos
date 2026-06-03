@@ -8,6 +8,11 @@
         <h4 class="mb-0"><i class="bi bi-clipboard-check"></i> {{ $session->title }}</h4>
         <small class="text-muted">{{ $session->reference }}
             <span class="badge bg-{{ $session->statusColor() }} ms-1">{{ $session->statusLabel() }}</span>
+            @if($session->warehouse)
+                <span class="badge bg-success ms-1">
+                    <i class="bi bi-archive me-1"></i>{{ $session->warehouse->name }}
+                </span>
+            @endif
         </small>
     </div>
     <div class="d-flex gap-2 flex-wrap">

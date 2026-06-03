@@ -23,6 +23,31 @@
                 @error('title') <div class="text-danger small">{{ $message }}</div> @enderror
             </div>
 
+            {{-- ✅ REQUIRED: Which warehouse are we physically counting? --}}
+            <div class="mb-3">
+                <label class="form-label fw-bold">
+                    <i class="bi bi-archive text-success me-1"></i>
+                    المخزن المُجرَّد <span class="text-danger">*</span>
+                </label>
+                <select name="warehouse_id" class="form-select @error('warehouse_id') is-invalid @enderror" required>
+                    <option value="">— اختر المخزن الذي ستجرده —</option>
+                    @foreach($warehouses as $wh)
+                        <option value="{{ $wh->id }}"
+                            {{ old('warehouse_id', $defaultWarehouseId) == $wh->id ? 'selected' : '' }}>
+                            {{ $wh->name }}
+                            @if($wh->branch) ({{ $wh->branch->name }}) @endif
+                            — [{{ ['floor'=>'معرض/رفوف','main'=>'مخزن رئيسي','returns'=>'مرتجعات'][$wh->type] ?? $wh->type }}]
+                            @if($wh->is_default) ⭐ @endif
+                        </option>
+                    @endforeach
+                </select>
+                @error('warehouse_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                <div class="form-text text-warning fw-semibold">
+                    <i class="bi bi-exclamation-triangle me-1"></i>
+                    الكمية المرجعية (كمية النظام) ستُحسَّب من هذا المخزن تحديداً — وليس من الإجمالي الكلي.
+                </div>
+            </div>
+
             <div class="mb-3">
                 <label class="form-label fw-bold">تصفية حسب الفئة (اختياري)</label>
                 <select name="category_id" class="form-select">
