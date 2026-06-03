@@ -24,15 +24,14 @@ class TrialBalanceController extends Controller
         $branches     = Branch::where('is_active', true)->orderBy('name')->get(['id', 'name', 'code']);
         $branch       = $branchId ? Branch::find($branchId) : null;
 
+        // INNER JOIN + WHERE: same fix as LedgerController.
+        // LEFT JOIN with conditions on je was wrong — jel.debit/credit from
+        // future entries and other branches were still included in the SUM.
         $raw = DB::table('accounts as a')
-            ->leftJoin('journal_entry_lines as jel', 'a.id', '=', 'jel.account_id')
-            ->leftJoin('journal_entries as je', function ($join) use ($asOf, $branchId) {
-                $join->on('jel.journal_entry_id', '=', 'je.id')
-                     ->whereDate('je.entry_date', '<=', $asOf->toDateString());
-                if ($branchId) {
-                    $join->where('je.branch_id', $branchId);
-                }
-            })
+            ->join('journal_entry_lines as jel', 'a.id', '=', 'jel.account_id')
+            ->join('journal_entries as je', 'jel.journal_entry_id', '=', 'je.id')
+            ->whereDate('je.entry_date', '<=', $asOf->toDateString())
+            ->when($branchId, fn($q) => $q->where('je.branch_id', $branchId))
             ->where('a.is_active', true)
             ->groupBy('a.id', 'a.code', 'a.name', 'a.type')
             ->orderBy('a.code')

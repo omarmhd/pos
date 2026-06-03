@@ -21,14 +21,14 @@ class LedgerController extends Controller
         $branchLocked = $this->isBranchLocked();
 
         if ($request->ajax()) {
+            // INNER JOIN ensures only jel rows that have a matching je entry are counted.
+            // Branch filter goes in WHERE (not JOIN condition) so it actually filters
+            // the jel rows, not just the je join — LEFT JOIN + je condition was wrong
+            // because jel.debit/credit from other branches were still summed.
             $query = DB::table('accounts as a')
-                ->leftJoin('journal_entry_lines as jel', 'a.id', '=', 'jel.account_id')
-                ->leftJoin('journal_entries as je', function ($join) use ($branchId) {
-                    $join->on('jel.journal_entry_id', '=', 'je.id');
-                    if ($branchId) {
-                        $join->where('je.branch_id', $branchId);
-                    }
-                })
+                ->join('journal_entry_lines as jel', 'a.id', '=', 'jel.account_id')
+                ->join('journal_entries as je', 'jel.journal_entry_id', '=', 'je.id')
+                ->when($branchId, fn($q) => $q->where('je.branch_id', $branchId))
                 ->selectRaw('a.id, a.code, a.name, a.type,
                              COALESCE(SUM(jel.debit),  0) as total_debit,
                              COALESCE(SUM(jel.credit), 0) as total_credit')
