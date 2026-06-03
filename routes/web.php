@@ -26,6 +26,7 @@ use App\Http\Controllers\SupplierPaymentController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\BranchController;
 use App\Http\Controllers\AccountingPeriodController;
+use App\Http\Controllers\PurchaseOrderController;
 use App\Http\Controllers\FixedAssetCategoryController;
 use App\Http\Controllers\FixedAssetController;
 use App\Http\Controllers\PriceListController;
@@ -142,6 +143,18 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('purchases', PurchaseController::class)->except(['edit', 'update']);
     Route::get('purchases/{purchase}/pdf',
         [PurchaseController::class, 'pdf'])->name('purchases.pdf');
+
+    // ── Purchase Orders (أوامر الشراء) ───────────────────────────────────────
+    Route::resource('purchase-orders', PurchaseOrderController::class)
+        ->only(['index', 'create', 'store', 'show']);
+    Route::post('purchase-orders/{purchaseOrder}/send',
+        [PurchaseOrderController::class, 'send'])->name('purchase-orders.send');
+    Route::post('purchase-orders/{purchaseOrder}/cancel',
+        [PurchaseOrderController::class, 'cancel'])->name('purchase-orders.cancel');
+    Route::get('purchase-orders/{purchaseOrder}/convert',
+        [PurchaseOrderController::class, 'convertForm'])->name('purchase-orders.convert-form');
+    Route::post('purchase-orders/{purchaseOrder}/convert',
+        [PurchaseOrderController::class, 'convert'])->name('purchase-orders.convert');
 
     // ── Purchase Returns ──────────────────────────────────────────────────────
     Route::resource('purchase-returns', PurchaseReturnController::class)

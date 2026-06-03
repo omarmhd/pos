@@ -16,6 +16,7 @@ class Purchase extends Model
         'user_id',
         'warehouse_id',
         'branch_id',
+        'purchase_order_id',
         'total_amount',
         'payment_status',
         'paid_amount',
@@ -30,6 +31,11 @@ class Purchase extends Model
         'is_posted'    => 'boolean',
         'is_reversed'  => 'boolean',
     ];
+
+    public function purchaseOrder()
+    {
+        return $this->belongsTo(PurchaseOrder::class);
+    }
 
     public function supplier()
     {

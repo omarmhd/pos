@@ -431,8 +431,8 @@
 
                 {{-- ── Purchases ── --}}
                 @canany(['suppliers.view','purchases.view'])
-                @php $s2 = request()->routeIs('suppliers.*','purchases.*')
-                         || request()->is('suppliers*','purchases*'); @endphp
+                @php $s2 = request()->routeIs('suppliers.*','purchases.*','purchase-orders.*')
+                         || request()->is('suppliers*','purchases*','purchase-orders*'); @endphp
                 <li class="nav-item">
                     <button class="nav-section-toggle {{ !$s2 ? 'collapsed' : '' }}"
                             data-bs-toggle="collapse" data-bs-target="#ns2"
@@ -449,6 +449,14 @@
                             <a class="nav-link {{ request()->routeIs('suppliers.*') ? 'active' : '' }}"
                                href="{{ route('suppliers.index') }}">
                                 <i class="bi bi-building"></i> الموردون
+                            </a>
+                        </li>
+                        @endcan
+                        @can('purchase_orders.view')
+                        <li class="nav-item">
+                            <a class="nav-link {{ request()->routeIs('purchase-orders.*') ? 'active' : '' }}"
+                               href="{{ route('purchase-orders.index') }}">
+                                <i class="bi bi-file-earmark-text"></i> أوامر الشراء
                             </a>
                         </li>
                         @endcan
@@ -987,7 +995,7 @@
         var p = window.location.pathname;
         var map = [
             { id: 'ns1', paths: ['/products', '/categories', '/sales', '/sale-returns', '/inventory'] },
-            { id: 'ns2', paths: ['/purchases', '/purchase-returns', '/suppliers', '/expense-invoices'] },
+            { id: 'ns2', paths: ['/purchases', '/purchase-orders', '/purchase-returns', '/suppliers', '/expense-invoices'] },
             { id: 'nsv', paths: ['/vouchers'] },
             { id: 'ns3', paths: ['/customers'] },
             { id: 'ns4', paths: ['/hr'] },

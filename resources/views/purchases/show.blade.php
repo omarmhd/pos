@@ -28,6 +28,13 @@
                     </div>
                     <div class="col-md-6 text-end">
                         <p class="mb-1"><strong>رقم الفاتورة:</strong> {{ $purchase->invoice_number }}</p>
+                        @if($purchase->purchase_order_id)
+                        <p class="mb-1"><strong>أمر الشراء:</strong>
+                            <a href="{{ route('purchase-orders.show', $purchase->purchase_order_id) }}" class="text-warning fw-semibold">
+                                {{ $purchase->purchaseOrder?->po_number ?? '#'.$purchase->purchase_order_id }}
+                            </a>
+                        </p>
+                        @endif
                         @if($purchase->supplier_invoice_number)
                         <p class="mb-1"><strong>رقم فاتورة المورد:</strong>
                             <span class="text-primary fw-semibold">{{ $purchase->supplier_invoice_number }}</span>

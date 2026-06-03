@@ -77,6 +77,7 @@
                 <a class="nav-link" href="#sec-fixed-assets">الأصول الثابتة</a>
                 <a class="nav-link" href="#sec-branches">الفروع والمخازن</a>
                 <a class="nav-link" href="#sec-pricing">قوائم الأسعار (جملة / تجزئة)</a>
+                <a class="nav-link" href="#sec-purchase-orders">أوامر الشراء</a>
                 <a class="nav-link" href="#sec-purchases">المشتريات والموردون</a>
                 <a class="nav-link" href="#sec-purchase-returns">مرتجعات المشتريات</a>
                 <a class="nav-link" href="#sec-expenses">فواتير المصروفات</a>
@@ -527,6 +528,50 @@
                 <div class="alert-tip">
                     <i class="bi bi-arrow-repeat"></i>
                     الكمية تُحدَّث تلقائياً: تنقص عند البيع (+مراجعة عند تراجع المبيعة)، وتزيد عند تسجيل فاتورة شراء جديدة.
+                </div>
+            </div>
+        </div>
+
+        {{-- ══════════════════════════════════════════════════════════ --}}
+        {{-- Purchase Orders --}}
+        {{-- ══════════════════════════════════════════════════════════ --}}
+        <div class="help-section" id="sec-purchase-orders">
+            <div class="section-header">
+                <i class="bi bi-file-earmark-text fs-5"></i> أوامر الشراء (Purchase Orders)
+            </div>
+            <div class="section-body">
+                <p>أمر الشراء هو وثيقة رسمية تُرسَل للمورد تُحدِّد الأصناف المطلوبة والكميات والأسعار المتفق عليها — <strong>لا يُنشئ قيداً محاسبياً</strong> عند إنشائه.</p>
+
+                <div class="subsection-title">دورة الحياة</div>
+                <div class="d-flex gap-2 flex-wrap mb-3">
+                    <span class="badge bg-secondary px-3 py-2">مسودة</span>
+                    <span>→</span>
+                    <span class="badge bg-primary px-3 py-2">مُرسَل</span>
+                    <span>→</span>
+                    <span class="badge bg-warning text-dark px-3 py-2">مستلم جزئياً</span>
+                    <span>→</span>
+                    <span class="badge bg-success px-3 py-2">مستلم بالكامل</span>
+                </div>
+
+                <div class="subsection-title">تحويل إلى فاتورة شراء</div>
+                <div class="workflow-step">
+                    <span class="step-num">1</span>
+                    <div><span class="step-title">إنشاء أمر الشراء</span><br>
+                    <span class="step-desc">أضف الأصناف والكميات والأسعار المتفق عليها مع المورد.</span></div>
+                </div>
+                <div class="workflow-step">
+                    <span class="step-num">2</span>
+                    <div><span class="step-title">إرسال للمورد</span><br>
+                    <span class="step-desc">اضغط "إرسال للمورد" لتغيير الحالة وتسجيل تاريخ الإرسال.</span></div>
+                </div>
+                <div class="workflow-step">
+                    <span class="step-num">3</span>
+                    <div><span class="step-title">تحويل عند الاستلام</span><br>
+                    <span class="step-desc">عند وصول البضاعة، اضغط "تحويل لفاتورة شراء" — يُعبَّأ النموذج تلقائياً بالبيانات المتبقية غير المُستلَمة.</span></div>
+                </div>
+
+                <div class="alert-tip mt-2">
+                    يدعم النظام الاستلام الجزئي: تحويل جزء من الكميات الآن، والباقي لاحقاً. حالة PO تتغير تلقائياً بين "جزئي" و"مستلم بالكامل".
                 </div>
             </div>
         </div>
