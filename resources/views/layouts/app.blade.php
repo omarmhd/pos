@@ -595,7 +595,7 @@
                 @endcan
 
                 {{-- ── Accounting ── --}}
-                @canany(['accounts.view','journal_entries.view','ledger.view','trial_balance.view','financial_statements.view','accounting.year_end_close','reversals.view','audit_logs.view'])
+                @canany(['accounts.view','journal_entries.view','ledger.view','trial_balance.view','financial_statements.view','accounting.year_end_close','accounting.periods.view','reversals.view','audit_logs.view'])
                 @php $s5 = request()->routeIs('accounting.*','accounts.*','reversals.*','journal_entries.*','audit.*')
                          || request()->is('accounting*','accounts*','journal-entries*','reversals*','audit-logs*'); @endphp
                 <li class="nav-item">
@@ -652,6 +652,14 @@
                             <a class="nav-link {{ request()->routeIs('accounting.trial-balance') ? 'active' : '' }}"
                                href="{{ route('accounting.trial-balance') }}">
                                 <i class="bi bi-check2-square"></i> ميزان المراجعة
+                            </a>
+                        </li>
+                        @endcan
+                        @can('accounting.periods.view')
+                        <li class="nav-item">
+                            <a class="nav-link {{ request()->routeIs('accounting.periods.*') ? 'active' : '' }}"
+                               href="{{ route('accounting.periods.index') }}">
+                                <i class="bi bi-calendar-lock"></i> إغلاق الفترات
                             </a>
                         </li>
                         @endcan

@@ -78,13 +78,21 @@ class LedgerPostingService
     }
 
     /**
-     * Validate balance then persist a JournalEntry with its lines.
+     * Validate balance, check period lock, then persist a JournalEntry with its lines.
+     *
+     * This is the SINGLE enforcement point for period locking.
+     * Every post*() method flows through here.
      *
      * @param  array<string, mixed>                                                       $header
      * @param  list<array{account_id:int,debit:float,credit:float,line_description:string}> $lines
      */
     private function buildEntry(array $header, array $lines): JournalEntry
     {
+        // ── 1. Period lock check ─────────────────────────────────────────────
+        $entryDate = $header['entry_date'] ?? now()->toDateString();
+        \App\Services\PeriodLockService::assertOpen($entryDate);
+
+        // ── 2. Balance check ─────────────────────────────────────────────────
         $debits  = round(array_sum(array_column($lines, 'debit')),  2);
         $credits = round(array_sum(array_column($lines, 'credit')), 2);
 

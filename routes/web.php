@@ -25,6 +25,7 @@ use App\Http\Controllers\FinancialStatementController;
 use App\Http\Controllers\SupplierPaymentController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\BranchController;
+use App\Http\Controllers\AccountingPeriodController;
 use App\Http\Controllers\FixedAssetCategoryController;
 use App\Http\Controllers\FixedAssetController;
 use App\Http\Controllers\PriceListController;
@@ -208,6 +209,14 @@ Route::middleware(['auth'])->group(function () {
             [YearEndClosingController::class, 'index'])->name('year-end-closing');
         Route::post('/year-end-closing',
             [YearEndClosingController::class, 'store'])->name('year-end-closing.store');
+
+        // ── Accounting Periods (Period Locking) ──────────────────────────────
+        Route::get('/accounting-periods',
+            [AccountingPeriodController::class, 'index'])->name('accounting.periods.index');
+        Route::post('/accounting-periods/lock',
+            [AccountingPeriodController::class, 'lock'])->name('accounting.periods.lock');
+        Route::post('/accounting-periods/unlock',
+            [AccountingPeriodController::class, 'unlock'])->name('accounting.periods.unlock');
     });
 
     // ── Users ─────────────────────────────────────────────────────────────────

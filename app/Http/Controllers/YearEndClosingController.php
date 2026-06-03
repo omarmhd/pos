@@ -47,7 +47,10 @@ class YearEndClosingController extends Controller
             (new LedgerPostingService())->postYearEndClosing($year);
         });
 
+        // Lock all 12 periods of the closed year
+        \App\Services\PeriodLockService::lockYear($year, auth()->id());
+
         return redirect()->route('accounting.year-end-closing')
-            ->with('success', "تم إقفال سنة {$year} بنجاح وترحيل قيد الإقفال.");
+            ->with('success', "تم إقفال سنة {$year} بنجاح وترحيل قيد الإقفال، وقُفِّلت جميع الفترات المحاسبية لهذه السنة.");
     }
 }

@@ -84,6 +84,7 @@
                 <a class="nav-link" href="#sec-hr">الموارد البشرية والرواتب</a>
                 <a class="nav-link" href="#sec-zkteco"><i class="bi bi-fingerprint"></i> ربط جهاز البصمة</a>
                 <a class="nav-link" href="#sec-accounting">المحاسبة والقيود</a>
+                <a class="nav-link sub-item" href="#sec-period-lock">└ إغلاق الفترات</a>
                 <a class="nav-link sub-item" href="#sec-accounting">└ القيد المزدوج</a>
                 <a class="nav-link sub-item" href="#sec-accounts">└ شجرة الحسابات</a>
                 <a class="nav-link sub-item" href="#sec-accounting">└ إقفال نهاية السنة</a>
@@ -784,6 +785,48 @@
                         <tr><td class="gl-credit">إلى: النقدية/الصندوق (1000)</td><td>← صافي الراتب المصروف</td></tr>
                         <tr><td class="gl-credit">إلى: رواتب مستحقة الدفع (2100)</td><td>← الاستقطاعات المحتجزة</td></tr>
                     </table>
+                </div>
+            </div>
+        </div>
+
+        {{-- ══════════════════════════════════════════════════════════ --}}
+        {{-- Period Locking --}}
+        {{-- ══════════════════════════════════════════════════════════ --}}
+        <div class="help-section" id="sec-period-lock">
+            <div class="section-header">
+                <i class="bi bi-calendar-lock fs-5"></i> إغلاق الفترات المحاسبية
+            </div>
+            <div class="section-body">
+                <p>إغلاق الفترة يمنع إضافة أي قيد محاسبي جديد بتاريخ تلك الفترة — سواء كان قيداً يدوياً أو استهلاكاً أو مبيعات أو مشتريات.</p>
+
+                <div class="subsection-title">قواعد الإغلاق</div>
+                <ul>
+                    <li><strong>من يُغلق؟</strong> المحاسب أو المدير (صلاحية <code>accounting.periods.manage</code>)</li>
+                    <li><strong>من يفتح؟</strong> الأدمن فقط (لمنع التلاعب العرضي)</li>
+                    <li><strong>الإغلاق السنوي:</strong> عند إقفال نهاية السنة تُغلَق كل فترات السنة تلقائياً</li>
+                    <li><strong>Idempotent:</strong> إغلاق فترة مقفلة بالفعل لا يُسبب أي خطأ</li>
+                </ul>
+
+                <div class="subsection-title mt-3">ما الذي يحميه الإغلاق؟</div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <ul class="list-unstyled">
+                            <li>✅ قيود يدوية</li>
+                            <li>✅ قيود المبيعات والمشتريات</li>
+                            <li>✅ سندات القبض والصرف</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <ul class="list-unstyled">
+                            <li>✅ قيود الاستهلاك الشهري</li>
+                            <li>✅ قيود الرواتب</li>
+                            <li>✅ كل ما يمر عبر LedgerPostingService</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="alert-warn mt-3">
+                    <strong>تحذير:</strong> بعد الإغلاق، لو حاول أي مستخدم ترحيل قيد بتاريخ الفترة المقفلة سيظهر له خطأ واضح يطلب فتح الفترة.
                 </div>
             </div>
         </div>

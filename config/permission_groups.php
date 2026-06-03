@@ -146,9 +146,11 @@ return [
         'label' => 'المحاسبة (متقدم)',
         'icon'  => 'bi-calculator',
         'permissions' => [
-            'accounting.year_end_close' => 'إقفال نهاية السنة',
-            'accounting.post'           => 'ترحيل القيود المحاسبية',
-            'accounting.reverse'        => 'عكس القيود المحاسبية',
+            'accounting.year_end_close'  => 'إقفال نهاية السنة',
+            'accounting.post'            => 'ترحيل القيود المحاسبية',
+            'accounting.reverse'         => 'عكس القيود المحاسبية',
+            'accounting.periods.view'    => 'عرض الفترات المحاسبية',
+            'accounting.periods.manage'  => 'إغلاق / فتح الفترات المحاسبية',
         ],
     ],
     'reports' => [

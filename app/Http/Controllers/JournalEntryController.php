@@ -90,6 +90,13 @@ class JournalEntryController extends Controller
             'lines.*.line_description' => 'nullable|string|max:255',
         ]);
 
+        // Period lock check (manual entries use the entry_date directly)
+        try {
+            \App\Services\PeriodLockService::assertOpen($request->entry_date);
+        } catch (\RuntimeException $e) {
+            return back()->withInput()->with('error', $e->getMessage());
+        }
+
         $totalDebit  = round(collect($request->lines)->sum('debit'),  2);
         $totalCredit = round(collect($request->lines)->sum('credit'), 2);
 

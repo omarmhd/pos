@@ -68,6 +68,7 @@ class PermissionSeeder extends Seeder
             'accounts.view',
             'journal_entries.view',
             'ledger.view', 'trial_balance.view', 'financial_statements.view',
+            'accounting.periods.view',
             // Reports
             'reports.view',
             // HR
@@ -108,6 +109,7 @@ class PermissionSeeder extends Seeder
             'journal_entries.view', 'journal_entries.create',
             'ledger.view', 'trial_balance.view', 'financial_statements.view',
             'accounting.year_end_close', 'accounting.post', 'accounting.reverse',
+            'accounting.periods.view', 'accounting.periods.manage',
             'reports.view',
             'audit_logs.view',
             'reversals.view', 'reversals.create',
