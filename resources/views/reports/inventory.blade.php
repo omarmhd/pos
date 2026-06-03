@@ -67,8 +67,14 @@
             <strong>تقرير المخزون</strong> — {{ now()->format('Y-m-d') }}
         </div>
 
+        @if($products->isEmpty())
+        <div class="text-center text-muted py-5 border rounded">
+            <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+            لا توجد منتجات
+        </div>
+        @else
         <div class="table-responsive">
-            <table class="table table-hover dt-table" data-title="تقرير المخزون">
+            <table class="table table-hover dt-table" style="width:100%" data-title="تقرير المخزون">
                 <thead class="table-light">
                     <tr>
                         <th>المنتج</th>
@@ -81,7 +87,13 @@
                     </tr>
                 </thead>
                 <tbody>
-                @forelse($products as $product)
+                @foreach($products as $product)
+                @php
+                    // category_name: raw DB query (stdClass) uses column alias;
+                    // Eloquent model uses relationship lazy/eager load.
+                    $catName = $product->category_name
+                        ?? ($product->category?->name ?? '—');
+                @endphp
                     <tr class="{{ $product->quantity <= $product->min_quantity ? 'table-warning' : '' }}">
                         <td>
                             <strong>{{ $product->name }}</strong>
@@ -89,7 +101,7 @@
                                 <span class="badge bg-danger ms-1">مخزون منخفض</span>
                             @endif
                         </td>
-                        <td><span class="badge bg-info">{{ $product->category->name }}</span></td>
+                        <td><span class="badge bg-info">{{ $catName }}</span></td>
                         <td class="text-center">
                             @if($product->quantity <= $product->min_quantity)
                                 <span class="badge bg-danger">{{ $product->quantity }}</span>
@@ -102,13 +114,8 @@
                         <td class="text-end fw-bold">{{ number_format($product->inventory_value, 2) }}</td>
                         <td class="text-end text-success">{{ number_format($product->potential_profit, 2) }}</td>
                     </tr>
-                @empty
-                    <tr>
-                        <td colspan="7" class="text-center text-muted py-4">لا توجد منتجات</td>
-                    </tr>
-                @endforelse
+                @endforeach
                 </tbody>
-                @if($products->count())
                 <tfoot class="table-secondary fw-bold">
                     <tr>
                         <td colspan="5">الإجمالي</td>
@@ -116,9 +123,9 @@
                         <td class="text-end text-success">{{ number_format($totalPotentialProfit, 2) }}</td>
                     </tr>
                 </tfoot>
-                @endif
             </table>
         </div>
+        @endif
 
     </div>
 </div>

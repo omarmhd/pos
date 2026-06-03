@@ -38,7 +38,7 @@
 
     <div class="card-body">
         <div class="table-responsive">
-            <table id="fa-table" class="table table-hover w-100"
+            <table id="fa-table" class="table table-hover" style="width:100%"
                    data-url="{{ route('fixed-assets.index') }}">
                 <thead class="table-light">
                 <tr>

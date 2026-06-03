@@ -42,7 +42,7 @@
 
 <div class="card border-0 shadow-sm">
     <div class="card-body p-0">
-        <table id="ledger-table" class="table table-hover align-middle mb-0 w-100">
+        <table id="ledger-table" class="table table-hover align-middle mb-0" style="width:100%">
             <thead class="table-light">
                 <tr>
                     <th style="width:100px">الكود</th>

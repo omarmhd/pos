@@ -67,8 +67,15 @@
             إلى {{ \Carbon\Carbon::parse($dateTo)->format('Y-m-d') }}
         </div>
 
+        @if($products->isEmpty())
+        <div class="text-center text-muted py-5 border rounded">
+            <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+            لا توجد مبيعات في هذه الفترة
+            @if(request('branch_id')) للفرع المحدد @endif
+        </div>
+        @else
         <div class="table-responsive">
-            <table class="table table-hover dt-table" data-title="أكثر المنتجات مبيعاً">
+            <table class="table table-hover dt-table" style="width:100%" data-title="أكثر المنتجات مبيعاً">
                 <thead class="table-light">
                     <tr>
                         <th class="text-center">#</th>
@@ -81,7 +88,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                @forelse($products as $index => $product)
+                @foreach($products as $index => $product)
                     <tr>
                         <td class="text-center">
                             @if($index === 0)
@@ -95,7 +102,7 @@
                             @endif
                         </td>
                         <td><strong>{{ $product->name }}</strong></td>
-                        <td><span class="badge bg-info">{{ $product->category->name }}</span></td>
+                        <td><span class="badge bg-info">{{ $product->category?->name ?? '—' }}</span></td>
                         <td class="text-center"><span class="badge bg-primary">{{ $product->total_quantity }}</span></td>
                         <td class="text-center">{{ $product->times_sold }} مرة</td>
                         <td class="text-end fw-bold">{{ number_format($product->total_revenue, 2) }}</td>
@@ -103,14 +110,11 @@
                             {{ number_format($product->total_revenue / max($product->total_quantity, 1), 2) }}
                         </td>
                     </tr>
-                @empty
-                    <tr>
-                        <td colspan="7" class="text-center text-muted py-4">لا توجد مبيعات في هذه الفترة</td>
-                    </tr>
-                @endforelse
+                @endforeach
                 </tbody>
             </table>
         </div>
+        @endif
 
     </div>
 </div>

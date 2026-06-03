@@ -35,7 +35,7 @@
     </div>
     <div class="card-body">
         <div class="table-responsive">
-            <table id="je-table" class="table table-hover align-middle w-100">
+            <table id="je-table" class="table table-hover align-middle" style="width:100%">
                 <thead class="table-light">
                     <tr>
                         <th>رقم القيد</th>

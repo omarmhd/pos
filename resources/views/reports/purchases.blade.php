@@ -57,8 +57,14 @@
             إلى {{ \Carbon\Carbon::parse($dateTo)->format('Y-m-d') }}
         </div>
 
+        @if($purchases->isEmpty())
+        <div class="text-center text-muted py-5 border rounded">
+            <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+            لا توجد مشتريات في هذه الفترة
+        </div>
+        @else
         <div class="table-responsive">
-            <table class="table table-hover dt-table" data-title="تقرير المشتريات">
+            <table class="table table-hover dt-table" style="width:100%" data-title="تقرير المشتريات">
                 <thead class="table-light">
                     <tr>
                         <th>رقم الفاتورة</th>
@@ -71,7 +77,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                @forelse($purchases as $purchase)
+                @foreach($purchases as $purchase)
                     <tr>
                         <td><strong>{{ $purchase->invoice_number }}</strong></td>
                         <td>{{ $purchase->supplier->name }}</td>
@@ -91,11 +97,7 @@
                         </td>
                         <td>{{ $purchase->created_at->format('Y-m-d') }}</td>
                     </tr>
-                @empty
-                    <tr>
-                        <td colspan="7" class="text-center text-muted py-4">لا توجد مشتريات في هذه الفترة</td>
-                    </tr>
-                @endforelse
+                @endforeach
                 </tbody>
                 @if($purchases->count())
                 <tfoot class="table-secondary fw-bold">
@@ -107,9 +109,10 @@
                         <td colspan="2"></td>
                     </tr>
                 </tfoot>
-                @endif
+
             </table>
         </div>
+        @endif
 
     </div>
 </div>

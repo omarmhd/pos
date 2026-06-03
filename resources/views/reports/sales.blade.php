@@ -65,8 +65,14 @@
             إلى {{ \Carbon\Carbon::parse($dateTo)->format('Y-m-d') }}
         </div>
 
+        @if($sales->isEmpty())
+        <div class="text-center text-muted py-5 border rounded">
+            <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+            لا توجد مبيعات في هذه الفترة
+        </div>
+        @else
         <div class="table-responsive">
-            <table class="table table-hover dt-table" data-title="تقرير المبيعات">
+            <table class="table table-hover dt-table" style="width:100%" data-title="تقرير المبيعات">
                 <thead class="table-light">
                     <tr>
                         <th>التاريخ</th>
@@ -77,7 +83,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                @forelse($sales as $sale)
+                @foreach($sales as $sale)
                     <tr>
                         <td>{{ $sale->date }}</td>
                         <td class="text-center"><span class="badge bg-primary">{{ $sale->count }}</span></td>
@@ -85,13 +91,8 @@
                         <td class="text-end">{{ number_format($sale->tax, 2) }}</td>
                         <td class="text-end fw-bold">{{ number_format($sale->total, 2) }}</td>
                     </tr>
-                @empty
-                    <tr>
-                        <td colspan="5" class="text-center text-muted py-4">لا توجد مبيعات في هذه الفترة</td>
-                    </tr>
-                @endforelse
+                @endforeach
                 </tbody>
-                @if($sales->count())
                 <tfoot class="table-secondary fw-bold">
                     <tr>
                         <td>الإجمالي</td>
@@ -101,9 +102,9 @@
                         <td class="text-end">{{ number_format($totalSales, 2) }}</td>
                     </tr>
                 </tfoot>
-                @endif
             </table>
         </div>
+        @endif
 
     </div>
 </div>

@@ -79,7 +79,13 @@
     <div class="card border-0 shadow-sm">
         <div class="card-header bg-white fw-bold"><i class="bi bi-table"></i> تفاصيل الفواتير المستحقة</div>
         <div class="card-body p-0">
-            <table class="table table-hover mb-0 dt-table" data-title="تقادم الذمم المدينة">
+        @if(empty($rows))
+            <div class="text-center text-success py-5">
+                <i class="bi bi-check-circle fs-1 d-block mb-2"></i>
+                لا توجد ذمم مستحقة — جميع الفواتير مسددة
+            </div>
+        @else
+            <table class="table table-hover mb-0 dt-table" style="width:100%" data-title="تقادم الذمم المدينة">
                 <thead class="table-dark">
                     <tr>
                         <th class="ps-3">العميل</th>
@@ -94,7 +100,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @forelse($rows as $row)
+                    @foreach($rows as $row)
                     @php
                         $bucket = $row['bucket'];
                         $rowClass = match($bucket) {
@@ -140,16 +146,8 @@
                             </a>
                         </td>
                     </tr>
-                    @empty
-                    <tr>
-                        <td colspan="9" class="text-center text-success py-4">
-                            <i class="bi bi-check-circle fs-3"></i>
-                            <div class="mt-1">لا توجد ذمم مستحقة — جميع الفواتير مسددة</div>
-                        </td>
-                    </tr>
-                    @endforelse
+                    @endforeach
                 </tbody>
-                @if(!empty($rows))
                 <tfoot class="table-secondary fw-bold">
                     <tr>
                         <td colspan="6" class="ps-3">الإجمالي</td>
@@ -157,8 +155,8 @@
                         <td colspan="2"></td>
                     </tr>
                 </tfoot>
-                @endif
             </table>
+        @endif
         </div>
     </div>
 

@@ -4,26 +4,37 @@
 @section('content')
 <div class="container-fluid">
 
-    {{-- Date Filter --}}
+    {{-- Date + Branch Filter --}}
     <form class="card mb-4" method="GET" action="{{ route('accounting.index') }}">
         <div class="card-body py-2">
             <div class="row g-2 align-items-end">
-                <div class="col-md-3">
+                @include('components.branch-filter')
+                <div class="col-md-2">
                     <label class="form-label small mb-1">من تاريخ</label>
                     <input type="date" name="date_from" value="{{ $dateFrom->format('Y-m-d') }}" class="form-control form-control-sm">
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-2">
                     <label class="form-label small mb-1">إلى تاريخ</label>
                     <input type="date" name="date_to" value="{{ $dateTo->format('Y-m-d') }}" class="form-control form-control-sm">
                 </div>
-                <div class="col-md-2">
-                    <button class="btn btn-primary btn-sm w-100" type="submit">
+                <div class="col-auto">
+                    <button class="btn btn-primary btn-sm" type="submit">
                         <i class="bi bi-funnel me-1"></i> تحديث
                     </button>
+                    @if(request()->hasAny(['branch_id','date_from','date_to']))
+                        <a href="{{ route('accounting.index') }}" class="btn btn-outline-secondary btn-sm ms-1">
+                            <i class="bi bi-x"></i>
+                        </a>
+                    @endif
                 </div>
-                <div class="col-md-4 text-end text-muted small">
-                    {{ $dateFrom->format('Y-m-d') }} — {{ $dateTo->format('Y-m-d') }}
+                @if($branchId ?? false)
+                <div class="col-auto">
+                    <span class="badge bg-primary">
+                        <i class="bi bi-building me-1"></i>
+                        {{ ($branches ?? collect())->firstWhere('id', $branchId)?->name ?? '' }}
+                    </span>
                 </div>
+                @endif
             </div>
         </div>
     </form>

@@ -6,11 +6,31 @@
 <div class="container-fluid">
 
     <div class="card">
-        <div class="card-header d-flex justify-content-between align-items-center">
+        <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
             <span><i class="bi bi-arrow-counterclockwise"></i> سجل القيود العكسية</span>
-            <a href="{{ route('reversals.create') }}" class="btn btn-danger btn-sm">
-                <i class="bi bi-plus-circle"></i> قيد عكسي جديد
-            </a>
+            <div class="d-flex gap-2 align-items-center flex-wrap">
+                {{-- Branch filter for global users --}}
+                @if(!($branchLocked ?? false) && isset($branches) && $branches->count() >= 1)
+                <form method="GET" class="d-flex gap-1 align-items-center mb-0">
+                    <select name="branch_id" class="form-select form-select-sm" style="min-width:140px" onchange="this.form.submit()">
+                        <option value="">كل الفروع</option>
+                        @foreach($branches as $b)
+                            <option value="{{ $b->id }}" {{ ($branchId ?? null) == $b->id ? 'selected':'' }}>
+                                {{ $b->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                    @if(request('branch_id'))
+                        <a href="{{ route('reversals.index') }}" class="btn btn-sm btn-outline-secondary">
+                            <i class="bi bi-x"></i>
+                        </a>
+                    @endif
+                </form>
+                @endif
+                <a href="{{ route('reversals.create') }}" class="btn btn-danger btn-sm">
+                    <i class="bi bi-plus-circle"></i> قيد عكسي جديد
+                </a>
+            </div>
         </div>
         <div class="card-body p-0">
             @if($reversals->isEmpty())
