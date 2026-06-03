@@ -42,6 +42,10 @@ class PermissionSeeder extends Seeder
             // Sales
             'sales.view', 'sales.create', 'sales.edit', 'sales.delete', 'sales.reverse',
             'sales.returns.view', 'sales.returns.create',
+            'quotations.view', 'quotations.create', 'quotations.send',
+            'quotations.cancel', 'quotations.convert',
+            'sales_orders.view', 'sales_orders.confirm',
+            'sales_orders.cancel', 'sales_orders.convert',
             // Purchases
             'purchases.view', 'purchases.create', 'purchases.edit', 'purchases.delete',
             'purchases.returns.view', 'purchases.returns.create',

@@ -27,6 +27,8 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\BranchController;
 use App\Http\Controllers\AccountingPeriodController;
 use App\Http\Controllers\PurchaseOrderController;
+use App\Http\Controllers\SalesOrderController;
+use App\Http\Controllers\SalesQuotationController;
 use App\Http\Controllers\FixedAssetCategoryController;
 use App\Http\Controllers\FixedAssetController;
 use App\Http\Controllers\PriceListController;
@@ -189,6 +191,29 @@ Route::middleware(['auth'])->group(function () {
     Route::get('sales/{sale}/pdf',    [SaleController::class, 'pdf'])    ->name('sales.pdf');
     Route::delete('sales/{sale}',     [SaleController::class, 'destroy'])->name('sales.destroy');
 
+    // ── Sales Quotations (عروض الأسعار) ──────────────────────────────────────
+    Route::resource('sales-quotations', SalesQuotationController::class)
+        ->only(['index', 'create', 'store', 'show']);
+    Route::post('sales-quotations/{salesQuotation}/send',
+        [SalesQuotationController::class, 'send'])->name('sales-quotations.send');
+    Route::post('sales-quotations/{salesQuotation}/reject',
+        [SalesQuotationController::class, 'reject'])->name('sales-quotations.reject');
+    Route::get('sales-quotations/{salesQuotation}/convert-to-order',
+        [SalesQuotationController::class, 'convertToOrderForm'])->name('sales-quotations.convert-to-order-form');
+    Route::post('sales-quotations/{salesQuotation}/convert-to-order',
+        [SalesQuotationController::class, 'convertToOrder'])->name('sales-quotations.convert-to-order');
+
+    // ── Sales Orders (أوامر البيع) ───────────────────────────────────────────
+    Route::resource('sales-orders', SalesOrderController::class)->only(['index', 'show']);
+    Route::post('sales-orders/{salesOrder}/confirm',
+        [SalesOrderController::class, 'confirm'])->name('sales-orders.confirm');
+    Route::post('sales-orders/{salesOrder}/cancel',
+        [SalesOrderController::class, 'cancel'])->name('sales-orders.cancel');
+    Route::get('sales-orders/{salesOrder}/convert',
+        [SalesOrderController::class, 'convertToInvoiceForm'])->name('sales-orders.convert-form');
+    Route::post('sales-orders/{salesOrder}/convert',
+        [SalesOrderController::class, 'convertToInvoice'])->name('sales-orders.convert');
+
     // ── Sale Returns ──────────────────────────────────────────────────────────
     Route::resource('sale-returns', SaleReturnController::class)->only(['index', 'create', 'store', 'show']);
 
@@ -225,11 +250,11 @@ Route::middleware(['auth'])->group(function () {
 
         // ── Accounting Periods (Period Locking) ──────────────────────────────
         Route::get('/accounting-periods',
-            [AccountingPeriodController::class, 'index'])->name('accounting.periods.index');
+            [AccountingPeriodController::class, 'index'])->name('periods.index');
         Route::post('/accounting-periods/lock',
-            [AccountingPeriodController::class, 'lock'])->name('accounting.periods.lock');
+            [AccountingPeriodController::class, 'lock'])->name('periods.lock');
         Route::post('/accounting-periods/unlock',
-            [AccountingPeriodController::class, 'unlock'])->name('accounting.periods.unlock');
+            [AccountingPeriodController::class, 'unlock'])->name('periods.unlock');
     });
 
     // ── Users ─────────────────────────────────────────────────────────────────

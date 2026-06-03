@@ -15,6 +15,7 @@ class Sale extends Model
         'customer_id',
         'warehouse_id',
         'branch_id',
+        'sales_order_id',
         'is_credit',
         'subtotal',
         'discount',
@@ -59,6 +60,11 @@ class Sale extends Model
     public function customerPayments()
     {
         return $this->hasMany(CustomerPayment::class);
+    }
+
+    public function salesOrder()
+    {
+        return $this->belongsTo(SalesOrder::class, 'sales_order_id');
     }
 
     public function saleReturns()

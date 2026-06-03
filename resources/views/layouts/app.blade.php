@@ -385,6 +385,22 @@
                             </a>
                         </li>
                         @endcan
+                        @can('quotations.view')
+                        <li class="nav-item">
+                            <a class="nav-link {{ request()->routeIs('sales-quotations.*') ? 'active' : '' }}"
+                               href="{{ route('sales-quotations.index') }}">
+                                <i class="bi bi-file-earmark-richtext"></i> عروض الأسعار
+                            </a>
+                        </li>
+                        @endcan
+                        @can('sales_orders.view')
+                        <li class="nav-item">
+                            <a class="nav-link {{ request()->routeIs('sales-orders.*') ? 'active' : '' }}"
+                               href="{{ route('sales-orders.index') }}">
+                                <i class="bi bi-bag-check"></i> أوامر البيع
+                            </a>
+                        </li>
+                        @endcan
                         @can('sales.view')
                         <li class="nav-item">
                             <a class="nav-link {{ request()->routeIs('sales.*') ? 'active' : '' }}"
@@ -994,7 +1010,7 @@
     (function () {
         var p = window.location.pathname;
         var map = [
-            { id: 'ns1', paths: ['/products', '/categories', '/sales', '/sale-returns', '/inventory'] },
+            { id: 'ns1', paths: ['/products', '/categories', '/sales', '/sales-quotations', '/sales-orders', '/sale-returns', '/inventory'] },
             { id: 'ns2', paths: ['/purchases', '/purchase-orders', '/purchase-returns', '/suppliers', '/expense-invoices'] },
             { id: 'nsv', paths: ['/vouchers'] },
             { id: 'ns3', paths: ['/customers'] },

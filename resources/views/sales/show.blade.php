@@ -40,6 +40,15 @@
                                 <dt class="col-5">رقم الفاتورة</dt>
                                 <dd class="col-7 fw-semibold">{{ $sale->invoice_number }}</dd>
 
+                                @if($sale->sales_order_id)
+                                <dt class="col-5">أمر البيع</dt>
+                                <dd class="col-7">
+                                    <a href="{{ route('sales-orders.show', $sale->sales_order_id) }}" class="text-success fw-semibold">
+                                        {{ $sale->salesOrder?->order_number ?? '#'.$sale->sales_order_id }}
+                                    </a>
+                                </dd>
+                                @endif
+
                                 <dt class="col-5">التاريخ</dt>
                                 <dd class="col-7">{{ $sale->created_at->format('Y-m-d H:i') }}</dd>
 

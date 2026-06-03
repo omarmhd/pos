@@ -3,10 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\AccountingPeriod;
-use App\Models\JournalEntry;
 use App\Models\Setting;
 use App\Services\PeriodLockService;
-use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -18,18 +16,13 @@ class AccountingPeriodController extends Controller
         $this->middleware('can:accounting.periods.manage')->only(['lock', 'unlock']);
     }
 
-    /**
-     * Display the last 18 months with their status + a summary of GL activity.
-     */
     public function index(Request $request)
     {
         $year     = (int) $request->input('year', now()->year);
         $currency = Setting::get('currency_symbol', 'ج.م');
 
-        // Build 2 years of periods (current + previous)
         $periods = AccountingPeriod::lastMonths(24);
 
-        // Attach GL summary: count of entries + total debits per period
         $glSummary = DB::table('journal_entries')
             ->selectRaw('YEAR(entry_date) as yr, MONTH(entry_date) as mo,
                          COUNT(*) as entry_count,
@@ -49,7 +42,6 @@ class AccountingPeriodController extends Controller
         return view('accounting.periods.index', compact('periods', 'currency', 'year'));
     }
 
-    /** Lock a period */
     public function lock(Request $request)
     {
         $request->validate([
@@ -58,23 +50,20 @@ class AccountingPeriodController extends Controller
             'notes' => 'nullable|string|max:500',
         ]);
 
-        // Safety: check there are no unposted entries? Not required — just lock.
         PeriodLockService::lock(
             (int) $request->year,
             (int) $request->month,
-            auth()->id(),
+            (int) \Illuminate\Support\Facades\Auth::id(),
             $request->notes
         );
 
         $period = AccountingPeriod::where('year', $request->year)
-            ->where('month', $request->month)
-            ->first();
+            ->where('month', $request->month)->first();
 
         return redirect()->route('accounting.periods.index')
             ->with('success', 'تم إغلاق فترة ' . ($period?->periodLabel() ?? $request->year . '-' . $request->month));
     }
 
-    /** Unlock a period — admin only in UI */
     public function unlock(Request $request)
     {
         $request->validate([
@@ -85,12 +74,11 @@ class AccountingPeriodController extends Controller
         PeriodLockService::unlock(
             (int) $request->year,
             (int) $request->month,
-            auth()->id()
+            (int) \Illuminate\Support\Facades\Auth::id()
         );
 
         $period = AccountingPeriod::where('year', $request->year)
-            ->where('month', $request->month)
-            ->first();
+            ->where('month', $request->month)->first();
 
         return redirect()->route('accounting.periods.index')
             ->with('success', 'تم فتح فترة ' . ($period?->periodLabel() ?? $request->year . '-' . $request->month));
