@@ -25,6 +25,8 @@ use App\Http\Controllers\FinancialStatementController;
 use App\Http\Controllers\SupplierPaymentController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\BranchController;
+use App\Http\Controllers\FixedAssetCategoryController;
+use App\Http\Controllers\FixedAssetController;
 use App\Http\Controllers\PriceListController;
 use App\Http\Controllers\WarehouseController;
 use App\Http\Controllers\YearEndClosingController;
@@ -224,6 +226,22 @@ Route::middleware(['auth'])->group(function () {
         [App\Http\Controllers\AccountController::class, 'importCsv'])->name('accounts.import');
     Route::get('accounts-export',
         [App\Http\Controllers\AccountController::class, 'exportCsv'])->name('accounts.export');
+
+    // ── Fixed Assets (الأصول الثابتة) ────────────────────────────────────────
+    Route::resource('fixed-asset-categories', FixedAssetCategoryController::class)
+        ->except(['show', 'destroy']);
+    Route::resource('fixed-assets', FixedAssetController::class)
+        ->only(['index', 'create', 'store', 'show']);
+    Route::get('fixed-assets/{fixedAsset}/depreciate',
+        [FixedAssetController::class, 'depreciateForm'])->name('fixed-assets.depreciate-form');
+    Route::post('fixed-assets/{fixedAsset}/depreciate',
+        [FixedAssetController::class, 'depreciate'])->name('fixed-assets.depreciate');
+    Route::post('fixed-assets/depreciate-all',
+        [FixedAssetController::class, 'depreciateAll'])->name('fixed-assets.depreciate-all');
+    Route::get('fixed-assets/{fixedAsset}/dispose',
+        [FixedAssetController::class, 'disposeForm'])->name('fixed-assets.dispose-form');
+    Route::post('fixed-assets/{fixedAsset}/dispose',
+        [FixedAssetController::class, 'dispose'])->name('fixed-assets.dispose');
 
     // ── Branches & Warehouses ────────────────────────────────────────────────
     Route::resource('branches', BranchController::class)->except(['show']);

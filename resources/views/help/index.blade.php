@@ -74,6 +74,7 @@
                 <a class="nav-link" href="#sec-pos">نقطة البيع (POS)</a>
                 <a class="nav-link" href="#sec-sale-returns">مرتجعات المبيعات</a>
                 <a class="nav-link" href="#sec-inventory">المخزون والمنتجات</a>
+                <a class="nav-link" href="#sec-fixed-assets">الأصول الثابتة</a>
                 <a class="nav-link" href="#sec-branches">الفروع والمخازن</a>
                 <a class="nav-link" href="#sec-pricing">قوائم الأسعار (جملة / تجزئة)</a>
                 <a class="nav-link" href="#sec-purchases">المشتريات والموردون</a>
@@ -447,6 +448,54 @@
 
                 <div class="alert-tip mt-3">
                     <strong>الحماية من التلاعب:</strong> الأسعار تُحسب من الخادم وليس من المتصفح. حتى لو حاول مستخدم تغيير السعر في الشبكة، يرفضه الخادم ويستخدم السعر الصحيح.
+                </div>
+            </div>
+        </div>
+
+        {{-- ══════════════════════════════════════════════════════════ --}}
+        {{-- Fixed Assets --}}
+        {{-- ══════════════════════════════════════════════════════════ --}}
+        <div class="help-section" id="sec-fixed-assets">
+            <div class="section-header">
+                <i class="bi bi-building-gear fs-5"></i> الأصول الثابتة
+            </div>
+            <div class="section-body">
+                <p>يُستخدم هذا القسم لتسجيل الأصول الثابتة للشركة (معدات، أثاث، سيارات، أجهزة…) وحساب استهلاكها الشهري محاسبياً.</p>
+
+                <div class="subsection-title">القيود المحاسبية</div>
+                <p><strong>1) عند شراء الأصل:</strong></p>
+                <div class="gl-example">
+                    <table class="w-100">
+                        <tr><td class="gl-debit">مدين: حساب الأصل (1510/1520)</td><td>تكلفة الشراء</td></tr>
+                        <tr><td class="gl-credit">دائن: الصندوق / البنك (1000/1100)</td><td>تكلفة الشراء</td></tr>
+                    </table>
+                </div>
+                <p class="mt-2"><strong>2) قيد الاستهلاك الشهري:</strong></p>
+                <div class="gl-example">
+                    <table class="w-100">
+                        <tr><td class="gl-debit">مدين: مصاريف الاستهلاك (6400)</td><td>قسط الاستهلاك</td></tr>
+                        <tr><td class="gl-credit">دائن: مجمع الاستهلاك (1600)</td><td>قسط الاستهلاك</td></tr>
+                    </table>
+                </div>
+                <p class="mt-2"><strong>3) عند بيع / استبعاد الأصل:</strong></p>
+                <div class="gl-example">
+                    <table class="w-100">
+                        <tr><td class="gl-debit">مدين: الصندوق (بالسعر المباع)</td><td>سعر البيع</td></tr>
+                        <tr><td class="gl-debit">مدين: مجمع الاستهلاك</td><td>الاستهلاك المتراكم</td></tr>
+                        <tr><td class="gl-credit">دائن: حساب الأصل</td><td>تكلفة الشراء</td></tr>
+                        <tr><td class="gl-credit">دائن: أرباح بيع أصول (4150) — عند ربح</td><td>الفرق</td></tr>
+                        <tr><td class="gl-debit">مدين: خسائر بيع أصول (6520) — عند خسارة</td><td>الفرق</td></tr>
+                    </table>
+                </div>
+
+                <div class="subsection-title mt-3">طرق الاستهلاك</div>
+                <ul>
+                    <li><strong>القسط الثابت:</strong> (التكلفة − القيمة التخريدية) ÷ عدد الشهور</li>
+                    <li><strong>القسط المتناقص:</strong> القيمة الدفترية × معدل الاستهلاك الشهري</li>
+                </ul>
+
+                <div class="alert-tip">
+                    <strong>تشغيل الاستهلاك الشهري:</strong> من صفحة الأصول الثابتة اضغط "تشغيل استهلاك الشهر" لترحيل قيود استهلاك جميع الأصول النشطة دفعةً واحدة.
                 </div>
             </div>
         </div>

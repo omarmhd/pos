@@ -9,7 +9,9 @@ use App\Models\CustomerDeposit;
 use App\Models\EmployeeLoan;
 use App\Models\PaymentVoucher;
 use App\Models\Purchase;
+use App\Models\AssetDepreciationEntry;
 use App\Models\ExpenseInvoice;
+use App\Models\FixedAsset;
 use App\Models\ExpensePayment;
 use App\Models\PurchaseReturn;
 use App\Models\ReceiptVoucher;
@@ -843,6 +845,198 @@ class LedgerPostingService
             'branch_id'   => $payment->branch_id ?? $this->resolveBranchId(),
             'description' => 'دفع فاتورة مصروفات — ' . $vendorName,
         ], $lines);
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // FIXED ASSETS GL POSTINGS
+    // ══════════════════════════════════════════════════════════════════════════
+
+    /**
+     * شراء أصل ثابت — Fixed Asset Purchase
+     *
+     * DR asset_account (1510/1520) = purchase_cost
+     * CR cash (1000) or bank (1100) = purchase_cost
+     *
+     * Note: If purchased on credit (AP), caller should change CR to AP (2000).
+     * Default here assumes immediate cash/bank payment.
+     */
+    public function postAssetPurchase(FixedAsset $asset, string $paymentMethod = 'cash'): JournalEntry
+    {
+        $asset->loadMissing('category.assetAccount');
+
+        $assetAccountId = $asset->category->asset_account_id;
+        $amount         = round((float) $asset->purchase_cost, 2);
+
+        $cashCode = $paymentMethod === 'bank'
+            ? Setting::get('account_bank_code', '1100')
+            : Setting::get('account_cash_code', '1000');
+
+        $lines = [
+            [
+                'account_id'       => $assetAccountId,
+                'debit'            => $amount,
+                'credit'           => 0,
+                'line_description' => 'شراء أصل ثابت — ' . $asset->name,
+            ],
+            [
+                'account_id'       => $this->account($cashCode)->id,
+                'debit'            => 0,
+                'credit'           => $amount,
+                'line_description' => ($paymentMethod === 'bank' ? 'دفع بنكي' : 'دفع نقدي')
+                                      . ' — ' . $asset->asset_code,
+            ],
+        ];
+
+        return $this->buildEntry([
+            'entry_date'  => $asset->purchase_date->toDateString(),
+            'reference'   => $asset->asset_code,
+            'source_type' => FixedAsset::class,
+            'source_id'   => $asset->id,
+            'branch_id'   => $asset->branch_id ?? $this->resolveBranchId(),
+            'description' => 'قيد شراء أصل ثابت — ' . $asset->name,
+        ], $lines);
+    }
+
+    /**
+     * قيد استهلاك شهري — Monthly Depreciation
+     *
+     * DR depreciation_expense_account (6400) = depreciation_amount
+     * CR accumulated_depreciation    (1600)  = depreciation_amount
+     */
+    public function postAssetDepreciation(
+        FixedAsset $asset,
+        int        $year,
+        int        $month,
+        float      $amount
+    ): JournalEntry {
+        $asset->loadMissing('category');
+
+        $depExpAccountId  = $asset->category->depreciation_expense_account_id;
+        $accumDepAccountId= $asset->category->accumulated_dep_account_id;
+        $periodLabel      = $this->monthName($month) . ' ' . $year;
+
+        $lines = [
+            [
+                'account_id'       => $depExpAccountId,
+                'debit'            => $amount,
+                'credit'           => 0,
+                'line_description' => 'مصروف استهلاك — ' . $asset->name . ' / ' . $periodLabel,
+            ],
+            [
+                'account_id'       => $accumDepAccountId,
+                'debit'            => 0,
+                'credit'           => $amount,
+                'line_description' => 'مجمع استهلاك — ' . $asset->name . ' / ' . $periodLabel,
+            ],
+        ];
+
+        return $this->buildEntry([
+            'entry_date'  => now()->setDate($year, $month, 1)->endOfMonth()->toDateString(),
+            'reference'   => $asset->asset_code . '-DEP-' . $year . str_pad($month, 2, '0', STR_PAD_LEFT),
+            'source_type' => AssetDepreciationEntry::class,
+            'source_id'   => $asset->id,
+            'branch_id'   => $asset->branch_id ?? $this->resolveBranchId(),
+            'description' => 'استهلاك — ' . $asset->name . ' / ' . $periodLabel,
+        ], $lines);
+    }
+
+    /**
+     * بيع / استبعاد أصل ثابت — Asset Disposal
+     *
+     * DR cash/bank             = sale_price              (if sold)
+     * DR accumulated_dep (1600) = total accumulated dep
+     * CR asset_account (1510)   = purchase_cost
+     * ± DR/CR gain/loss account = difference
+     *
+     * Gain: sale_price > (cost - accum_dep) → CR أرباح بيع أصول (4150)
+     * Loss: sale_price < (cost - accum_dep) → DR خسائر بيع أصول (6520)
+     */
+    public function postAssetDisposal(
+        FixedAsset $asset,
+        float      $salePrice,
+        string     $paymentMethod = 'cash'
+    ): JournalEntry {
+        $asset->loadMissing('category');
+
+        $cost            = round((float) $asset->purchase_cost, 2);
+        $accumDep        = round((float) $asset->accumulated_depreciation, 2);
+        $nbv             = round($cost - $accumDep, 2);
+        $salePrice       = round($salePrice, 2);
+        $gainLoss        = round($salePrice - $nbv, 2);
+
+        $assetAccountId  = $asset->category->asset_account_id;
+        $accumDepAccId   = $asset->category->accumulated_dep_account_id;
+        $gainCode        = Setting::get('account_asset_gain_code', '4150');
+        $lossCode        = Setting::get('account_asset_loss_code', '6520');
+        $cashCode        = $paymentMethod === 'bank'
+            ? Setting::get('account_bank_code', '1100')
+            : Setting::get('account_cash_code', '1000');
+
+        $lines = [];
+
+        // Cash/bank inflow (if any sale proceeds)
+        if ($salePrice > 0) {
+            $lines[] = [
+                'account_id'       => $this->account($cashCode)->id,
+                'debit'            => $salePrice,
+                'credit'           => 0,
+                'line_description' => 'حصيلة بيع أصل — ' . $asset->name,
+            ];
+        }
+
+        // Remove accumulated depreciation
+        if ($accumDep > 0) {
+            $lines[] = [
+                'account_id'       => $accumDepAccId,
+                'debit'            => $accumDep,
+                'credit'           => 0,
+                'line_description' => 'إزالة مجمع استهلاك — ' . $asset->name,
+            ];
+        }
+
+        // Remove asset at cost
+        $lines[] = [
+            'account_id'       => $assetAccountId,
+            'debit'            => 0,
+            'credit'           => $cost,
+            'line_description' => 'إزالة أصل ثابت — ' . $asset->name,
+        ];
+
+        // Gain or Loss
+        if (abs($gainLoss) > 0.005) {
+            if ($gainLoss > 0) {
+                $lines[] = [
+                    'account_id'       => $this->account($gainCode)->id,
+                    'debit'            => 0,
+                    'credit'           => $gainLoss,
+                    'line_description' => 'ربح بيع أصل — ' . $asset->name,
+                ];
+            } else {
+                $lines[] = [
+                    'account_id'       => $this->account($lossCode)->id,
+                    'debit'            => abs($gainLoss),
+                    'credit'           => 0,
+                    'line_description' => 'خسارة بيع أصل — ' . $asset->name,
+                ];
+            }
+        }
+
+        return $this->buildEntry([
+            'entry_date'  => $asset->disposal_date?->toDateString() ?? now()->toDateString(),
+            'reference'   => $asset->asset_code . '-DISP',
+            'source_type' => FixedAsset::class,
+            'source_id'   => $asset->id,
+            'branch_id'   => $asset->branch_id ?? $this->resolveBranchId(),
+            'description' => 'قيد استبعاد أصل ثابت — ' . $asset->name,
+        ], $lines);
+    }
+
+    /** Helper: Arabic month name */
+    private function monthName(int $month): string
+    {
+        return [1=>'يناير',2=>'فبراير',3=>'مارس',4=>'أبريل',
+                5=>'مايو',6=>'يونيو',7=>'يوليو',8=>'أغسطس',
+                9=>'سبتمبر',10=>'أكتوبر',11=>'نوفمبر',12=>'ديسمبر'][$month] ?? (string)$month;
     }
 
     /**

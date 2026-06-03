@@ -744,9 +744,9 @@
                 @endcan
 
                 {{-- ── System Management ── --}}
-                @canany(['users.view','roles.view','settings.view','branches.view','price_lists.view'])
-                @php $s7 = request()->routeIs('users.*','roles.*','permissions.*','settings.*','branches.*','warehouses.*','price-lists.*')
-                         || request()->is('users*','roles*','permissions*','settings*','branches*','warehouses*','price-lists*'); @endphp
+                @canany(['users.view','roles.view','settings.view','branches.view','price_lists.view','fixed_assets.view'])
+                @php $s7 = request()->routeIs('users.*','roles.*','permissions.*','settings.*','branches.*','warehouses.*','price-lists.*','fixed-assets.*','fixed-asset-categories.*')
+                         || request()->is('users*','roles*','permissions*','settings*','branches*','warehouses*','price-lists*','fixed-assets*','fixed-asset-categories*'); @endphp
                 <li class="nav-item">
                     <button class="nav-section-toggle {{ !$s7 ? 'collapsed' : '' }}"
                             data-bs-toggle="collapse" data-bs-target="#ns7"
@@ -793,6 +793,14 @@
                             <a class="nav-link {{ request()->routeIs('price-lists.*') ? 'active' : '' }}"
                                href="{{ route('price-lists.index') }}">
                                 <i class="bi bi-tags-fill"></i> قوائم الأسعار
+                            </a>
+                        </li>
+                        @endcan
+                        @can('fixed_assets.view')
+                        <li class="nav-item">
+                            <a class="nav-link {{ request()->routeIs('fixed-assets.*','fixed-asset-categories.*') ? 'active' : '' }}"
+                               href="{{ route('fixed-assets.index') }}">
+                                <i class="bi bi-building-gear"></i> الأصول الثابتة
                             </a>
                         </li>
                         @endcan
@@ -977,7 +985,7 @@
             { id: 'ns4', paths: ['/hr'] },
             { id: 'ns5', paths: ['/accounting', '/accounts', '/journal-entries', '/reversals', '/audit-logs'] },
             { id: 'ns6', paths: ['/reports'] },
-            { id: 'ns7', paths: ['/users', '/roles', '/permissions', '/settings', '/branches', '/warehouses', '/price-lists'] },
+            { id: 'ns7', paths: ['/users', '/roles', '/permissions', '/settings', '/branches', '/warehouses', '/price-lists', '/fixed-assets', '/fixed-asset-categories'] },
         ];
 
         for (var i = 0; i < map.length; i++) {

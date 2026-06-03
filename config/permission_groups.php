@@ -203,6 +203,16 @@ return [
             'branches.manage' => 'إدارة الفروع والمخازن (إضافة/تعديل/حذف)',
         ],
     ],
+    'fixed_assets' => [
+        'label' => 'الأصول الثابتة',
+        'icon'  => 'bi-building-gear',
+        'permissions' => [
+            'fixed_assets.view'       => 'عرض الأصول الثابتة',
+            'fixed_assets.create'     => 'إضافة أصل ثابت',
+            'fixed_assets.depreciate' => 'ترحيل قيد الاستهلاك',
+            'fixed_assets.dispose'    => 'استبعاد / بيع أصل ثابت',
+        ],
+    ],
     'price_lists' => [
         'label' => 'قوائم الأسعار',
         'icon'  => 'bi-tags-fill',

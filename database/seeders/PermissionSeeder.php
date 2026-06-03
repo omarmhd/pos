@@ -50,6 +50,9 @@ class PermissionSeeder extends Seeder
             'branches.view', 'branches.manage',
             // Price Lists
             'price_lists.view', 'price_lists.manage',
+            // Fixed Assets
+            'fixed_assets.view', 'fixed_assets.create',
+            'fixed_assets.depreciate', 'fixed_assets.dispose',
             // Customers
             'customers.view', 'customers.create', 'customers.edit', 'customers.delete', 'customers.payments',
             // Suppliers
@@ -97,6 +100,7 @@ class PermissionSeeder extends Seeder
             'expenses.view', 'expenses.create', 'expenses.pay',
             'branches.view',
             'price_lists.view',
+            'fixed_assets.view', 'fixed_assets.depreciate',
             'customers.view', 'customers.payments',
             'suppliers.view', 'suppliers.payments',
             'vouchers.view', 'vouchers.create', 'vouchers.delete',
