@@ -7,9 +7,16 @@
     - no branches          → single-branch company → render nothing
 
     Required in scope: $branches, $branchId
-    Optional:          $branchLocked (default: false)
+    Optional:
+      $branchLocked (default: false)
+      $dtReload     (default: false) — set true on DataTables/AJAX pages so the
+                                       select does NOT auto-submit the form; the
+                                       page JS calls dtWireFilters() instead.
 --}}
-@php $locked = $branchLocked ?? false; @endphp
+@php
+    $locked   = $branchLocked ?? false;
+    $dtReload = $dtReload      ?? false;
+@endphp
 
 @if(isset($branches) && $branches->count() >= 1)
     @if($locked)
@@ -35,8 +42,9 @@
             <label class="form-label small mb-1">
                 <i class="bi bi-building-fill-check text-primary me-1"></i>الفرع
             </label>
-            <select name="branch_id" class="form-select form-select-sm" style="min-width:200px"
-                    onchange="this.form.submit()">
+            <select name="branch_id" id="filterBranchId"
+                    class="form-select form-select-sm" style="min-width:200px"
+                    @if(!$dtReload) onchange="this.form.submit()" @endif>
                 <option value="">جميع الفروع (موحد)</option>
                 @foreach($branches as $b)
                     <option value="{{ $b->id }}" {{ ($branchId ?? null) == $b->id ? 'selected' : '' }}>

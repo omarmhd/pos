@@ -5,32 +5,24 @@
 <div class="card">
     <div class="card-header bg-white">
         <div class="d-flex justify-content-between align-items-center">
-            <h5 class="mb-0">
-                <i class="bi bi-journal-text"></i> سجل القيود اليومية
-                @if(isset($branchId) && $branchId)
-                    @php $b = \App\Models\Branch::find($branchId); @endphp
-                    @if($b)<span class="badge bg-primary ms-2">{{ $b->name }}</span>@endif
-                @endif
-            </h5>
+            <h5 class="mb-0"><i class="bi bi-journal-text"></i> سجل القيود اليومية</h5>
             @can('journal_entries.create')
             <a href="{{ route('journal_entries.create') }}" class="btn btn-primary btn-sm">
                 <i class="bi bi-plus-circle"></i> قيد يدوي جديد
             </a>
             @endcan
         </div>
-        {{-- Branch filter (only when multiple branches exist) --}}
-        @if(isset($branches) && $branches->count() > 1)
-        <form method="GET" class="d-flex gap-2 align-items-center mt-2">
-            @include('components.branch-filter')
-            <button type="submit" class="btn btn-sm btn-outline-primary">
-                <i class="bi bi-funnel"></i>
-            </button>
-            @if(isset($branchId) && $branchId)
-            <a href="{{ route('journal_entries.index') }}" class="btn btn-sm btn-outline-secondary">
-                الكل
-            </a>
-            @endif
-        </form>
+
+        {{-- AJAX filter bar — no form submit, dtWireFilters() handles reload --}}
+        @if(isset($branches) && $branches->count() >= 1)
+        <div id="filterForm" class="row g-2 align-items-end mt-2">
+            @include('components.branch-filter', ['dtReload' => true])
+            <div class="col-auto">
+                <button type="button" class="btn btn-sm btn-outline-secondary" id="btnClearJeFilters">
+                    <i class="bi bi-x"></i> مسح
+                </button>
+            </div>
+        </div>
         @endif
     </div>
     <div class="card-body">
@@ -59,16 +51,12 @@
 @section('scripts')
 <script>
 $(function () {
-    $('#je-table').DataTable($.extend(true, {}, window.dtDefaults, {
+    var table = $('#je-table').DataTable($.extend(true, {}, window.dtDefaults, {
         processing : true,
         serverSide : true,
         ajax: {
             url: '{{ route('journal_entries.index') }}',
-            data: function(d) {
-                @if(isset($branchId) && $branchId)
-                d.branch_id = {{ $branchId }};
-                @endif
-            }
+            data: function(d) { dtCollectFilters(d, '#filterForm'); }
         },
         order      : [[1, 'desc']],
         columns: [
@@ -84,6 +72,14 @@ $(function () {
             { data: 'action',        name: 'action',        orderable: false, searchable: false, className: 'text-center' },
         ]
     }));
+
+    // Wire filters to DataTable (no page reload)
+    dtWireFilters(table, '#filterForm');
+
+    $('#btnClearJeFilters').on('click', function() {
+        $('#filterForm select, #filterForm input').val('');
+        table.ajax.reload();
+    });
 });
 </script>
 @endsection

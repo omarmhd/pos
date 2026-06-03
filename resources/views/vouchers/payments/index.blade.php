@@ -12,45 +12,41 @@
         @endcan
     </div>
 
-    {{-- Filters --}}
+    {{-- AJAX filter bar --}}
     <div class="card-body border-bottom py-2">
-        <form method="GET" class="row g-2 align-items-end" id="filterForm">
-            @include('components.branch-filter')
+        <div id="filterForm" class="row g-2 align-items-end">
+            @include('components.branch-filter', ['dtReload' => true])
 
             <div class="col-auto">
                 <label class="form-label small mb-1"><i class="bi bi-calendar-event me-1"></i>من تاريخ</label>
-                <input type="date" name="from" class="form-control form-control-sm"
-                       value="{{ request('from') }}" style="min-width:135px">
+                <input type="date" name="from" class="form-control form-control-sm" style="min-width:135px">
             </div>
             <div class="col-auto">
                 <label class="form-label small mb-1">إلى تاريخ</label>
-                <input type="date" name="to" class="form-control form-control-sm"
-                       value="{{ request('to') }}" style="min-width:135px">
+                <input type="date" name="to" class="form-control form-control-sm" style="min-width:135px">
             </div>
             <div class="col-auto">
                 <label class="form-label small mb-1"><i class="bi bi-credit-card me-1"></i>طريقة الصرف</label>
                 <select name="method" class="form-select form-select-sm" style="min-width:140px">
                     <option value="">كل الطرق</option>
-                    <option value="cash"          {{ request('method') === 'cash'          ? 'selected':'' }}>نقدي</option>
-                    <option value="bank"          {{ request('method') === 'bank'          ? 'selected':'' }}>تحويل بنكي</option>
-                    <option value="mobile_wallet" {{ request('method') === 'mobile_wallet' ? 'selected':'' }}>محفظة إلكترونية</option>
+                    <option value="cash">نقدي</option>
+                    <option value="bank">تحويل بنكي</option>
+                    <option value="mobile_wallet">محفظة إلكترونية</option>
                 </select>
             </div>
-            <div class="col-auto">
-                <button type="submit" class="btn btn-outline-secondary btn-sm">
+            <div class="col-auto d-flex align-items-end gap-1">
+                <button type="button" class="btn btn-outline-secondary btn-sm" id="btnApplyPv">
                     <i class="bi bi-funnel"></i> تصفية
                 </button>
-                @if(request()->hasAny(['branch_id','from','to','method']))
-                    <a href="{{ route('vouchers.payments.index') }}" class="btn btn-outline-danger btn-sm ms-1">
-                        <i class="bi bi-x"></i>
-                    </a>
-                @endif
+                <button type="button" class="btn btn-outline-danger btn-sm" id="btnClearPv">
+                    <i class="bi bi-x"></i>
+                </button>
             </div>
-        </form>
+        </div>
     </div>
 
     <div class="card-body">
-        <table id="paymentsTable" class="table table-hover w-100">
+        <table id="paymentsTable" class="table table-hover" style="width:100%">
             <thead>
             <tr>
                 <th>رقم السند</th>
@@ -73,18 +69,14 @@
 @section('scripts')
 <script>
 $(function () {
-    var params = new URLSearchParams({
-        @if(request('branch_id')) branch_id: '{{ request('branch_id') }}', @endif
-        @if(request('from'))      from:      '{{ request('from') }}',      @endif
-        @if(request('to'))        to:        '{{ request('to') }}',        @endif
-        @if(request('method'))    method:    '{{ request('method') }}',    @endif
-    });
-    var url = "{{ route('vouchers.payments.data') }}" + (params.toString() ? '?' + params.toString() : '');
-
-    var cfg = $.extend(true, {}, window.dtDefaults, {
+    var table = $('#paymentsTable').DataTable($.extend(true, {}, window.dtDefaults, {
         processing: true,
         serverSide: false,
-        ajax: { url: url, dataSrc: 'data' },
+        ajax: {
+            url: '{{ route("vouchers.payments.data") }}',
+            dataSrc: 'data',
+            data: function(d) { dtCollectFilters(d, '#filterForm'); }
+        },
         order: [[1, 'desc']],
         columns: [
             { data: 'voucher_number' },
@@ -98,8 +90,16 @@ $(function () {
             { data: 'user_name' },
             { data: 'action',           orderable: false, searchable: false, className: 'text-center' },
         ],
+    }));
+
+    dtWireFilters(table, '#filterForm');
+
+    $('#btnApplyPv').on('click', function() { table.ajax.reload(); });
+
+    $('#btnClearPv').on('click', function() {
+        $('#filterForm select, #filterForm input[type="date"]').val('');
+        table.ajax.reload();
     });
-    $('#paymentsTable').DataTable(cfg);
 });
 </script>
 @endsection

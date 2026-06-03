@@ -1104,6 +1104,44 @@
             $(this).DataTable(cfg);
         });
     });
+
+    /**
+     * dtWireFilters — wire a filter form/container to a Yajra or custom-JSON DataTable.
+     *
+     * Usage (in page @section('scripts')):
+     *   var table = $('#my-table').DataTable({...});
+     *   dtWireFilters(table, '#filterForm');
+     *
+     * Behaviour:
+     *   - Prevents the form's default submit (no page reload)
+     *   - On any input/select change inside the container → table.ajax.reload()
+     *   - Pressing Enter inside a text input also reloads (not navigates)
+     *
+     * The DataTable's ajax.data() function should read filter values dynamically:
+     *   data: function(d) { dtCollectFilters(d, '#filterForm'); }
+     */
+    window.dtWireFilters = function(table, formSelector) {
+        var $form = $(formSelector);
+        $form.on('submit', function(e) { e.preventDefault(); table.ajax.reload(); });
+        $form.find('select, input[type="date"], input[type="text"]').on('change input', function() {
+            table.ajax.reload();
+        });
+    };
+
+    /**
+     * dtCollectFilters — collect all named inputs inside a container into a DataTables data object.
+     *
+     * Usage inside ajax.data():
+     *   data: function(d) { dtCollectFilters(d, '#filterForm'); }
+     */
+    window.dtCollectFilters = function(d, formSelector) {
+        $(formSelector).find('[name]').each(function() {
+            var val = $(this).val();
+            if (val !== '' && val !== null) {
+                d[$(this).attr('name')] = val;
+            }
+        });
+    };
 </script>
 
 @yield('scripts')

@@ -25,14 +25,14 @@
 
     @if(isset($branches) && $branches->count() >= 1)
     <div class="card-body border-bottom py-2">
-        <form method="GET" class="row g-2 align-items-end" id="filterForm">
-            @include('components.branch-filter')
+        <div id="filterForm" class="row g-2 align-items-end">
+            @include('components.branch-filter', ['dtReload' => true])
             <div class="col-auto">
-                <button type="submit" class="btn btn-sm btn-outline-primary">
-                    <i class="bi bi-funnel"></i>
+                <button type="button" class="btn btn-sm btn-outline-secondary" id="btnClearFa">
+                    <i class="bi bi-x"></i> مسح
                 </button>
             </div>
-        </form>
+        </div>
     </div>
     @endif
 
@@ -109,14 +109,12 @@
 @section('scripts')
 <script>
 $(function() {
-    $('#fa-table').DataTable($.extend(true, {}, window.dtDefaults, {
+    var table = $('#fa-table').DataTable($.extend(true, {}, window.dtDefaults, {
         processing: true,
         serverSide: true,
         ajax: {
             url: $('#fa-table').data('url'),
-            data: function(d) {
-                @if(isset($branchId) && $branchId) d.branch_id = {{ $branchId }}; @endif
-            }
+            data: function(d) { dtCollectFilters(d, '#filterForm'); }
         },
         columns: [
             { data: 'asset_code' },
@@ -130,6 +128,13 @@ $(function() {
             { data: 'action',       className: 'text-center', orderable: false },
         ],
     }));
+
+    dtWireFilters(table, '#filterForm');
+
+    $('#btnClearFa').on('click', function() {
+        $('#filterForm select, #filterForm input').val('');
+        table.ajax.reload();
+    });
 });
 </script>
 @endsection

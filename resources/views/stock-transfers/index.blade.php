@@ -17,17 +17,23 @@
         </a>
         @endcan
     </div>
+
     @if(isset($branches) && $branches->count() >= 1)
     <div class="card-body border-bottom py-2">
-        <form method="GET" class="row g-2 align-items-end">
-            @include('components.branch-filter')
-            <div class="col-auto"><button type="submit" class="btn btn-sm btn-outline-primary"><i class="bi bi-funnel"></i></button></div>
-        </form>
+        <div id="filterForm" class="row g-2 align-items-end">
+            @include('components.branch-filter', ['dtReload' => true])
+            <div class="col-auto">
+                <button type="button" class="btn btn-sm btn-outline-secondary" id="btnClearTransfer">
+                    <i class="bi bi-x"></i> مسح
+                </button>
+            </div>
+        </div>
     </div>
     @endif
+
     <div class="card-body">
         <div class="table-responsive">
-            <table id="transfer-table" class="table table-hover w-100"
+            <table id="transfer-table" class="table table-hover" style="width:100%"
                    data-url="{{ route('stock-transfers.index') }}">
                 <thead class="table-light">
                 <tr>
@@ -50,10 +56,13 @@
 @section('scripts')
 <script>
 $(function() {
-    $('#transfer-table').DataTable($.extend(true, {}, window.dtDefaults, {
-        processing: true, serverSide: true,
-        ajax: { url: $('#transfer-table').data('url'),
-                data: d => { @if(isset($branchId) && $branchId) d.branch_id = {{ $branchId }}; @endif } },
+    var table = $('#transfer-table').DataTable($.extend(true, {}, window.dtDefaults, {
+        processing: true,
+        serverSide: true,
+        ajax: {
+            url: $('#transfer-table').data('url'),
+            data: function(d) { dtCollectFilters(d, '#filterForm'); }
+        },
         order: [[3, 'desc']],
         columns: [
             { data: 'transfer_number' },
@@ -65,6 +74,13 @@ $(function() {
             { data: 'action', className: 'text-center', orderable: false },
         ],
     }));
+
+    dtWireFilters(table, '#filterForm');
+
+    $('#btnClearTransfer').on('click', function() {
+        $('#filterForm select, #filterForm input').val('');
+        table.ajax.reload();
+    });
 });
 </script>
 @endsection
