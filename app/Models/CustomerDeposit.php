@@ -9,7 +9,7 @@ class CustomerDeposit extends Model
     protected $fillable = [
         'voucher_number', 'voucher_date', 'customer_id', 'type',
         'amount', 'payment_method', 'reference', 'notes',
-        'user_id', 'is_posted', 'journal_entry_id',
+        'user_id', 'branch_id', 'is_posted', 'journal_entry_id',
     ];
 
     protected $casts = [

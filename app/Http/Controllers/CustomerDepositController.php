@@ -54,6 +54,8 @@ class CustomerDepositController extends Controller
                 'reference'      => $request->reference,
                 'notes'          => $request->notes,
                 'user_id'        => auth()->id(),
+                'branch_id'      => auth()->user()->branch_id
+                                    ?? \App\Models\Setting::get('default_branch_id'),
             ]);
 
             (new LedgerPostingService())->postCustomerDeposit($deposit);

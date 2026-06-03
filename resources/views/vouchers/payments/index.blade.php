@@ -4,13 +4,51 @@
 @section('content')
 <div class="card">
     <div class="card-header bg-white d-flex justify-content-between align-items-center">
-        <h5 class="mb-0"><i class="bi bi-arrow-up-circle text-danger me-2"></i>سندات الصرف</h5>
+        <h5 class="mb-0"><i class="bi bi-arrow-up-circle text-danger me-2"></i>سندات الصرف (دفعيات)</h5>
         @can('vouchers.create')
         <a href="{{ route('vouchers.payments.create') }}" class="btn btn-danger btn-sm">
             <i class="bi bi-plus-circle me-1"></i> سند صرف جديد
         </a>
         @endcan
     </div>
+
+    {{-- Filters --}}
+    <div class="card-body border-bottom py-2">
+        <form method="GET" class="row g-2 align-items-end" id="filterForm">
+            @include('components.branch-filter')
+
+            <div class="col-auto">
+                <label class="form-label small mb-1"><i class="bi bi-calendar-event me-1"></i>من تاريخ</label>
+                <input type="date" name="from" class="form-control form-control-sm"
+                       value="{{ request('from') }}" style="min-width:135px">
+            </div>
+            <div class="col-auto">
+                <label class="form-label small mb-1">إلى تاريخ</label>
+                <input type="date" name="to" class="form-control form-control-sm"
+                       value="{{ request('to') }}" style="min-width:135px">
+            </div>
+            <div class="col-auto">
+                <label class="form-label small mb-1"><i class="bi bi-credit-card me-1"></i>طريقة الصرف</label>
+                <select name="method" class="form-select form-select-sm" style="min-width:140px">
+                    <option value="">كل الطرق</option>
+                    <option value="cash"          {{ request('method') === 'cash'          ? 'selected':'' }}>نقدي</option>
+                    <option value="bank"          {{ request('method') === 'bank'          ? 'selected':'' }}>تحويل بنكي</option>
+                    <option value="mobile_wallet" {{ request('method') === 'mobile_wallet' ? 'selected':'' }}>محفظة إلكترونية</option>
+                </select>
+            </div>
+            <div class="col-auto">
+                <button type="submit" class="btn btn-outline-secondary btn-sm">
+                    <i class="bi bi-funnel"></i> تصفية
+                </button>
+                @if(request()->hasAny(['branch_id','from','to','method']))
+                    <a href="{{ route('vouchers.payments.index') }}" class="btn btn-outline-danger btn-sm ms-1">
+                        <i class="bi bi-x"></i>
+                    </a>
+                @endif
+            </div>
+        </form>
+    </div>
+
     <div class="card-body">
         <table id="paymentsTable" class="table table-hover w-100">
             <thead>
@@ -21,7 +59,7 @@
                 <th>الجهة</th>
                 <th>الحساب المدين</th>
                 <th>حساب النقدية</th>
-                <th>المبلغ</th>
+                <th class="text-end">المبلغ</th>
                 <th>الحالة</th>
                 <th>بواسطة</th>
                 <th>الإجراءات</th>
@@ -35,7 +73,14 @@
 @section('scripts')
 <script>
 $(function () {
-    var url = "{{ route('vouchers.payments.data') }}";
+    var params = new URLSearchParams({
+        @if(request('branch_id')) branch_id: '{{ request('branch_id') }}', @endif
+        @if(request('from'))      from:      '{{ request('from') }}',      @endif
+        @if(request('to'))        to:        '{{ request('to') }}',        @endif
+        @if(request('method'))    method:    '{{ request('method') }}',    @endif
+    });
+    var url = "{{ route('vouchers.payments.data') }}" + (params.toString() ? '?' + params.toString() : '');
+
     var cfg = $.extend(true, {}, window.dtDefaults, {
         processing: true,
         serverSide: false,

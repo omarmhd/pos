@@ -7,6 +7,7 @@ use App\Models\Customer;
 use App\Models\CustomerDeposit;
 use App\Models\ReceiptVoucher;
 use App\Models\Setting;
+use App\Services\BranchAccountingService;
 use App\Services\LedgerPostingService;
 use App\Services\PdfService;
 use Illuminate\Http\Request;
@@ -22,16 +23,28 @@ class ReceiptVoucherController extends Controller
         $this->middleware('can:vouchers.delete')->only(['destroy']);
     }
 
-    public function index()
+    public function index(Request $request)
     {
-        return view('vouchers.receipts.index');
+        $branches     = \App\Models\Branch::where('is_active', true)->orderBy('name')->get(['id','name','code']);
+        $branchId     = $this->effectiveBranchId($request);
+        $branchLocked = $this->isBranchLocked();
+        return view('vouchers.receipts.index', compact('branches', 'branchId', 'branchLocked'));
     }
 
-    public function data()
+    public function data(Request $request)
     {
+        $branchId = $this->effectiveBranchId($request);
+        $from     = $request->filled('from') ? $request->from : null;
+        $to       = $request->filled('to')   ? $request->to   : null;
+        $method   = $request->filled('method') ? $request->method : null;
+
         try {
             // ── سندات القبض العامة ──────────────────────────────────────────
             $vouchers = ReceiptVoucher::with('user', 'account', 'cashAccount')
+                ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
+                ->when($from,     fn($q) => $q->whereDate('voucher_date', '>=', $from))
+                ->when($to,       fn($q) => $q->whereDate('voucher_date', '<=', $to))
+                ->when($method,   fn($q) => $q->where('payment_method', $method))
                 ->orderByDesc('voucher_date')
                 ->get()
                 ->map(fn($v) => [
@@ -57,6 +70,10 @@ class ReceiptVoucherController extends Controller
 
             $deposits = CustomerDeposit::with('customer', 'user')
                 ->where('type', 'deposit')
+                ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
+                ->when($from,     fn($q) => $q->whereDate('voucher_date', '>=', $from))
+                ->when($to,       fn($q) => $q->whereDate('voucher_date', '<=', $to))
+                ->when($method,   fn($q) => $q->where('payment_method', $method))
                 ->orderByDesc('voucher_date')
                 ->get()
                 ->map(fn($d) => [
@@ -94,13 +111,28 @@ class ReceiptVoucherController extends Controller
         $accounts  = Account::where('is_active', true)->where('is_header', false)->orderBy('code')->get();
         $customers = Customer::where('is_active', true)->orderBy('name')->get(['id', 'name']);
         $currency  = Setting::get('currency_symbol', 'ج.م');
+        $branches  = \App\Models\Branch::where('is_active', true)->orderBy('name')->get(['id','name','code']);
 
         $cashCode = Setting::get('account_cash_code', '1000');
         $bankCode = Setting::get('account_bank_code', '1100');
-        $defaultCashAccount = Account::where('code', $cashCode)->where('is_active', true)->first();
+
+        // Pre-select the branch-specific cash account (1000.XX) if the user belongs to a branch.
+        // Fallback to system default cash account for admins/global users.
+        $userBranchId = auth()->user()?->branch_id;
+        if ($userBranchId) {
+            $defaultCashAccount = Account::find(
+                BranchAccountingService::cashAccountId($userBranchId)
+            );
+        } else {
+            $defaultCashAccount = Account::where('code', $cashCode)->where('is_active', true)->first();
+        }
+
+        $branchId     = $this->effectiveBranchId(request());
+        $branchLocked = $this->isBranchLocked();
 
         return view('vouchers.receipts.create', compact(
-            'accounts', 'customers', 'currency', 'defaultCashAccount', 'cashCode', 'bankCode'
+            'accounts', 'customers', 'currency', 'defaultCashAccount',
+            'cashCode', 'bankCode', 'branches', 'branchId', 'branchLocked'
         ));
     }
 

@@ -589,7 +589,7 @@ class LedgerPostingService
 
         $deposit->loadMissing('customer');
 
-        $cdBranchId   = $this->resolveBranchId();
+        $cdBranchId   = $deposit->branch_id ?? $this->resolveBranchId();
         $amount       = round((float) $deposit->amount, 2);
         $depositCode  = Setting::get('account_customer_deposits_code', '2050');
         $cashOrBankId = $this->cashOrBankId($deposit->payment_method, $cdBranchId);
@@ -634,7 +634,7 @@ class LedgerPostingService
             'reference'   => $deposit->voucher_number,
             'source_type' => CustomerDeposit::class,
             'source_id'   => $deposit->id,
-            'branch_id'   => $this->resolveBranchId(),
+            'branch_id'   => $deposit->branch_id ?? $this->resolveBranchId(),
             'description' => $typeLabel . ' رصيد عميل – ' . $deposit->voucher_number . ' / ' . $customerName,
         ], $lines);
 
@@ -710,7 +710,7 @@ class LedgerPostingService
             'reference'   => $voucher->voucher_number,
             'source_type' => ReceiptVoucher::class,
             'source_id'   => $voucher->id,
-            'branch_id'   => $this->resolveBranchId(),
+            'branch_id'   => $voucher->branch_id ?? $this->resolveBranchId(),
             'description' => 'سند قبض – ' . $voucher->voucher_number . ' / ' . $voucher->received_from,
         ], $lines);
 
@@ -765,7 +765,7 @@ class LedgerPostingService
             'reference'   => $voucher->voucher_number,
             'source_type' => PaymentVoucher::class,
             'source_id'   => $voucher->id,
-            'branch_id'   => $this->resolveBranchId(),
+            'branch_id'   => $voucher->branch_id ?? $this->resolveBranchId(),
             'description' => 'سند صرف – ' . $voucher->voucher_number . ' / ' . $voucher->paid_to,
         ], $lines);
 
