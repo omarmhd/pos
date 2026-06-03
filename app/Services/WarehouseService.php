@@ -51,13 +51,34 @@ class WarehouseService
     }
 
     /**
-     * Resolve warehouse for an authenticated user:
-     * user branch's default warehouse → system default warehouse.
+     * Resolve warehouse for an authenticated user.
+     *
+     * Priority chain (matches international retail standards):
+     *   1. user.pos_terminal.warehouse_id  ← the terminal's assigned location
+     *      (e.g., cashier at display floor → WH-FLOOR)
+     *   2. user.branch.default_warehouse   ← branch fallback
+     *   3. system default_warehouse_id     ← global fallback
+     *
+     * This is how SAP/Oracle link each POS terminal to its physical location.
      */
     public static function getForUser(?\App\Models\User $user = null): Warehouse
     {
         $user = $user ?? auth()->user();
 
+        // Priority 1: POS terminal's assigned warehouse
+        if ($user && $user->pos_terminal_id) {
+            $wh = \App\Models\PosTerminal::where('id', $user->pos_terminal_id)
+                ->where('is_active', true)
+                ->value('warehouse_id');
+            if ($wh) {
+                $warehouse = Warehouse::where('id', $wh)->where('is_active', true)->first();
+                if ($warehouse) {
+                    return $warehouse;
+                }
+            }
+        }
+
+        // Priority 2: User's branch default warehouse
         if ($user && $user->branch_id) {
             $wh = $user->branch?->defaultWarehouse();
             if ($wh) {
@@ -65,6 +86,7 @@ class WarehouseService
             }
         }
 
+        // Priority 3: System default
         return static::getDefault();
     }
 

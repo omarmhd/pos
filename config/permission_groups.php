@@ -215,8 +215,14 @@ return [
         'label' => 'الفروع والمخازن',
         'icon'  => 'bi-building-fill-check',
         'permissions' => [
-            'branches.view'   => 'عرض الفروع والمخازن',
-            'branches.manage' => 'إدارة الفروع والمخازن (إضافة/تعديل/حذف)',
+            'branches.view'            => 'عرض الفروع والمخازن',
+            'branches.manage'          => 'إدارة الفروع والمخازن',
+            'pos_terminals.view'       => 'عرض نقاط البيع (Terminals)',
+            'pos_terminals.manage'     => 'إدارة نقاط البيع (إضافة/تعديل/حذف)',
+            'stock_transfers.view'     => 'عرض تحويلات المخزون الداخلية',
+            'stock_transfers.create'   => 'إنشاء طلب تحويل مخزون',
+            'stock_transfers.complete' => 'تنفيذ تحويل المخزون (نقل فعلي)',
+            'stock_transfers.cancel'   => 'إلغاء تحويل المخزون',
         ],
     ],
     'fixed_assets' => [

@@ -30,6 +30,8 @@ use App\Http\Controllers\PurchaseOrderController;
 use App\Http\Controllers\SalesOrderController;
 use App\Http\Controllers\SalesQuotationController;
 use App\Http\Controllers\FixedAssetCategoryController;
+use App\Http\Controllers\PosTerminalController;
+use App\Http\Controllers\StockTransferController;
 use App\Http\Controllers\FixedAssetController;
 use App\Http\Controllers\PriceListController;
 use App\Http\Controllers\WarehouseController;
@@ -289,6 +291,19 @@ Route::middleware(['auth'])->group(function () {
         [FixedAssetController::class, 'disposeForm'])->name('fixed-assets.dispose-form');
     Route::post('fixed-assets/{fixedAsset}/dispose',
         [FixedAssetController::class, 'dispose'])->name('fixed-assets.dispose');
+
+    // ── POS Terminals ────────────────────────────────────────────────────────
+    Route::resource('pos-terminals', PosTerminalController::class)->except(['show']);
+
+    // ── Stock Transfers (تحويلات المخزون الداخلية) ──────────────────────────
+    Route::resource('stock-transfers', StockTransferController::class)
+        ->only(['index', 'create', 'store', 'show']);
+    Route::post('stock-transfers/{stockTransfer}/complete',
+        [StockTransferController::class, 'complete'])->name('stock-transfers.complete');
+    Route::post('stock-transfers/{stockTransfer}/cancel',
+        [StockTransferController::class, 'cancel'])->name('stock-transfers.cancel');
+    Route::get('stock-transfers/level',
+        [StockTransferController::class, 'stockLevel'])->name('stock-transfers.level');
 
     // ── Branches & Warehouses ────────────────────────────────────────────────
     Route::resource('branches', BranchController::class)->except(['show']);

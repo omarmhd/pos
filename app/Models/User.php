@@ -36,6 +36,11 @@ class User extends Authenticatable
         return $this->belongsTo(Branch::class);
     }
 
+    public function posTerminal()
+    {
+        return $this->belongsTo(PosTerminal::class, 'pos_terminal_id');
+    }
+
     public function purchases()
     {
         return $this->hasMany(Purchase::class);

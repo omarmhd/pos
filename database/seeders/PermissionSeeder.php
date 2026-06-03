@@ -54,6 +54,9 @@ class PermissionSeeder extends Seeder
             'expenses.view', 'expenses.create', 'expenses.pay',
             // Branches & Warehouses
             'branches.view', 'branches.manage',
+            'pos_terminals.view', 'pos_terminals.manage',
+            'stock_transfers.view', 'stock_transfers.create',
+            'stock_transfers.complete', 'stock_transfers.cancel',
             // Price Lists
             'price_lists.view', 'price_lists.manage',
             // Fixed Assets

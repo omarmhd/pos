@@ -76,15 +76,17 @@ class UserController extends Controller
             'roles'     => 'required|array|min:1',
             'roles.*'   => 'string|in:' . implode(',', $roleNames),
             'is_active' => 'boolean',
-            'branch_id' => 'nullable|exists:branches,id',
+            'branch_id'       => 'nullable|exists:branches,id',
+            'pos_terminal_id' => 'nullable|exists:pos_terminals,id',
         ]);
 
         $data = [
-            'name'      => $request->name,
-            'email'     => $request->email,
-            'role'      => $request->roles[0],
-            'branch_id' => $request->input('branch_id') ?: null,
-            'is_active' => $request->has('is_active'),
+            'name'            => $request->name,
+            'email'           => $request->email,
+            'role'            => $request->roles[0],
+            'branch_id'       => $request->input('branch_id')       ?: null,
+            'pos_terminal_id' => $request->input('pos_terminal_id') ?: null,
+            'is_active'       => $request->has('is_active'),
         ];
         if ($request->filled('password')) {
             $data['password'] = Hash::make($request->password);
@@ -99,7 +101,7 @@ class UserController extends Controller
 
     public function destroy(User $user)
     {
-        if ($user->id === auth()->id()) {
+        if ($user->id === \Illuminate\Support\Facades\Auth::id()) {
             return back()->with('error', 'لا يمكنك حذف حسابك الخاص');
         }
 

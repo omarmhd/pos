@@ -425,6 +425,14 @@
                             </a>
                         </li>
                         @endcan
+                        @can('stock_transfers.view')
+                        <li class="nav-item">
+                            <a class="nav-link {{ request()->routeIs('stock-transfers.*') ? 'active' : '' }}"
+                               href="{{ route('stock-transfers.index') }}">
+                                <i class="bi bi-arrow-left-right"></i> تحويلات المخزون
+                            </a>
+                        </li>
+                        @endcan
                         @can('inventory.adjust')
                         <li class="nav-item">
                             <a class="nav-link {{ request()->routeIs('inventory.adjustments.*') ? 'active' : '' }}"
@@ -820,6 +828,14 @@
                             </a>
                         </li>
                         @endcan
+                        @can('pos_terminals.view')
+                        <li class="nav-item">
+                            <a class="nav-link {{ request()->routeIs('pos-terminals.*') ? 'active' : '' }}"
+                               href="{{ route('pos-terminals.index') }}">
+                                <i class="bi bi-cash-register"></i> نقاط البيع (Terminals)
+                            </a>
+                        </li>
+                        @endcan
                         @can('price_lists.view')
                         <li class="nav-item">
                             <a class="nav-link {{ request()->routeIs('price-lists.*') ? 'active' : '' }}"
@@ -1010,14 +1026,14 @@
     (function () {
         var p = window.location.pathname;
         var map = [
-            { id: 'ns1', paths: ['/products', '/categories', '/sales', '/sales-quotations', '/sales-orders', '/sale-returns', '/inventory'] },
+            { id: 'ns1', paths: ['/products', '/categories', '/sales', '/sales-quotations', '/sales-orders', '/sale-returns', '/inventory', '/stock-transfers'] },
             { id: 'ns2', paths: ['/purchases', '/purchase-orders', '/purchase-returns', '/suppliers', '/expense-invoices'] },
             { id: 'nsv', paths: ['/vouchers'] },
             { id: 'ns3', paths: ['/customers'] },
             { id: 'ns4', paths: ['/hr'] },
             { id: 'ns5', paths: ['/accounting', '/accounts', '/journal-entries', '/reversals', '/audit-logs'] },
             { id: 'ns6', paths: ['/reports'] },
-            { id: 'ns7', paths: ['/users', '/roles', '/permissions', '/settings', '/branches', '/warehouses', '/price-lists', '/fixed-assets', '/fixed-asset-categories'] },
+            { id: 'ns7', paths: ['/users', '/roles', '/permissions', '/settings', '/branches', '/warehouses', '/pos-terminals', '/price-lists', '/fixed-assets', '/fixed-asset-categories'] },
         ];
 
         for (var i = 0; i < map.length; i++) {
