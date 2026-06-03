@@ -8,16 +8,28 @@ use App\Models\JournalEntryLine;
 use App\Models\Sale;
 use App\Models\Purchase;
 use App\Models\StockMovement;
+use App\Services\WarehouseService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class ReversalController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         $this->authorize('viewAny', Reversal::class);
-        $reversals = Reversal::with('createdBy')->orderBy('created_at', 'desc')->paginate(30);
-        return view('reversals.index', compact('reversals'));
+        $branchId = $this->effectiveBranchId($request);
+
+        // Filter reversals through their reversal_journal_entry branch_id
+        $reversals = Reversal::with('createdBy')
+            ->when($branchId, function ($q) use ($branchId) {
+                $q->whereHas('journalEntry', fn($je) => $je->where('branch_id', $branchId));
+            })
+            ->orderBy('created_at', 'desc')
+            ->paginate(30);
+
+        $branches     = \App\Models\Branch::where('is_active', true)->orderBy('name')->get(['id','name','code']);
+        $branchLocked = $this->isBranchLocked();
+        return view('reversals.index', compact('reversals', 'branches', 'branchId', 'branchLocked'));
     }
 
     public function show($id)
@@ -67,65 +79,73 @@ class ReversalController extends Controller
         }
 
         DB::transaction(function () use ($original, $originalType, $originalId, $data) {
-            // find source journal entry
+            // Find original GL entry
             $je = JournalEntry::where('source_type', $originalType)->where('source_id', $originalId)->first();
             if (!$je) throw new \Exception('Original journal entry not found');
 
+            // ACC-3: Reversal GL entry inherits branch_id from the original entry
             $revEntry = JournalEntry::create([
-                'entry_date' => now(),
-                'reference' => 'REV-' . ($original->invoice_number ?? $originalId),
+                'entry_date'  => now(),
+                'reference'   => 'REV-' . ($original->invoice_number ?? $originalId),
                 'source_type' => $originalType,
-                'source_id' => $originalId,
+                'source_id'   => $originalId,
+                'branch_id'   => $je->branch_id,
                 'description' => 'قيد عكسي للقيد رقم ' . $je->entry_number . ' — ' . class_basename($originalType) . ' #' . $originalId,
-                'user_id' => auth()->id(),
-                'posted_at' => now(),
+                'user_id'     => auth()->id(),
+                'posted_at'   => now(),
             ]);
 
             foreach ($je->lines as $line) {
                 JournalEntryLine::create([
                     'journal_entry_id' => $revEntry->id,
-                    'account_id' => $line->account_id,
-                    'debit' => $line->credit,
-                    'credit' => $line->debit,
+                    'account_id'       => $line->account_id,
+                    'debit'            => $line->credit,
+                    'credit'           => $line->debit,
                     'line_description' => 'عكس — ' . ($line->line_description ?? ''),
                 ]);
             }
 
-            // stock reversal: if Sale -> add stock in; if Purchase -> remove stock
+            // ACC-4: Stock reversal via WarehouseService (updates stock_levels + products.quantity).
+            // warehouse_id is taken from the original transaction (sale/purchase warehouse).
+            // This was previously: product->increment/decrement() which bypassed stock_levels entirely
+            // and also produced StockMovement rows without warehouse_id (NOT NULL constraint → DB crash).
             if ($originalType === Sale::class) {
-                foreach ($original->items as $item) {
-                    StockMovement::create([
-                        'product_id' => $item->product_id,
-                        'reference_type' => Reversal::class,
-                        'reference_id' => $revEntry->id,
-                        'quantity' => $item->quantity,
-                        'cost' => $item->cost_price ?? 0,
-                        'movement_type' => 'in',
-                        'notes' => 'Reversal of sale #' . ($original->invoice_number ?? $originalId),
-                    ]);
+                $warehouseId = $original->warehouse_id
+                    ?? \App\Services\WarehouseService::getDefault()->id;
 
-                    // increment product
-                    if ($item->product) {
-                        $item->product->increment('quantity', $item->quantity);
-                    }
+                foreach ($original->items as $item) {
+                    WarehouseService::in($warehouseId, $item->product_id, (float) $item->quantity);
+
+                    StockMovement::create([
+                        'product_id'     => $item->product_id,
+                        'warehouse_id'   => $warehouseId,
+                        'reference_type' => Reversal::class,
+                        'reference_id'   => $revEntry->id,
+                        'quantity'       => $item->quantity,
+                        'cost'           => $item->cost_price ?? 0,
+                        'movement_type'  => 'in',
+                        'notes'          => 'عكس مبيعات #' . ($original->invoice_number ?? $originalId),
+                    ]);
                 }
             }
 
             if ($originalType === Purchase::class) {
-                foreach ($original->items as $item) {
-                    StockMovement::create([
-                        'product_id' => $item->product_id,
-                        'reference_type' => Reversal::class,
-                        'reference_id' => $revEntry->id,
-                        'quantity' => $item->quantity,
-                        'cost' => $item->unit_price ?? 0,
-                        'movement_type' => 'out',
-                        'notes' => 'Reversal of purchase #' . ($original->invoice_number ?? $originalId),
-                    ]);
+                $warehouseId = $original->warehouse_id
+                    ?? \App\Services\WarehouseService::getDefault()->id;
 
-                    if ($item->product) {
-                        $item->product->decrement('quantity', $item->quantity);
-                    }
+                foreach ($original->items as $item) {
+                    WarehouseService::out($warehouseId, $item->product_id, (float) $item->quantity);
+
+                    StockMovement::create([
+                        'product_id'     => $item->product_id,
+                        'warehouse_id'   => $warehouseId,
+                        'reference_type' => Reversal::class,
+                        'reference_id'   => $revEntry->id,
+                        'quantity'       => $item->quantity,
+                        'cost'           => $item->unit_price ?? 0,
+                        'movement_type'  => 'out',
+                        'notes'          => 'عكس مشتريات #' . ($original->invoice_number ?? $originalId),
+                    ]);
                 }
             }
 

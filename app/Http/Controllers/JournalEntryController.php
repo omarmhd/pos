@@ -6,6 +6,7 @@ use App\Models\Account;
 use App\Models\Branch;
 use App\Models\JournalEntry;
 use App\Models\JournalEntryLine;
+use App\Models\Setting;
 use App\Services\PdfService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -64,17 +65,20 @@ class JournalEntryController extends Controller
         }
 
         $branches = Branch::where('is_active', true)->orderBy('name')->get(['id', 'name', 'code']);
-        return view('journal_entries.index', compact('branches', 'branchId'));
+        return view('journal_entries.index', compact('branches', 'branchId', 'branchLocked'));
     }
 
     public function create()
     {
-        $accounts = Account::where('is_active', true)
+        $accounts     = Account::where('is_active', true)
             ->where('is_header', false)
             ->orderBy('code')
             ->get(['id', 'code', 'name', 'type']);
+        $branches     = Branch::where('is_active', true)->orderBy('name')->get(['id', 'name', 'code']);
+        $branchId     = $this->effectiveBranchId(request());
+        $branchLocked = $this->isBranchLocked();
 
-        return view('journal_entries.create', compact('accounts'));
+        return view('journal_entries.create', compact('accounts', 'branches', 'branchId', 'branchLocked'));
     }
 
     public function store(Request $request)
@@ -117,7 +121,14 @@ class JournalEntryController extends Controller
                 ->withErrors(['lines' => 'لا يمكن الترحيل على حساب رئيسي (إجمالي). اختر حساباً تفصيلياً.']);
         }
 
-        DB::transaction(function () use ($request) {
+        // Branch resolution (SAP: Company Code mandatory on every GL document)
+        // - Branch-locked users: always their own branch
+        // - Global users (admin/accountant): branch from form, then user's branch, then default
+        $resolvedBranch = $this->isBranchLocked()
+            ? (auth()->user()?->branch_id ?? \App\Models\Setting::get('default_branch_id'))
+            : ($request->input('branch_id') ?: auth()->user()?->branch_id ?: Setting::get('default_branch_id'));
+
+        DB::transaction(function () use ($request, $resolvedBranch) {
             /** @var \App\Models\JournalEntry $entry */
             $entry = JournalEntry::create([
                 'entry_date'  => $request->entry_date,
@@ -125,6 +136,7 @@ class JournalEntryController extends Controller
                 'reference'   => $request->reference,
                 'source_type' => null,
                 'source_id'   => null,
+                'branch_id'   => $resolvedBranch,
                 'user_id'     => auth()->id(),
                 'posted_at'   => now(),
             ]);

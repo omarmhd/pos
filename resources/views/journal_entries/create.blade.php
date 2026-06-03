@@ -22,6 +22,34 @@
                 <form action="{{ route('journal_entries.store') }}" method="POST" id="jeForm">
                     @csrf
 
+                    {{-- Branch selector (SAP: Company Code is mandatory on every GL document) --}}
+                    @if(!($branchLocked ?? false))
+                    <div class="alert alert-light border mb-3 py-2">
+                        <div class="row g-2 align-items-center">
+                            <div class="col-auto">
+                                <label class="form-label mb-0 fw-semibold small">
+                                    <i class="bi bi-building-fill-check text-primary me-1"></i>الفرع (Company Code)
+                                </label>
+                            </div>
+                            <div class="col-md-4">
+                                <select name="branch_id" class="form-select form-select-sm">
+                                    <option value="">— فرع المستخدم الافتراضي —</option>
+                                    @foreach($branches ?? [] as $b)
+                                        <option value="{{ $b->id }}" {{ old('branch_id', $branchId ?? '') == $b->id ? 'selected':'' }}>
+                                            [{{ $b->code }}] {{ $b->name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-auto">
+                                <small class="text-muted">يحدد الفرع الذي سيظهر فيه هذا القيد في الدفتر والميزانية</small>
+                            </div>
+                        </div>
+                    </div>
+                    @else
+                    <input type="hidden" name="branch_id" value="{{ auth()->user()?->branch_id }}">
+                    @endif
+
                     <div class="row g-3 mb-4">
                         <div class="col-md-3">
                             <label class="form-label fw-semibold">
