@@ -70,7 +70,7 @@ class InventoryAdjustmentController extends Controller
             ->with('branch:id,name')
             ->orderBy('is_default', 'desc')
             ->orderBy('name')
-            ->get(['id', 'name', 'code', 'branch_id', 'is_default']);
+            ->get(['id', 'name', 'type', 'code', 'branch_id', 'is_default']);
         $defaultWarehouseId = WarehouseService::getDefault()->id;
         return view('inventory.adjustments.create', compact('warehouses', 'defaultWarehouseId'));
     }

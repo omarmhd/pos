@@ -18,6 +18,7 @@
                 <tr>
                     <th>الكود</th>
                     <th>الاسم</th>
+                    <th>النوع</th>
                     <th>الفرع</th>
                     <th class="text-center">عدد الأصناف</th>
                     <th class="text-center">الحالة</th>
@@ -30,6 +31,12 @@
                 <tr>
                     <td><code>{{ $wh->code }}</code></td>
                     <td class="fw-semibold">{{ $wh->name }}</td>
+                    <td>
+                        @php $typeMap = ['main'=>['رئيسي','secondary'],'floor'=>['معرض','info'],'returns'=>['مرتجعات','warning'],'transit'=>['عبور','dark']]; @endphp
+                        <span class="badge bg-{{ $typeMap[$wh->type][1] ?? 'secondary' }}">
+                            {{ $typeMap[$wh->type][0] ?? $wh->type }}
+                        </span>
+                    </td>
                     <td>
                         @if($wh->branch)
                             <span class="badge bg-light text-dark border">{{ $wh->branch->name }}</span>

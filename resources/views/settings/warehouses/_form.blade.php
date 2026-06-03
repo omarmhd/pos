@@ -13,9 +13,18 @@
                value="{{ old('name', $warehouse->name ?? '') }}" required>
         @error('name')<div class="invalid-feedback">{{ $message }}</div>@enderror
     </div>
-    <div class="col-md-4">
+    <div class="col-md-2">
+        <label class="form-label">نوع المخزن <span class="text-danger">*</span></label>
+        <select name="type" class="form-select" required>
+            <option value="main"    {{ old('type', $warehouse->type ?? 'main') === 'main'    ? 'selected' : '' }}>مخزن رئيسي</option>
+            <option value="floor"   {{ old('type', $warehouse->type ?? 'main') === 'floor'   ? 'selected' : '' }}>معرض / رفوف</option>
+            <option value="returns" {{ old('type', $warehouse->type ?? 'main') === 'returns' ? 'selected' : '' }}>مرتجعات</option>
+            <option value="transit" {{ old('type', $warehouse->type ?? 'main') === 'transit' ? 'selected' : '' }}>عبور</option>
+        </select>
+    </div>
+    <div class="col-md-3">
         <label class="form-label">الفرع
-            <small class="text-muted">(اختياري — يمكن ترك المخزن مستقلاً)</small>
+            <small class="text-muted">(اختياري)</small>
         </label>
         <select name="branch_id" class="form-select">
             <option value="">— مستقل / بدون فرع —</option>

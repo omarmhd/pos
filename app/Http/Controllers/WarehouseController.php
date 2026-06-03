@@ -38,6 +38,7 @@ class WarehouseController extends Controller
         $data = $request->validate([
             'code'       => 'required|string|max:20|unique:warehouses,code',
             'name'       => 'required|string|max:100',
+            'type'       => 'required|in:main,floor,returns,transit',
             'branch_id'  => 'nullable|exists:branches,id',
             'is_default' => 'boolean',
             'is_active'  => 'boolean',
@@ -68,6 +69,7 @@ class WarehouseController extends Controller
         $data = $request->validate([
             'code'       => 'required|string|max:20|unique:warehouses,code,' . $warehouse->id,
             'name'       => 'required|string|max:100',
+            'type'       => 'required|in:main,floor,returns,transit',
             'branch_id'  => 'nullable|exists:branches,id',
             'is_default' => 'boolean',
             'is_active'  => 'boolean',
