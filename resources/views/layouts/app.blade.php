@@ -364,7 +364,11 @@
                        href="{{ route('pos.shifts.index') }}">
                         <i class="bi bi-cash-register text-warning"></i> الورديات النقدية
                         @php
-                            $myOpenShift = \App\Models\CashShift::activeForUser(auth()->id());
+                            try {
+                                $myOpenShift = \App\Models\CashShift::activeForUser(auth()->id());
+                            } catch(\Throwable) {
+                                $myOpenShift = null;
+                            }
                         @endphp
                         @if($myOpenShift)
                             <span class="badge bg-success ms-1" style="font-size:.65rem">مفتوحة</span>
@@ -676,6 +680,18 @@
                                 <i class="bi bi-layout-split"></i> الميزانية العمومية
                             </a>
                         </li>
+                        <li class="nav-item">
+                            <a class="nav-link {{ request()->routeIs('accounting.cash-flow') ? 'active' : '' }}"
+                               href="{{ route('accounting.cash-flow') }}">
+                                <i class="bi bi-cash-coin text-success"></i> التدفقات النقدية
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {{ request()->routeIs('accounting.consolidated-pl') ? 'active' : '' }}"
+                               href="{{ route('accounting.consolidated-pl') }}">
+                                <i class="bi bi-diagram-3 text-success"></i> قائمة دخل موحدة
+                            </a>
+                        </li>
                         @endcan
                         {{-- الأصول الثابتة — ينتمي للمحاسبة --}}
                         @can('fixed_assets.view')
@@ -848,7 +864,11 @@
                                href="{{ route('hr.leaves.index') }}">
                                 <i class="bi bi-calendar-check text-success"></i> الإجازات
                                 @php
-                                    $pendingLeaves = \App\Models\EmployeeLeave::where('status','pending')->count();
+                                    try {
+                                        $pendingLeaves = \App\Models\EmployeeLeave::where('status','pending')->count();
+                                    } catch(\Throwable) {
+                                        $pendingLeaves = 0;
+                                    }
                                 @endphp
                                 @if($pendingLeaves)
                                     <span class="badge bg-warning text-dark ms-1" style="font-size:.65rem">{{ $pendingLeaves }}</span>

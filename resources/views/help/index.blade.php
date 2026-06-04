@@ -89,6 +89,17 @@
                 <a class="nav-link sub-item" href="#sec-accounting">└ القيد المزدوج</a>
                 <a class="nav-link sub-item" href="#sec-accounts">└ شجرة الحسابات</a>
                 <a class="nav-link sub-item" href="#sec-accounting">└ إقفال نهاية السنة</a>
+                <a class="nav-link" href="#sec-cash-shift">وردية الكاشير</a>
+                <a class="nav-link" href="#sec-audit-trail">سجل التدقيق الشامل</a>
+                <a class="nav-link" href="#sec-leaves">إدارة الإجازات</a>
+                <a class="nav-link" href="#sec-eosb">مخصصات نهاية الخدمة</a>
+                <a class="nav-link" href="#sec-inter-branch">التحويلات البينية</a>
+                <a class="nav-link" href="#sec-cost-centers">مراكز التكلفة</a>
+                <a class="nav-link" href="#sec-budgets">الموازنات التقديرية</a>
+                <a class="nav-link" href="#sec-lot-batch">تتبع الدُّفعات (Lot/Batch)</a>
+                <a class="nav-link" href="#sec-cash-flow">قائمة التدفقات النقدية</a>
+                <a class="nav-link" href="#sec-pos-offline">POS بدون اتصال</a>
+                <a class="nav-link" href="#sec-opening-balance">الأرصدة الافتتاحية</a>
                 <a class="nav-link" href="#sec-reports">التقارير</a>
                 <a class="nav-link" href="#sec-settings">إعدادات النظام</a>
                 <a class="nav-link sub-item" href="#sec-settings">└ المتجر / العملة / الضريبة</a>
@@ -1268,6 +1279,248 @@
                     </tbody>
                 </table>
 
+            </div>
+        </div>
+
+        {{-- ══════════════════════════════════════════════════════════ --}}
+        {{-- وردية الكاشير --}}
+        {{-- ══════════════════════════════════════════════════════════ --}}
+        <div class="help-section" id="sec-cash-shift">
+            <div class="section-header">
+                <i class="bi bi-cash-register fs-5"></i> وردية الكاشير (Cash Shift)
+            </div>
+            <div class="section-body">
+                <p>الوردية النقدية تمثّل الفترة التي يعمل فيها الكاشير — من فتح الدرج حتى إقفاله وجرد النقدية.</p>
+                <div class="workflow-step"><div class="step-num">1</div><div class="step-body">
+                    <div class="step-title">افتتاح الوردية</div>
+                    <div class="step-desc">الكاشير يدخل المبلغ الموجود في الدرج قبل البدء. الوردية تصبح «مفتوحة» وكل مبيعة تُربط بها تلقائياً.</div>
+                </div></div>
+                <div class="workflow-step"><div class="step-num">2</div><div class="step-body">
+                    <div class="step-title">إقفال الوردية</div>
+                    <div class="step-desc">في نهاية الوردية يُعدّ الكاشير النقدية ويُدخل الرقم الفعلي. النظام يحسب: <strong>المتوقع = رصيد افتتاحي + مبيعات نقدية − مرتجعات نقدية</strong>.</div>
+                </div></div>
+                <div class="workflow-step"><div class="step-num">3</div><div class="step-body">
+                    <div class="step-title">قيد الفرق تلقائياً</div>
+                    <div class="step-desc">إذا كان هناك فرق، يُنشئ النظام قيداً محاسبياً تلقائياً.</div>
+                </div></div>
+                <div class="gl-example mt-3">
+                    <table class="w-100"><tr>
+                        <td class="gl-debit">نقص: مدين — عجز نقدي (6520)</td><td>المبلغ</td>
+                    </tr><tr>
+                        <td class="gl-credit">دائن — صندوق الفرع (1000.XX)</td><td>المبلغ</td>
+                    </tr></table>
+                </div>
+                <div class="alert-tip mt-2">المدير يستطيع عرض ورديات جميع الكاشيرين. الكاشير يرى وردياته فقط.</div>
+            </div>
+        </div>
+
+        {{-- ══════════════════════════════════════════════════════════ --}}
+        {{-- سجل التدقيق --}}
+        {{-- ══════════════════════════════════════════════════════════ --}}
+        <div class="help-section" id="sec-audit-trail">
+            <div class="section-header">
+                <i class="bi bi-shield-check fs-5"></i> سجل التدقيق الشامل
+            </div>
+            <div class="section-body">
+                <p>كل عملية تعديل أو إنشاء أو حذف على البيانات المالية الحساسة تُسجَّل تلقائياً مع:</p>
+                <ul class="small text-muted">
+                    <li>اسم المستخدم والوقت وعنوان IP</li>
+                    <li>قيمة الحقل <strong>قبل</strong> التعديل وقيمته <strong>بعد</strong> التعديل</li>
+                    <li>نوع العملية: إنشاء / تعديل / حذف</li>
+                </ul>
+                <p><strong>النماذج المراقَبة:</strong> فواتير البيع والشراء، القيود، الدفعات، سندات القبض والصرف، بيانات العملاء والموردين، تعديلات المخزون، الأصول الثابتة.</p>
+                <div class="alert-warn">لا يمكن حذف سجلات التدقيق — هي مخصصة للمراجعة والامتثال القانوني.</div>
+            </div>
+        </div>
+
+        {{-- ══════════════════════════════════════════════════════════ --}}
+        {{-- الإجازات --}}
+        {{-- ══════════════════════════════════════════════════════════ --}}
+        <div class="help-section" id="sec-leaves">
+            <div class="section-header">
+                <i class="bi bi-calendar-check fs-5"></i> إدارة الإجازات
+            </div>
+            <div class="section-body">
+                <p>نظام طلب واعتماد الإجازات مع تتبع الرصيد السنوي وخصم الإجازات بدون راتب من مسير الرواتب.</p>
+                <table class="table table-sm term-table">
+                    <tr><td>إجازة سنوية</td><td>annual</td><td>مدفوعة — تُخصَم من الرصيد السنوي (21 يوم)</td></tr>
+                    <tr><td>إجازة مرضية</td><td>sick</td><td>مدفوعة حسب اللوائح</td></tr>
+                    <tr><td>إجازة بدون راتب</td><td>unpaid</td><td>تُعدّ غياباً في مسير الرواتب تلقائياً</td></tr>
+                    <tr><td>إجازة أمومة</td><td>maternity</td><td>مدفوعة</td></tr>
+                    <tr><td>إجازة طارئة</td><td>emergency</td><td>مدفوعة</td></tr>
+                </table>
+                <div class="alert-tip">الإجازات بدون راتب المعتمدة تُضاف تلقائياً إلى عمود «الغياب» عند احتساب الراتب الشهري.</div>
+            </div>
+        </div>
+
+        {{-- ══════════════════════════════════════════════════════════ --}}
+        {{-- EOSB --}}
+        {{-- ══════════════════════════════════════════════════════════ --}}
+        <div class="help-section" id="sec-eosb">
+            <div class="section-header">
+                <i class="bi bi-person-badge fs-5"></i> مخصصات نهاية الخدمة (EOSB)
+            </div>
+            <div class="section-body">
+                <p>تُحتسب مخصصات نهاية الخدمة شهرياً وفق معيار IAS 19: <strong>المخصص الشهري = الراتب الأساسي ÷ 12</strong> (= شهر عن كل سنة خدمة).</p>
+                <div class="gl-example">
+                    <table class="w-100"><tr>
+                        <td class="gl-debit">مدين — مصروف نهاية الخدمة (6300)</td><td>إجمالي الموظفين</td>
+                    </tr><tr>
+                        <td class="gl-credit">دائن — مخصص نهاية الخدمة (2200)</td><td>إجمالي الموظفين</td>
+                    </tr></table>
+                </div>
+                <div class="alert-tip mt-2">يتوفر تقرير «معاينة» يعرض تفصيل كل موظف قبل الترحيل. الترحيل idempotent — لا يُعيد الترحيل لنفس الشهر.</div>
+            </div>
+        </div>
+
+        {{-- ══════════════════════════════════════════════════════════ --}}
+        {{-- التحويلات البينية --}}
+        {{-- ══════════════════════════════════════════════════════════ --}}
+        <div class="help-section" id="sec-inter-branch">
+            <div class="section-header">
+                <i class="bi bi-arrow-left-right fs-5"></i> التحويلات البينية بين الفروع
+            </div>
+            <div class="section-body">
+                <p>عند تحويل نقود من فرع لآخر، يُنشئ النظام <strong>قيدين محاسبيين</strong> — واحد لكل فرع — باستخدام حسابات «مستحق من» و«مستحق لـ».</p>
+                <div class="gl-example">
+                    <table class="w-100">
+                        <tr><td class="fw-bold text-danger">فرع أ (المرسل):</td></tr>
+                        <tr><td class="gl-debit">مدين — مستحق من فرع ب (1700.B)</td><td>المبلغ</td></tr>
+                        <tr><td class="gl-credit">دائن — صندوق فرع أ (1000.A)</td><td>المبلغ</td></tr>
+                        <tr><td class="fw-bold text-success mt-2">فرع ب (المستلم):</td></tr>
+                        <tr><td class="gl-debit">مدين — صندوق فرع ب (1000.B)</td><td>المبلغ</td></tr>
+                        <tr><td class="gl-credit">دائن — مستحق لفرع أ (2700.A)</td><td>المبلغ</td></tr>
+                    </table>
+                </div>
+                <div class="alert-tip mt-2">عند مقابلة أرصدة 1700/2700 يجب أن تتساوى (صفر net) في القوائم الموحدة.</div>
+            </div>
+        </div>
+
+        {{-- ══════════════════════════════════════════════════════════ --}}
+        {{-- مراكز التكلفة --}}
+        {{-- ══════════════════════════════════════════════════════════ --}}
+        <div class="help-section" id="sec-cost-centers">
+            <div class="section-header">
+                <i class="bi bi-diagram-2 fs-5"></i> مراكز التكلفة
+            </div>
+            <div class="section-body">
+                <p>مراكز التكلفة تتيح تتبع الإيرادات والمصروفات على مستوى أدق من الفرع — مثل: قسم المخبوزات، قسم الخضار، قسم الطلبيات.</p>
+                <ul class="small text-muted">
+                    <li>أنشئ المراكز من <strong>محاسبة → مراكز التكلفة</strong></li>
+                    <li>اربط كل سطر قيد بمركز تكلفة عند إنشاء القيد اليدوي</li>
+                    <li>شاهد تقرير P&L لكل مركز من نفس الصفحة</li>
+                </ul>
+            </div>
+        </div>
+
+        {{-- ══════════════════════════════════════════════════════════ --}}
+        {{-- الموازنات --}}
+        {{-- ══════════════════════════════════════════════════════════ --}}
+        <div class="help-section" id="sec-budgets">
+            <div class="section-header">
+                <i class="bi bi-calculator fs-5"></i> الموازنات التقديرية
+            </div>
+            <div class="section-body">
+                <p>أنشئ موازنة سنوية بتحديد المبلغ المتوقع لكل حساب إيراد أو مصروف. النظام يوزعه تلقائياً على 12 شهراً بالتساوي.</p>
+                <div class="workflow-step"><div class="step-num">1</div><div class="step-body">
+                    <div class="step-title">إنشاء الموازنة</div>
+                    <div class="step-desc">من محاسبة → الموازنات → موازنة جديدة. حدد السنة والفرع وأدخل المبالغ السنوية لكل حساب.</div>
+                </div></div>
+                <div class="workflow-step"><div class="step-num">2</div><div class="step-body">
+                    <div class="step-title">تقرير الانحرافات</div>
+                    <div class="step-desc">اختر أي شهر لمقارنة <strong>الموازنة التقديرية</strong> مع <strong>الفعلي من دفتر الأستاذ</strong>. يظهر شريط تقدم وحالة (تجاوز / جيد / دون الموازنة).</div>
+                </div></div>
+            </div>
+        </div>
+
+        {{-- ══════════════════════════════════════════════════════════ --}}
+        {{-- Lot/Batch --}}
+        {{-- ══════════════════════════════════════════════════════════ --}}
+        <div class="help-section" id="sec-lot-batch">
+            <div class="section-header">
+                <i class="bi bi-boxes fs-5"></i> تتبع الدُّفعات (Lot / Batch)
+            </div>
+            <div class="section-body">
+                <p>عند استلام البضاعة يمكنك إدخال <strong>رقم الدُّفعة (Lot Number)</strong> و<strong>تاريخ انتهاء الصلاحية</strong> لكل صنف.</p>
+                <ul class="small text-muted">
+                    <li>أدخل رقم الدُّفعة وتاريخ الانتهاء في صفحة إنشاء فاتورة الشراء</li>
+                    <li>راجع تقرير <strong>المخزون → تنبيهات انتهاء الصلاحية</strong> لمتابعة ما يقترب انتهاؤه</li>
+                    <li>مُلوَّن: أحمر ≤ 7 أيام، أصفر ≤ 30 يوماً</li>
+                </ul>
+                <div class="alert-warn">تتبع الدُّفعات سجل استشاري فقط — المخزون يُدار بالكميات الإجمالية وليس per-lot.</div>
+            </div>
+        </div>
+
+        {{-- ══════════════════════════════════════════════════════════ --}}
+        {{-- قائمة التدفقات النقدية --}}
+        {{-- ══════════════════════════════════════════════════════════ --}}
+        <div class="help-section" id="sec-cash-flow">
+            <div class="section-header">
+                <i class="bi bi-cash-coin fs-5"></i> قائمة التدفقات النقدية (IAS 7)
+            </div>
+            <div class="section-body">
+                <p>تُعدَّ بالطريقة غير المباشرة — تبدأ من صافي الربح وتصل إلى رصيد النقدية الختامي.</p>
+                <table class="table table-sm term-table">
+                    <tr><td>أ) أنشطة التشغيل</td><td></td><td>صافي الربح + تعديلات + تغييرات رأس المال العامل</td></tr>
+                    <tr><td>ب) أنشطة الاستثمار</td><td></td><td>شراء / بيع الأصول الثابتة</td></tr>
+                    <tr><td>ج) أنشطة التمويل</td><td></td><td>تغييرات حقوق الملكية</td></tr>
+                    <tr><td>د) صافي التغيير</td><td></td><td>أ + ب + ج</td></tr>
+                    <tr><td>ه) رصيد افتتاحي</td><td></td><td>مجموع أرصدة حسابات النقدية في بداية الفترة</td></tr>
+                    <tr><td>و) رصيد ختامي</td><td></td><td>= د + ه (يجب أن يطابق دفتر الأستاذ)</td></tr>
+                </table>
+                <div class="alert-tip">القائمة تتحقق تلقائياً من التوازن — يظهر إشعار إذا كان هناك فرق بين الرصيد المحسوب وأرصدة حسابات النقدية الفعلية.</div>
+            </div>
+        </div>
+
+        {{-- ══════════════════════════════════════════════════════════ --}}
+        {{-- POS Offline --}}
+        {{-- ══════════════════════════════════════════════════════════ --}}
+        <div class="help-section" id="sec-pos-offline">
+            <div class="section-header">
+                <i class="bi bi-wifi-off fs-5"></i> POS بدون اتصال بالإنترنت
+            </div>
+            <div class="section-body">
+                <p>إذا انقطع الإنترنت أثناء البيع، يستمر النظام في العمل ويحفظ المبيعات محلياً حتى عودة الاتصال.</p>
+                <div class="workflow-step"><div class="step-num">1</div><div class="step-body">
+                    <div class="step-title">انقطاع الاتصال</div>
+                    <div class="step-desc">يظهر شريط أحمر في أعلى الشاشة: <em>«لا يوجد اتصال — المبيعات ستُحفَظ محلياً»</em></div>
+                </div></div>
+                <div class="workflow-step"><div class="step-num">2</div><div class="step-body">
+                    <div class="step-title">استمرار البيع</div>
+                    <div class="step-desc">أكمل البيع كالمعتاد. تُحفَظ الفواتير في ذاكرة المتصفح (IndexedDB).</div>
+                </div></div>
+                <div class="workflow-step"><div class="step-num">3</div><div class="step-body">
+                    <div class="step-title">استعادة الاتصال</div>
+                    <div class="step-desc">عند عودة الإنترنت، تُرسَل الفواتير المحفوظة تلقائياً للخادم (Background Sync).</div>
+                </div></div>
+                <div class="alert-warn">وضع Offline يتطلب دعم المتصفح لـ Service Worker (Chrome / Edge / Firefox). Safari محدود الدعم.</div>
+            </div>
+        </div>
+
+        {{-- ══════════════════════════════════════════════════════════ --}}
+        {{-- الأرصدة الافتتاحية --}}
+        {{-- ══════════════════════════════════════════════════════════ --}}
+        <div class="help-section" id="sec-opening-balance">
+            <div class="section-header">
+                <i class="bi bi-bank fs-5"></i> معالج الأرصدة الافتتاحية
+            </div>
+            <div class="section-body">
+                <p>عند الانتقال للنظام، يجب إدخال الأرصدة الافتتاحية لتوازن الميزانية العمومية.</p>
+                <div class="workflow-step"><div class="step-num">1</div><div class="step-body">
+                    <div class="step-title">تشخيص الوضع الحالي</div>
+                    <div class="step-desc">من محاسبة → الأرصدة الافتتاحية. تظهر الفجوة الحالية في الميزانية مع قيمتها.</div>
+                </div></div>
+                <div class="workflow-step"><div class="step-num">2</div><div class="step-body">
+                    <div class="step-title">ترحيل قيد الأرصدة</div>
+                    <div class="step-desc">عادةً: مدين الصندوق (1000) / دائن رأس المال (3000) بمبلغ رأس المال الافتتاحي.</div>
+                </div></div>
+                <div class="gl-example">
+                    <table class="w-100"><tr>
+                        <td class="gl-debit">مدين — الصندوق (1000)</td><td>رأس المال الافتتاحي</td>
+                    </tr><tr>
+                        <td class="gl-credit">دائن — رأس المال (3000)</td><td>رأس المال الافتتاحي</td>
+                    </tr></table>
+                </div>
             </div>
         </div>
 

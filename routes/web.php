@@ -381,6 +381,9 @@ Route::middleware(['auth'])->group(function () {
     // ── Consolidated P&L (all branches side by side) ──────────────────────────
     Route::get('accounting/consolidated-pl', [\App\Http\Controllers\ConsolidatedReportController::class, 'incomeStatement'])->name('accounting.consolidated-pl');
 
+    // ── Cash Flow Statement (IAS 7 Indirect Method) ───────────────────────────
+    Route::get('accounting/cash-flow', [\App\Http\Controllers\CashFlowController::class, 'index'])->name('accounting.cash-flow');
+
     // ── Inter-Branch Transfers (تحويلات بينية) ───────────────────────────────
     Route::prefix('inter-branch')->name('inter-branch.')->group(function () {
         Route::get('/',        [\App\Http\Controllers\InterBranchTransferController::class, 'index']) ->name('index');
