@@ -101,7 +101,7 @@ class OpeningBalanceController extends Controller
             $entry = JournalEntry::create([
                 'entry_date'  => $request->entry_date,
                 'description' => 'قيد الأرصدة الافتتاحية',
-                'reference'   => 'OB-' . date('Y'),
+                'reference'   => 'OB-' . date('Y') . '-' . now()->format('mdHis'),
                 'source_type' => null,
                 'source_id'   => null,
                 'branch_id'   => $branchId,

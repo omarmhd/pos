@@ -235,7 +235,7 @@ class CashFlowController extends Controller
         foreach ($equityAccounts as $a) {
             $opening  = $this->fs->getAccountBalance($a, $prevDate, $branchId);
             $closing  = $this->fs->getAccountBalance($a, $to, $branchId);
-            // Liability normal balance: increase = positive cash contribution
+            // Equity normal balance (credit): increase = cash came in (capital contribution)
             $total   += $closing - $opening;
         }
 

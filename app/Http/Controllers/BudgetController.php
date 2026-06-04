@@ -97,9 +97,10 @@ class BudgetController extends Controller
             ->keyBy('account_id');
 
         $rows = $budget->lines->map(function (BudgetLine $line) use ($month, $actuals) {
+            if (!$line->account) return null;   // skip orphaned lines (deleted account)
             $budgeted = $line->budgetForMonth($month);
             $act      = $actuals->get($line->account_id);
-            $isExp    = $line->account?->type === 'expense';
+            $isExp    = ($line->account->type ?? 'expense') === 'expense';
             $actual   = $act
                 ? ($isExp ? (float)$act->total_debit - (float)$act->total_credit
                           : (float)$act->total_credit - (float)$act->total_debit)
@@ -116,6 +117,8 @@ class BudgetController extends Controller
                 'over'     => $isExp ? ($variance > 0) : ($variance < 0),
             ];
         });
+
+        $rows = $rows->filter();  // remove null entries (orphaned account lines)
 
         return view('accounting.budgets.variance', compact(
             'budget', 'rows', 'month', 'currency',

@@ -84,8 +84,8 @@ class InterBranchTransferController extends Controller
                 ->with('success',
                     'تم تسجيل التحويل البيني بنجاح — '
                     . number_format($request->amount, 2) . ' ' . $currency
-                    . ' من ' . $transfer->fromBranch->name
-                    . ' إلى ' . $transfer->toBranch->name
+                    . ' من ' . ($transfer->fromBranch?->name ?? 'فرع #' . $request->from_branch_id)
+                    . ' إلى ' . ($transfer->toBranch?->name ?? 'فرع #' . $request->to_branch_id)
                 );
 
         } catch (\Exception $e) {

@@ -67,9 +67,12 @@ class EosbController extends Controller
         $periodEnd = Carbon::create($year, $month, 1)->endOfMonth();
         $currency  = Setting::get('currency_symbol', 'ج.م');
 
+        // Parentheses are critical: without them, orWhhere breaks is_active filter
+        // Bad:  WHERE is_active=1 AND termination IS NULL OR termination > date
+        // Good: WHERE is_active=1 AND (termination IS NULL OR termination > date)
         $employees = Employee::where('is_active', true)
-            ->whereNull('termination_date')
-            ->orWhereDate('termination_date', '>', $periodEnd)
+            ->where(fn($q) => $q->whereNull('termination_date')
+                               ->orWhereDate('termination_date', '>', $periodEnd))
             ->orderBy('name')
             ->get();
 

@@ -41,15 +41,15 @@
                                     </tr>
                                     <tr>
                                         <td class="text-muted">+ مبيعات نقدية</td>
-                                        <td class="text-end font-monospace text-success">{{ number_format($shift->cash_sales, 2) }}</td>
+                                        <td class="text-end font-monospace text-success">{{ number_format($shift->cash_sales ?? 0, 2) }}</td>
                                     </tr>
                                     <tr>
                                         <td class="text-muted">− مرتجعات نقدية</td>
-                                        <td class="text-end font-monospace text-danger">{{ number_format($shift->cash_returns, 2) }}</td>
+                                        <td class="text-end font-monospace text-danger">{{ number_format($shift->cash_returns ?? 0, 2) }}</td>
                                     </tr>
                                     <tr class="border-top fw-bold">
                                         <td>المبلغ المتوقع</td>
-                                        <td class="text-end font-monospace fs-6">{{ number_format($shift->expected_amount, 2) }} {{ $currency }}</td>
+                                        <td class="text-end font-monospace fs-6">{{ number_format($shift->expected_amount ?? 0, 2) }} {{ $currency }}</td>
                                     </tr>
                                 </table>
                             </div>
