@@ -802,6 +802,14 @@
                             </a>
                         </li>
                         @endcan
+                        @can('hr.eosb.view')
+                        <li class="nav-item">
+                            <a class="nav-link {{ request()->routeIs('hr.eosb.*') ? 'active' : '' }}"
+                               href="{{ route('hr.eosb.index') }}">
+                                <i class="bi bi-person-badge text-warning"></i> مخصصات نهاية الخدمة
+                            </a>
+                        </li>
+                        @endcan
                     </ul>
                 </div>
                 @endcanany
@@ -960,6 +968,14 @@
                             <a class="nav-link {{ request()->routeIs('audit.*') ? 'active' : '' }}"
                                href="{{ route('audit.logs.index') }}">
                                 <i class="bi bi-shield-check"></i> سجل التدقيق
+                            </a>
+                        </li>
+                        @endcan
+                        @can('settings.manage')
+                        <li class="nav-item">
+                            <a class="nav-link {{ request()->routeIs('backup.*') ? 'active' : '' }}"
+                               href="{{ route('backup.index') }}">
+                                <i class="bi bi-cloud-arrow-up text-info"></i> النسخ الاحتياطي
                             </a>
                         </li>
                         @endcan
@@ -1159,6 +1175,118 @@
 </script>
 
 @yield('scripts')
+
+{{-- ══════════════════════════════════════════════════════════════════════
+     Session Timeout — warns N seconds before expiry, force-logs out after.
+     SESSION_LIFETIME is read from Laravel config (minutes) and converted
+     to seconds for the JS countdown.
+     ══════════════════════════════════════════════════════════════════════ --}}
+@auth
+<div class="modal fade" id="sessionWarningModal" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
+        <div class="modal-content border-warning">
+            <div class="modal-header bg-warning text-dark py-2">
+                <h6 class="modal-title mb-0">
+                    <i class="bi bi-clock-history me-1"></i>انتهاء الجلسة قريباً
+                </h6>
+            </div>
+            <div class="modal-body text-center py-3">
+                <div class="fs-2 fw-bold text-danger font-monospace" id="sessionCountdown">02:00</div>
+                <p class="text-muted small mt-2 mb-0">ستنتهي جلستك تلقائياً — انقر للمتابعة</p>
+            </div>
+            <div class="modal-footer py-2 justify-content-center gap-2">
+                <button type="button" class="btn btn-success btn-sm" id="btnKeepAlive">
+                    <i class="bi bi-arrow-repeat me-1"></i>متابعة العمل
+                </button>
+                <a href="{{ route('logout') }}"
+                   onclick="event.preventDefault(); document.getElementById('logoutForm').submit();"
+                   class="btn btn-outline-secondary btn-sm">خروج الآن</a>
+            </div>
+        </div>
+    </div>
+</div>
+<form id="logoutForm" method="POST" action="{{ route('logout') }}" class="d-none">@csrf</form>
+
+<script>
+(function () {
+    var LIFETIME   = {{ config('session.lifetime') * 60 }};  // seconds
+    var WARN_SECS  = 120;   // show warning 2 minutes before
+    var PING_URL   = '{{ route("session.ping") }}';
+    var LOGOUT_URL = '{{ route("logout") }}';
+    var CSRF       = '{{ csrf_token() }}';
+
+    var remaining  = LIFETIME;
+    var warnShown  = false;
+    var modal      = null;
+    var ticker     = null;
+
+    function pad(n) { return String(n).padStart(2, '0'); }
+
+    function updateDisplay() {
+        var r = Math.max(0, remaining);
+        var m = Math.floor(r / 60);
+        var s = r % 60;
+        var el = document.getElementById('sessionCountdown');
+        if (el) el.textContent = pad(m) + ':' + pad(s);
+    }
+
+    function showWarning() {
+        if (!warnShown) {
+            warnShown = true;
+            if (!modal) modal = new bootstrap.Modal(document.getElementById('sessionWarningModal'));
+            modal.show();
+        }
+        updateDisplay();
+    }
+
+    function hideWarning() {
+        warnShown = false;
+        if (modal) modal.hide();
+    }
+
+    function forceLogout() {
+        clearInterval(ticker);
+        var f = document.getElementById('logoutForm');
+        if (f) f.submit();
+        else   window.location.href = LOGOUT_URL;
+    }
+
+    function ping() {
+        fetch(PING_URL, {
+            method: 'POST',
+            headers: { 'X-CSRF-TOKEN': CSRF, 'Content-Type': 'application/json' }
+        }).catch(function() {});
+        remaining = LIFETIME;
+        hideWarning();
+    }
+
+    // Countdown ticker every second
+    ticker = setInterval(function () {
+        remaining--;
+        if (remaining <= WARN_SECS) { showWarning(); }
+        if (remaining <= 0)         { forceLogout(); }
+    }, 1000);
+
+    // Keep-alive button — resets timer + pings server
+    document.getElementById('btnKeepAlive').addEventListener('click', ping);
+
+    // Any user activity resets idle timer (throttled to once / 30 seconds)
+    var lastActivity = Date.now();
+    ['click', 'keydown', 'touchstart', 'scroll'].forEach(function (evt) {
+        document.addEventListener(evt, function () {
+            var now = Date.now();
+            if (now - lastActivity > 30000) {  // only ping at most once / 30s
+                lastActivity = now;
+                ping();
+            } else {
+                remaining = LIFETIME;  // reset locally without network
+                if (warnShown) hideWarning();
+            }
+        }, { passive: true });
+    });
+})();
+</script>
+@endauth
 
 <script>
     // Sidebar section opener — uses URL path so it works even when

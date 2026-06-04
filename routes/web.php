@@ -122,6 +122,11 @@ Route::middleware(['auth'])->group(function () {
         Route::get('payroll/{payrollRun}/items/{item}/payslip',
             [PayrollController::class, 'payslip'])->name('payroll.payslip');
 
+        // ── EOSB Provisions (مخصصات نهاية الخدمة) ───────────────────────────
+        Route::get('eosb',              [\App\Http\Controllers\EosbController::class, 'index'])  ->name('eosb.index');
+        Route::get('eosb/preview',      [\App\Http\Controllers\EosbController::class, 'preview'])->name('eosb.preview');
+        Route::post('eosb/post',        [\App\Http\Controllers\EosbController::class, 'post'])   ->name('eosb.post');
+
         // ── Employee Loans (سلف الموظفين) ────────────────────────────────
         Route::get('loans',              [\App\Http\Controllers\EmployeeLoanController::class, 'index']) ->name('loans.index');
         Route::get('loans/create',       [\App\Http\Controllers\EmployeeLoanController::class, 'create'])->name('loans.create');
@@ -337,6 +342,15 @@ Route::middleware(['auth'])->group(function () {
 
     // ── Audit Logs ────────────────────────────────────────────────────────────
     Route::get('audit-logs', [AuditLogController::class, 'index'])->name('audit.logs.index');
+
+    // ── Session keep-alive (called by JS idle timer) ──────────────────────────
+    Route::post('session/ping', fn() => response()->json(['ok' => true]))->name('session.ping');
+
+    // ── Backup Management ─────────────────────────────────────────────────────
+    Route::get('backup',                    [\App\Http\Controllers\BackupController::class, 'index'])   ->name('backup.index');
+    Route::post('backup/run',               [\App\Http\Controllers\BackupController::class, 'run'])     ->name('backup.run');
+    Route::get('backup/download/{filename}',[\App\Http\Controllers\BackupController::class, 'download'])->name('backup.download');
+    Route::delete('backup/{filename}',      [\App\Http\Controllers\BackupController::class, 'destroy']) ->name('backup.destroy');
 
     // ── Reversals ─────────────────────────────────────────────────────────────
     Route::get('reversals/create',

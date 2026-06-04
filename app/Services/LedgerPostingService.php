@@ -1119,6 +1119,50 @@ class LedgerPostingService
         ], $lines);
     }
 
+    /**
+     * مخصصات نهاية الخدمة — EOSB Provision (monthly batch)
+     *
+     * Consolidated entry for all employees in one month:
+     *   DR مصروف نهاية الخدمة (6300) = total provision
+     *   CR مخصص نهاية الخدمة (2200)  = total provision
+     *
+     * @param  array<array{employee_id,name,amount,branch_id}> $lines
+     */
+    public function postEosbProvision(int $year, int $month, float $total, array $lines, ?int $branchId = null): JournalEntry
+    {
+        $expCode = Setting::get('account_eosb_expense_code',    '6300');
+        $provCode = Setting::get('account_eosb_provision_code', '2200');
+
+        $monthNames = [1=>'يناير',2=>'فبراير',3=>'مارس',4=>'أبريل',
+                       5=>'مايو',6=>'يونيو',7=>'يوليو',8=>'أغسطس',
+                       9=>'سبتمبر',10=>'أكتوبر',11=>'نوفمبر',12=>'ديسمبر'];
+        $periodLabel = ($monthNames[$month] ?? $month) . ' ' . $year;
+
+        $entryLines = [
+            [
+                'account_id'       => $this->account($expCode)->id,
+                'debit'            => round($total, 2),
+                'credit'           => 0,
+                'line_description' => 'مصروف نهاية خدمة — ' . $periodLabel,
+            ],
+            [
+                'account_id'       => $this->account($provCode)->id,
+                'debit'            => 0,
+                'credit'           => round($total, 2),
+                'line_description' => 'مخصص نهاية خدمة — ' . $periodLabel . ' (' . count($lines) . ' موظف)',
+            ],
+        ];
+
+        return $this->buildEntry([
+            'entry_date'  => \Carbon\Carbon::create($year, $month, 1)->endOfMonth()->toDateString(),
+            'reference'   => 'EOSB-' . $year . str_pad($month, 2, '0', STR_PAD_LEFT),
+            'source_type' => \App\Models\EosbProvision::class,
+            'source_id'   => 0,
+            'branch_id'   => $branchId ?? $this->resolveBranchId(),
+            'description' => 'مخصص نهاية الخدمة الشهري — ' . $periodLabel,
+        ], $entryLines);
+    }
+
     private function varianceDirection(float $v): string
     {
         if ($v > 0) return 'فائض ' . number_format($v, 2);

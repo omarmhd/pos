@@ -88,6 +88,7 @@ class PermissionSeeder extends Seeder
             'hr.view_attendance', 'hr.manage_attendance',
             'hr.view_shifts', 'hr.manage_shifts',
             'hr.manage_loans',
+            'hr.eosb.view', 'hr.eosb.post',
             // Reversals
             'reversals.view', 'reversals.create',
         ]);
@@ -131,6 +132,7 @@ class PermissionSeeder extends Seeder
             'reports.view',
             'audit_logs.view',
             'reversals.view', 'reversals.create',
+            'hr.eosb.view', 'hr.eosb.post',
         ]);
 
         // ── Reversal Manager (backward compat) ──────────────────────────────
