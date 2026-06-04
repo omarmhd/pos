@@ -700,6 +700,38 @@ $productsData = $products->map(fn($p) => [
 
 @section('scripts')
 <script>
+// ── Service Worker registration (POS Offline Mode) ───────────────────────────
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js', { scope: '/' })
+        .then(reg => {
+            // Listen for the SW to report an offline-queued sale
+            navigator.serviceWorker.addEventListener('message', e => {
+                if (e.data?.type === 'OFFLINE_QUEUED') {
+                    showToast('📡 تم حفظ الفاتورة محلياً — ستُرسَل عند استعادة الاتصال', 'warning', 6000);
+                }
+            });
+            // When we come back online → trigger background sync
+            window.addEventListener('online', () => {
+                if (reg.sync) {
+                    reg.sync.register('mizaan-pos-sync').catch(() => {});
+                }
+                document.getElementById('offlineBanner')?.remove();
+                showToast('✓ تم استعادة الاتصال', 'success');
+            });
+            window.addEventListener('offline', () => {
+                if (!document.getElementById('offlineBanner')) {
+                    const b = document.createElement('div');
+                    b.id = 'offlineBanner';
+                    b.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;background:#e74c3c;color:#fff;text-align:center;padding:6px;font-size:.85rem';
+                    b.textContent = '📡 لا يوجد اتصال — المبيعات ستُحفَظ محلياً';
+                    document.body.prepend(b);
+                }
+            });
+            if (!navigator.onLine) window.dispatchEvent(new Event('offline'));
+        })
+        .catch(() => {}); // SW not supported or failed to register — degrade gracefully
+}
+
 // ── Data (read from hidden HTML text nodes — no Blade in JS context) ──────
 const PRODUCTS     = JSON.parse(document.getElementById('__posProducts').textContent);
 const POS_SETTINGS = JSON.parse(document.getElementById('__posSettings').textContent);
@@ -1260,6 +1292,13 @@ async function completeSale() {
 
         const data = await res.json();
 
+        // Offline queued (202 from Service Worker)
+        if (res.status === 202 && data.offline) {
+            showToast('📡 ' + data.message, 'warning', 8000);
+            newSale();
+            return;
+        }
+
         if (!res.ok || !data.success) {
             showToast(data.error || 'حدث خطأ', 'danger');
             return;
@@ -1366,19 +1405,39 @@ function buildReceiptHTML(r) {
     return `<!DOCTYPE html><html lang="ar" dir="rtl"><head>
     <meta charset="UTF-8">
     <style>
+        /* ── ESC/POS Thermal Receipt CSS ──────────────────────────────────────
+         * @page sets exact paper width so the OS print dialog presets the
+         * paper size. The thermal printer driver uses this to skip scaling.
+         * Standard sizes: 58mm (small desktop) | 80mm (common retail).
+         * ---------------------------------------------------------------------- */
+        @page {
+            size: ${w}mm auto;   /* width fixed, height = content */
+            margin: 0;
+        }
         *{margin:0;padding:0;box-sizing:border-box}
-        body{font-family:'Courier New',monospace;width:${w}mm;margin:0 auto;padding:8px;font-size:11px}
-        .hdr{text-align:center;border-bottom:2px dashed #000;padding-bottom:8px;margin-bottom:8px}
-        .hdr h2{font-size:17px;margin-bottom:3px}.hdr p{font-size:10px;margin:1px 0}
-        .info p{margin:2px 0;font-size:11px}
-        table{width:100%;border-collapse:collapse;margin:8px 0}
-        th{border-bottom:1px solid #000;padding:3px 0;text-align:right}
-        td{padding:3px 0;border-bottom:1px dashed #ccc;font-size:10px}
-        .totals{border-top:2px solid #000;margin-top:8px;padding-top:8px}
-        .totals p{display:flex;justify-content:space-between;margin:3px 0;font-size:12px}
-        .grand{font-size:14px;font-weight:bold;border-top:1px solid #000;padding-top:4px;margin-top:3px}
-        .ftr{text-align:center;margin-top:14px;padding-top:8px;border-top:2px dashed #000;font-size:10px}
-        @media print{body{width:${w}mm}}
+        html,body{width:${w}mm}
+        body{
+            font-family:'Courier New',monospace;
+            margin:0 auto;
+            padding:4px 6px 20px;   /* bottom padding = paper cut clearance */
+            font-size:${w <= 58 ? '9' : '11'}px;
+            line-height:1.35;
+            color:#000;
+            background:#fff;
+        }
+        .hdr{text-align:center;border-bottom:2px dashed #000;padding-bottom:6px;margin-bottom:6px}
+        .hdr h2{font-size:${w <= 58 ? '13' : '16'}px;margin-bottom:2px;letter-spacing:.5px}
+        .hdr p{font-size:${w <= 58 ? '8' : '10'}px;margin:1px 0}
+        .info p{margin:1px 0;font-size:${w <= 58 ? '9' : '11'}px}
+        table{width:100%;border-collapse:collapse;margin:6px 0}
+        th{border-bottom:1px solid #000;padding:2px 0;text-align:right;font-size:${w <= 58 ? '9' : '11'}px}
+        td{padding:2px 0;border-bottom:1px dashed #aaa;font-size:${w <= 58 ? '8' : '10'}px;word-break:break-word}
+        .totals{border-top:2px solid #000;margin-top:6px;padding-top:6px}
+        .totals p{display:flex;justify-content:space-between;margin:2px 0;font-size:${w <= 58 ? '10' : '12'}px}
+        .grand{font-size:${w <= 58 ? '12' : '14'}px;font-weight:bold;border-top:1px solid #000;padding-top:3px;margin-top:2px}
+        .ftr{text-align:center;margin-top:10px;padding-top:6px;border-top:2px dashed #000;font-size:${w <= 58 ? '8' : '10'}px}
+        .cut{text-align:center;margin-top:8px;font-size:8px;color:#ccc;letter-spacing:4px}
+        @media print{html,body{width:${w}mm}}
     </style>
     </head><body>
     <div class="hdr">
@@ -1419,6 +1478,7 @@ function buildReceiptHTML(r) {
         <p style="margin-top:6px;font-size:9px;color:#aaa;letter-spacing:0.3px;">{!! config('mizaan.print_footer') !!}</p>
         @endif
     </div>
+    <div class="cut">- - - - - - - - - - قطع - - - - - - - - - -</div>
     <script>window.onload=function(){window.print();}<\/script>
     </body></html>`;
 }

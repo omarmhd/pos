@@ -13,11 +13,13 @@ class PurchaseItem extends Model
     protected $fillable = [
         'purchase_id', 'product_id',
         'quantity', 'unit_price', 'total_price',
+        'lot_number', 'expiry_date',
     ];
 
     protected $casts = [
         'unit_price'  => 'decimal:2',
         'total_price' => 'decimal:2',
+        'expiry_date' => 'date',
     ];
 
     public function purchase() { return $this->belongsTo(Purchase::class); }
@@ -73,16 +75,19 @@ class PurchaseItem extends Model
 
             $product->update(['cost_price' => $avco]);
 
-            // Append to event log. products.quantity recomputed by WarehouseService::in() in controller.
+            // Append to event log with Lot/Batch data
             StockMovement::create([
                 'product_id'     => $item->product_id,
                 'warehouse_id'   => $warehouseId,
                 'reference_type' => static::class,
                 'reference_id'   => $item->id,
                 'quantity'       => $item->quantity,
-                'cost'           => $avco,     // record the AVCO cost, not just the purchase price
+                'cost'           => $avco,
                 'movement_type'  => 'in',
-                'notes'          => 'استلام بضاعة — AVCO: ' . number_format($avco, 4),
+                'lot_number'     => $item->lot_number ?? null,
+                'expiry_date'    => $item->expiry_date ?? null,
+                'notes'          => 'استلام بضاعة — AVCO: ' . number_format($avco, 4)
+                                    . ($item->lot_number ? ' / دُفعة: ' . $item->lot_number : ''),
             ]);
         });
 

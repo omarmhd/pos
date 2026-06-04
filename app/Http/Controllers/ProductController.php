@@ -200,6 +200,29 @@ class ProductController extends Controller
         return view('products.expiring', compact('products'));
     }
 
+    /**
+     * Lot/Batch expiry alerts: shows all stock movements with expiry_date
+     * within the next 60 days, grouped by product + lot + warehouse.
+     */
+    public function lotExpiry(Request $request)
+    {
+        $days     = (int) $request->input('days', 60);
+        $currency = \App\Models\Setting::get('currency_symbol', 'ج.م');
+
+        $lots = \App\Models\StockMovement::with('product.category', 'warehouse')
+            ->whereNotNull('expiry_date')
+            ->whereNotNull('lot_number')
+            ->where('movement_type', 'in')
+            ->where('is_reversal', false)
+            ->whereDate('expiry_date', '<=', now()->addDays($days))
+            ->whereDate('expiry_date', '>=', now())
+            ->orderBy('expiry_date')
+            ->paginate(30)
+            ->withQueryString();
+
+        return view('products.lot-expiry', compact('lots', 'days', 'currency'));
+    }
+
     // ── Import ───────────────────────────────────────────────────────────────
 
     public function importTemplate(): StreamedResponse

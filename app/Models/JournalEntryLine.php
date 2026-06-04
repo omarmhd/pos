@@ -17,6 +17,7 @@ class JournalEntryLine extends Model
         'debit',
         'credit',
         'line_description',
+        'cost_center_id',
     ];
 
     protected $casts = [
@@ -32,5 +33,10 @@ class JournalEntryLine extends Model
     public function account()
     {
         return $this->belongsTo(Account::class);
+    }
+
+    public function costCenter()
+    {
+        return $this->belongsTo(CostCenter::class);
     }
 }

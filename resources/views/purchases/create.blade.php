@@ -98,11 +98,13 @@
                         <table class="table" id="productsTable" style="min-width:640px;">
                             <thead class="table-light">
                             <tr>
-                                <th style="width:40%">المنتج</th>
-                                <th style="width:15%;min-width:110px">الكمية</th>
-                                <th style="width:18%;min-width:130px">سعر الوحدة</th>
-                                <th style="width:18%;min-width:120px">المجموع</th>
-                                <th style="width:9%"></th>
+                                <th style="width:32%">المنتج</th>
+                                <th style="width:12%;min-width:100px">الكمية</th>
+                                <th style="width:15%;min-width:120px">سعر الوحدة</th>
+                                <th style="width:12%;min-width:110px">المجموع</th>
+                                <th style="width:10%">رقم الدُّفعة</th>
+                                <th style="width:11%">تاريخ الانتهاء</th>
+                                <th style="width:8%"></th>
                             </tr>
                             </thead>
                             <tbody id="productRows"></tbody>
@@ -240,6 +242,16 @@
             </td>
             <td>
                 <input type="text" class="form-control row-total" readonly value="0.00">
+            </td>
+            <td>
+                <input type="text" name="items[${id}][lot_number]"
+                       class="form-control form-control-sm"
+                       placeholder="رقم الدُّفعة" title="Lot / Batch Number">
+            </td>
+            <td>
+                <input type="date" name="items[${id}][expiry_date]"
+                       class="form-control form-control-sm"
+                       title="تاريخ الانتهاء">
             </td>
             <td>
                 <button type="button" class="btn btn-sm btn-danger" onclick="removeRow(${id})">

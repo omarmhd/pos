@@ -46,7 +46,11 @@ Route::get('/home', function () {
     return redirect()->route('dashboard');
 })->middleware('auth')->name('home');
 
-Auth::routes();
+Auth::routes(['login' => false]);
+
+// Login with rate limiting (5 per minute per IP)
+Route::get('login',  [\App\Http\Controllers\Auth\LoginController::class, 'showLoginForm'])->name('login');
+Route::post('login', [\App\Http\Controllers\Auth\LoginController::class, 'login'])->middleware('throttle:login');
 
 Route::middleware(['auth'])->group(function () {
 
@@ -76,6 +80,8 @@ Route::middleware(['auth'])->group(function () {
         [ProductController::class, 'lowStock'])->name('products.low-stock');
     Route::get('products-expiring',
         [ProductController::class, 'expiring'])->name('products.expiring');
+    Route::get('inventory/lot-expiry',
+        [ProductController::class, 'lotExpiry'])->name('inventory.lot-expiry');
 
     // ── Inventory Adjustments & Sessions (Stocktaking) ───────────────────────
     Route::prefix('inventory')->name('inventory.')->group(function () {
@@ -186,18 +192,19 @@ Route::middleware(['auth'])->group(function () {
         [ExpenseInvoiceController::class, 'pay'])->name('expense-invoices.pay');
 
     // ── Vouchers (سندات القبض والصرف) ────────────────────────────────────────
-    Route::prefix('vouchers')->name('vouchers.')->group(function () {
-        Route::get('receipts/data',    [\App\Http\Controllers\ReceiptVoucherController::class, 'data'])->name('receipts.data');
+    Route::prefix('vouchers')->name('vouchers.')->middleware('throttle:vouchers')->group(function () {
+        Route::get('receipts/data',    [\App\Http\Controllers\ReceiptVoucherController::class, 'data'])->name('receipts.data')->withoutMiddleware('throttle:vouchers');
         Route::resource('receipts', \App\Http\Controllers\ReceiptVoucherController::class)->except(['edit', 'update']);
-        Route::get('receipts/{receipt}/pdf', [\App\Http\Controllers\ReceiptVoucherController::class, 'pdf'])->name('receipts.pdf');
-        Route::get('payments/data',    [\App\Http\Controllers\PaymentVoucherController::class, 'data'])->name('payments.data');
+        Route::get('receipts/{receipt}/pdf', [\App\Http\Controllers\ReceiptVoucherController::class, 'pdf'])->name('receipts.pdf')->withoutMiddleware('throttle:vouchers');
+        Route::get('payments/data',    [\App\Http\Controllers\PaymentVoucherController::class, 'data'])->name('payments.data')->withoutMiddleware('throttle:vouchers');
         Route::resource('payments', \App\Http\Controllers\PaymentVoucherController::class)->except(['edit', 'update']);
-        Route::get('payments/{payment}/pdf', [\App\Http\Controllers\PaymentVoucherController::class, 'pdf'])->name('payments.pdf');
+        Route::get('payments/{payment}/pdf', [\App\Http\Controllers\PaymentVoucherController::class, 'pdf'])->name('payments.pdf')->withoutMiddleware('throttle:vouchers');
     });
 
     // ── POS ───────────────────────────────────────────────────────────────────
+    Route::get('/offline', fn() => view('pos.offline'))->name('pos.offline');
     Route::get('/pos',              [PosController::class, 'index'])  ->name('pos.index');
-    Route::post('/pos',             [PosController::class, 'store'])  ->name('pos.store');
+    Route::post('/pos',             [PosController::class, 'store'])  ->name('pos.store')->middleware('throttle:pos');
     Route::get('/pos/receipt/{id}', [PosController::class, 'receipt'])->name('pos.receipt');
     Route::get('/pos/customers/search', [PosController::class, 'searchCustomers'])->name('pos.customers.search');
 
@@ -352,7 +359,27 @@ Route::middleware(['auth'])->group(function () {
     Route::get('audit-logs', [AuditLogController::class, 'index'])->name('audit.logs.index');
 
     // ── Session keep-alive (called by JS idle timer) ──────────────────────────
-    Route::post('session/ping', fn() => response()->json(['ok' => true]))->name('session.ping');
+    Route::post('session/ping', fn() => response()->json(['ok' => true]))->name('session.ping')
+         ->middleware('throttle:session-ping');
+
+    // ── Opening Balance Wizard ────────────────────────────────────────────────
+    Route::get('accounting/opening-balance',       [\App\Http\Controllers\OpeningBalanceController::class, 'index']) ->name('accounting.opening-balance');
+    Route::post('accounting/opening-balance',      [\App\Http\Controllers\OpeningBalanceController::class, 'store']) ->name('accounting.opening-balance.store');
+
+    // ── Budgets (الموازنات) ───────────────────────────────────────────────────
+    Route::resource('budgets', \App\Http\Controllers\BudgetController::class)
+         ->only(['index','create','store','show']);
+    Route::get('budgets/{budget}/variance', [\App\Http\Controllers\BudgetController::class, 'variance'])
+         ->name('budgets.variance');
+
+    // ── Cost Centers (مراكز التكلفة) ─────────────────────────────────────────
+    Route::resource('cost-centers', \App\Http\Controllers\CostCenterController::class)
+         ->only(['index','create','store','edit','update']);
+    Route::get('cost-centers-report', [\App\Http\Controllers\CostCenterController::class, 'report'])
+         ->name('cost-centers.report');
+
+    // ── Consolidated P&L (all branches side by side) ──────────────────────────
+    Route::get('accounting/consolidated-pl', [\App\Http\Controllers\ConsolidatedReportController::class, 'incomeStatement'])->name('accounting.consolidated-pl');
 
     // ── Inter-Branch Transfers (تحويلات بينية) ───────────────────────────────
     Route::prefix('inter-branch')->name('inter-branch.')->group(function () {

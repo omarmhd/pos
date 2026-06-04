@@ -25,6 +25,7 @@ class StockMovement extends Model
         'product_id', 'warehouse_id',
         'reference_type', 'reference_id',
         'quantity', 'cost', 'movement_type',
+        'lot_number', 'expiry_date',
         'notes',
         'reversal_of', 'is_reversal',
     ];
@@ -33,6 +34,7 @@ class StockMovement extends Model
         'quantity'    => 'decimal:4',
         'cost'        => 'decimal:2',
         'is_reversal' => 'boolean',
+        'expiry_date' => 'date',
     ];
 
     public function product()

@@ -128,6 +128,8 @@ class PurchaseController extends Controller
             'items.*.product_id'       => 'required|exists:products,id',
             'items.*.quantity'         => 'required|numeric|min:0.001',
             'items.*.unit_price'       => 'required|numeric|min:0',
+            'items.*.lot_number'       => 'nullable|string|max:100',
+            'items.*.expiry_date'      => 'nullable|date',
         ]);
 
         $warehouseId = WarehouseService::resolveId($request->input('warehouse_id'));
@@ -162,6 +164,8 @@ class PurchaseController extends Controller
                     'quantity'    => $item['quantity'],
                     'unit_price'  => $item['unit_price'],
                     'total_price' => $item['quantity'] * $item['unit_price'],
+                    'lot_number'  => $item['lot_number']  ?? null,
+                    'expiry_date' => $item['expiry_date'] ?? null,
                 ]);
                 // Update per-warehouse stock level (products.quantity handled by model boot)
                 WarehouseService::in($warehouseId, $item['product_id'], $item['quantity']);

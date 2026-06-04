@@ -7,7 +7,10 @@ use App\Observers\ProductCostObserver;
 use Illuminate\Support\ServiceProvider;
 use App\Models\Reversal;
 use App\Policies\ReversalPolicy;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\View;
 
@@ -51,6 +54,30 @@ class AppServiceProvider extends ServiceProvider
 
         // Track manual cost_price changes on products (AVCO changes logged in PurchaseItem boot)
         \App\Models\Product::observe(ProductCostObserver::class);
+
+        // ── Rate Limiters ────────────────────────────────────────────────────
+        // POS: 120 sales per minute per user (~ 2/sec, enough for barcode scan speed)
+        RateLimiter::for('pos', function (Request $request) {
+            return Limit::perMinute(120)->by($request->user()?->id ?: $request->ip());
+        });
+
+        // Vouchers: 60 per minute per user (prevents double-submit spam)
+        RateLimiter::for('vouchers', function (Request $request) {
+            return Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
+        });
+
+        // Login: 5 attempts per minute per IP (brute-force protection)
+        RateLimiter::for('login', function (Request $request) {
+            return [
+                Limit::perMinute(5)->by($request->ip()),
+                Limit::perMinute(10)->by($request->input('email', '') . '|' . $request->ip()),
+            ];
+        });
+
+        // Session ping: 10 per minute per user (keep-alive endpoint)
+        RateLimiter::for('session-ping', function (Request $request) {
+            return Limit::perMinute(10)->by($request->user()?->id ?: $request->ip());
+        });
 
         // Share $currency with every view so no controller needs to pass it manually.
         // Setting::get() is cached (1-day TTL) so this is a single cache lookup per request.

@@ -713,6 +713,22 @@
                             </a>
                         </li>
                         @endcan
+                        @can('journal_entries.create')
+                        <li class="nav-item">
+                            <a class="nav-link {{ request()->routeIs('accounting.opening-balance*') ? 'active' : '' }}"
+                               href="{{ route('accounting.opening-balance') }}">
+                                <i class="bi bi-bank text-info"></i> الأرصدة الافتتاحية
+                            </a>
+                        </li>
+                        @endcan
+                        @can('financial_statements.view')
+                        <li class="nav-item">
+                            <a class="nav-link {{ request()->routeIs('accounting.consolidated-pl*') ? 'active' : '' }}"
+                               href="{{ route('accounting.consolidated-pl') }}">
+                                <i class="bi bi-diagram-3 text-success"></i> قائمة دخل موحدة
+                            </a>
+                        </li>
+                        @endcan
                         @can('accounting.year_end_close')
                         <li class="nav-item">
                             <a class="nav-link {{ request()->routeIs('accounting.year-end-closing*') ? 'active' : '' }}"
@@ -734,6 +750,22 @@
                             <a class="nav-link {{ request()->routeIs('inter-branch.*') ? 'active' : '' }}"
                                href="{{ route('inter-branch.index') }}">
                                 <i class="bi bi-arrow-left-right text-primary"></i> التحويلات البينية
+                            </a>
+                        </li>
+                        @endcan
+                        @can('accounts.view')
+                        <li class="nav-item">
+                            <a class="nav-link {{ request()->routeIs('cost-centers.*') ? 'active' : '' }}"
+                               href="{{ route('cost-centers.index') }}">
+                                <i class="bi bi-diagram-2 text-info"></i> مراكز التكلفة
+                            </a>
+                        </li>
+                        @endcan
+                        @can('financial_statements.view')
+                        <li class="nav-item">
+                            <a class="nav-link {{ request()->routeIs('budgets.*') ? 'active' : '' }}"
+                               href="{{ route('budgets.index') }}">
+                                <i class="bi bi-calculator text-primary"></i> الموازنات
                             </a>
                         </li>
                         @endcan
