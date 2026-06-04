@@ -122,6 +122,14 @@ Route::middleware(['auth'])->group(function () {
         Route::get('payroll/{payrollRun}/items/{item}/payslip',
             [PayrollController::class, 'payslip'])->name('payroll.payslip');
 
+        // ── Employee Leaves (الإجازات) ───────────────────────────────────────
+        Route::get('leaves',                    [\App\Http\Controllers\LeaveController::class, 'index'])  ->name('leaves.index');
+        Route::get('leaves/create',             [\App\Http\Controllers\LeaveController::class, 'create']) ->name('leaves.create');
+        Route::post('leaves',                   [\App\Http\Controllers\LeaveController::class, 'store'])  ->name('leaves.store');
+        Route::get('leaves/{leave}',            [\App\Http\Controllers\LeaveController::class, 'show'])   ->name('leaves.show');
+        Route::patch('leaves/{leave}/approve',  [\App\Http\Controllers\LeaveController::class, 'approve'])->name('leaves.approve');
+        Route::patch('leaves/{leave}/reject',   [\App\Http\Controllers\LeaveController::class, 'reject']) ->name('leaves.reject');
+
         // ── EOSB Provisions (مخصصات نهاية الخدمة) ───────────────────────────
         Route::get('eosb',              [\App\Http\Controllers\EosbController::class, 'index'])  ->name('eosb.index');
         Route::get('eosb/preview',      [\App\Http\Controllers\EosbController::class, 'preview'])->name('eosb.preview');
@@ -345,6 +353,14 @@ Route::middleware(['auth'])->group(function () {
 
     // ── Session keep-alive (called by JS idle timer) ──────────────────────────
     Route::post('session/ping', fn() => response()->json(['ok' => true]))->name('session.ping');
+
+    // ── Inter-Branch Transfers (تحويلات بينية) ───────────────────────────────
+    Route::prefix('inter-branch')->name('inter-branch.')->group(function () {
+        Route::get('/',        [\App\Http\Controllers\InterBranchTransferController::class, 'index']) ->name('index');
+        Route::get('/create',  [\App\Http\Controllers\InterBranchTransferController::class, 'create'])->name('create');
+        Route::post('/',       [\App\Http\Controllers\InterBranchTransferController::class, 'store']) ->name('store');
+        Route::get('/{interBranch}',[\App\Http\Controllers\InterBranchTransferController::class,'show'])->name('show');
+    });
 
     // ── Backup Management ─────────────────────────────────────────────────────
     Route::get('backup',                    [\App\Http\Controllers\BackupController::class, 'index'])   ->name('backup.index');

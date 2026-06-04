@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Observers\AuditObserver;
+use App\Observers\ProductCostObserver;
 use Illuminate\Support\ServiceProvider;
 use App\Models\Reversal;
 use App\Policies\ReversalPolicy;
@@ -47,6 +48,9 @@ class AppServiceProvider extends ServiceProvider
         \App\Models\Supplier::observe(AuditObserver::class);
         \App\Models\InventoryAdjustment::observe(AuditObserver::class);
         \App\Models\FixedAsset::observe(AuditObserver::class);
+
+        // Track manual cost_price changes on products (AVCO changes logged in PurchaseItem boot)
+        \App\Models\Product::observe(ProductCostObserver::class);
 
         // Share $currency with every view so no controller needs to pass it manually.
         // Setting::get() is cached (1-day TTL) so this is a single cache lookup per request.

@@ -89,7 +89,9 @@ class ProductController extends Controller
     public function show(Product $product)
     {
         $product->load('category', 'purchaseItems.purchase', 'saleItems.sale');
-        return view('products.show', compact('product'));
+        $costHistory = $product->costHistory()->with('changedBy:id,name')->limit(30)->get();
+        $currency    = \App\Models\Setting::get('currency_symbol', 'ج.م');
+        return view('products.show', compact('product', 'costHistory', 'currency'));
     }
 
     public function edit(Product $product)

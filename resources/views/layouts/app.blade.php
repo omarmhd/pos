@@ -729,6 +729,14 @@
                             </a>
                         </li>
                         @endcan
+                        @can('branches.manage')
+                        <li class="nav-item">
+                            <a class="nav-link {{ request()->routeIs('inter-branch.*') ? 'active' : '' }}"
+                               href="{{ route('inter-branch.index') }}">
+                                <i class="bi bi-arrow-left-right text-primary"></i> التحويلات البينية
+                            </a>
+                        </li>
+                        @endcan
                     </ul>
                 </div>
                 @endcanany
@@ -799,6 +807,20 @@
                             <a class="nav-link {{ request()->routeIs('hr.loans.*') ? 'active' : '' }}"
                                href="{{ route('hr.loans.index') }}">
                                 <i class="bi bi-coin"></i> سلف الموظفين
+                            </a>
+                        </li>
+                        @endcan
+                        @can('hr.leaves.view')
+                        <li class="nav-item">
+                            <a class="nav-link {{ request()->routeIs('hr.leaves.*') ? 'active' : '' }}"
+                               href="{{ route('hr.leaves.index') }}">
+                                <i class="bi bi-calendar-check text-success"></i> الإجازات
+                                @php
+                                    $pendingLeaves = \App\Models\EmployeeLeave::where('status','pending')->count();
+                                @endphp
+                                @if($pendingLeaves)
+                                    <span class="badge bg-warning text-dark ms-1" style="font-size:.65rem">{{ $pendingLeaves }}</span>
+                                @endif
                             </a>
                         </li>
                         @endcan

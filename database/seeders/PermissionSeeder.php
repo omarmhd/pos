@@ -88,6 +88,7 @@ class PermissionSeeder extends Seeder
             'hr.view_attendance', 'hr.manage_attendance',
             'hr.view_shifts', 'hr.manage_shifts',
             'hr.manage_loans',
+            'hr.leaves.view', 'hr.leaves.create', 'hr.leaves.manage',
             'hr.eosb.view', 'hr.eosb.post',
             // Reversals
             'reversals.view', 'reversals.create',
@@ -96,8 +97,10 @@ class PermissionSeeder extends Seeder
         // ── Cashier ─────────────────────────────────────────────────────────
         $cashier->syncPermissions([
             'dashboard.view',
-            // Cash Shifts — cashier can open/close their own shift only
+            // Cash Shifts
             'pos.shifts.view', 'pos.shifts.open', 'pos.shifts.close',
+            // Leaves — cashier can view and submit
+            'hr.leaves.view', 'hr.leaves.create',
             // Sales
             'sales.view', 'sales.create',
             'sales.returns.view', 'sales.returns.create',

@@ -56,6 +56,11 @@ class Product extends Model
         return $this->hasMany(SaleItem::class);
     }
 
+    public function costHistory()
+    {
+        return $this->hasMany(CostPriceHistory::class)->latest();
+    }
+
     public function isLowStock()
     {
         return $this->quantity <= $this->min_quantity;

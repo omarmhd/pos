@@ -20,7 +20,12 @@ class BranchAccountingService
 {
     /**
      * Called from Branch::boot() static::created().
-     * Creates dedicated cash & bank accounts and links them to the branch.
+     * Creates dedicated cash, bank, due-from, and due-to accounts.
+     *
+     *  1000.XX — صندوق الفرع      (cash)
+     *  1100.XX — بنك الفرع        (bank)
+     *  1700.XX — مستحق من الفرع   (Due From — asset)
+     *  2700.XX — مستحق للفرع      (Due To — liability)
      */
     public static function setupAccounts(Branch $branch): void
     {
@@ -58,11 +63,71 @@ class BranchAccountingService
             ]
         );
 
+        // ── Due From account (asset — مستحق من الفرع) ──────────────────────
+        $dueFromCode = '1700.' . $seq;
+        $dueFromParent = Account::where('code', '1700')->first();
+        Account::firstOrCreate(
+            ['code' => $dueFromCode],
+            [
+                'name'      => 'مستحق من — ' . $branch->name,
+                'type'      => 'asset',
+                'sub_type'  => 'current_asset',
+                'is_header' => false,
+                'is_active' => true,
+                'parent_id' => $dueFromParent?->id,
+            ]
+        );
+
+        // ── Due To account (liability — مستحق للفرع) ───────────────────────
+        $dueToCode = '2700.' . $seq;
+        $dueToParent = Account::where('code', '2700')->first();
+        Account::firstOrCreate(
+            ['code' => $dueToCode],
+            [
+                'name'      => 'مستحق لـ — ' . $branch->name,
+                'type'      => 'liability',
+                'sub_type'  => 'current_liability',
+                'is_header' => false,
+                'is_active' => true,
+                'parent_id' => $dueToParent?->id,
+            ]
+        );
+
         // Link to branch (use updateQuietly to avoid triggering events again)
         $branch->updateQuietly([
             'cash_account_id' => $cashAccount->id,
             'bank_account_id' => $bankAccount->id,
         ]);
+    }
+
+    /**
+     * Resolve the "Due From Branch X" account ID (asset — 1700.XX).
+     * Used when Branch A sends funds to Branch B: Branch A debits this account.
+     */
+    public static function dueFromAccountId(int $branchId): int
+    {
+        $seq  = str_pad((string) $branchId, 2, '0', STR_PAD_LEFT);
+        $code = '1700.' . $seq;
+        $id   = Account::where('code', $code)->where('is_active', true)->value('id');
+        if (!$id) {
+            throw new \RuntimeException("حساب مستحق من الفرع [{$code}] غير موجود — راجع إعدادات الفروع");
+        }
+        return (int) $id;
+    }
+
+    /**
+     * Resolve the "Due To Branch X" account ID (liability — 2700.XX).
+     * Used by Branch B when receiving funds from Branch A: Branch B credits this account.
+     */
+    public static function dueToAccountId(int $branchId): int
+    {
+        $seq  = str_pad((string) $branchId, 2, '0', STR_PAD_LEFT);
+        $code = '2700.' . $seq;
+        $id   = Account::where('code', $code)->where('is_active', true)->value('id');
+        if (!$id) {
+            throw new \RuntimeException("حساب مستحق للفرع [{$code}] غير موجود — راجع إعدادات الفروع");
+        }
+        return (int) $id;
     }
 
     /**

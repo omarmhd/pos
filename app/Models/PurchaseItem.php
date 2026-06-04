@@ -33,9 +33,45 @@ class PurchaseItem extends Model
                 ->value('warehouse_id')
                 ?? \App\Services\WarehouseService::getDefault()->id;
 
-            // Last Purchase Price snapshot — replace with WAC in Phase 3
-            Product::where('id', $item->product_id)
-                ->update(['cost_price' => $item->unit_price]);
+            // ── AVCO (Weighted Average Cost / المتوسط المتحرك) ───────────────
+            // Formula: new_cost = (old_qty × old_cost + new_qty × new_cost) / total_qty
+            //
+            // products.quantity is still the OLD total here because WarehouseService::in()
+            // is called AFTER PurchaseItem::create() in PurchaseController::store().
+            // This makes PurchaseItem::created() the perfect place for AVCO.
+            //
+            // Standard: IAS 2 §25 allows AVCO (Weighted Average Method).
+
+            $product = Product::lockForUpdate()->find($item->product_id);
+            $oldQty  = max(0, (float) $product->quantity);
+            $oldCost = (float) $product->cost_price;
+            $newQty  = (float) $item->quantity;
+            $newCost = (float) $item->unit_price;
+
+            if ($oldQty + $newQty > 0.0001) {
+                $avco = round(($oldQty * $oldCost + $newQty * $newCost) / ($oldQty + $newQty), 4);
+            } else {
+                $avco = $newCost;
+            }
+
+            // Write history before updating
+            if (abs($avco - $oldCost) > 0.0001) {
+                \App\Models\CostPriceHistory::create([
+                    'product_id'     => $item->product_id,
+                    'old_cost'       => $oldCost,
+                    'new_cost'       => $avco,
+                    'qty_received'   => $newQty,
+                    'method'         => 'avco',
+                    'reference_type' => static::class,
+                    'reference_id'   => $item->id,
+                    'changed_by'     => auth()->id(),
+                    'notes'          => 'AVCO: (' . number_format($oldQty, 2) . ' × ' . number_format($oldCost, 4)
+                                       . ' + ' . number_format($newQty, 2) . ' × ' . number_format($newCost, 4)
+                                       . ') ÷ ' . number_format($oldQty + $newQty, 2),
+                ]);
+            }
+
+            $product->update(['cost_price' => $avco]);
 
             // Append to event log. products.quantity recomputed by WarehouseService::in() in controller.
             StockMovement::create([
@@ -44,9 +80,9 @@ class PurchaseItem extends Model
                 'reference_type' => static::class,
                 'reference_id'   => $item->id,
                 'quantity'       => $item->quantity,
-                'cost'           => $item->unit_price,
+                'cost'           => $avco,     // record the AVCO cost, not just the purchase price
                 'movement_type'  => 'in',
-                'notes'          => 'استلام بضاعة — فاتورة شراء',
+                'notes'          => 'استلام بضاعة — AVCO: ' . number_format($avco, 4),
             ]);
         });
 

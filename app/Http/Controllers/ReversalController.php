@@ -2,11 +2,15 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Reversal;
+use App\Models\InventoryAdjustment;
 use App\Models\JournalEntry;
 use App\Models\JournalEntryLine;
-use App\Models\Sale;
+use App\Models\PaymentVoucher;
+use App\Models\PayrollRun;
 use App\Models\Purchase;
+use App\Models\ReceiptVoucher;
+use App\Models\Reversal;
+use App\Models\Sale;
 use App\Models\StockMovement;
 use App\Services\WarehouseService;
 use Illuminate\Http\Request;
@@ -14,16 +18,34 @@ use Illuminate\Support\Facades\DB;
 
 class ReversalController extends Controller
 {
+    /** All source types that can be reversed. */
+    private const ALLOWED_TYPES = [
+        Sale::class,
+        Purchase::class,
+        ReceiptVoucher::class,
+        PaymentVoucher::class,
+        PayrollRun::class,
+        InventoryAdjustment::class,
+    ];
+
+    /** Human-readable labels for the UI. */
+    private const TYPE_LABELS = [
+        Sale::class                => 'فاتورة مبيعات',
+        Purchase::class            => 'فاتورة مشتريات',
+        ReceiptVoucher::class      => 'سند قبض',
+        PaymentVoucher::class      => 'سند صرف',
+        PayrollRun::class          => 'مسير رواتب',
+        InventoryAdjustment::class => 'تعديل مخزون',
+    ];
+
     public function index(Request $request)
     {
         $this->authorize('viewAny', Reversal::class);
         $branchId = $this->effectiveBranchId($request);
 
-        // Filter reversals through their reversal_journal_entry branch_id
         $reversals = Reversal::with('createdBy')
-            ->when($branchId, function ($q) use ($branchId) {
-                $q->whereHas('journalEntry', fn($je) => $je->where('branch_id', $branchId));
-            })
+            ->when($branchId, fn($q) =>
+                $q->whereHas('journalEntry', fn($je) => $je->where('branch_id', $branchId)))
             ->orderBy('created_at', 'desc')
             ->paginate(30);
 
@@ -44,55 +66,75 @@ class ReversalController extends Controller
     {
         $this->authorize('create', Reversal::class);
         $original_type = $request->input('original_type');
-        $original_id = $request->input('original_id');
-
-        return view('reversals.create', compact('original_type', 'original_id'));
+        $original_id   = $request->input('original_id');
+        $typeLabels    = self::TYPE_LABELS;
+        return view('reversals.create', compact('original_type', 'original_id', 'typeLabels'));
     }
 
     public function store(Request $request)
     {
         $this->authorize('create', Reversal::class);
+
         $data = $request->validate([
             'original_type' => 'required|string',
-            'original_id' => 'required|integer',
-            'reason' => 'nullable|string',
+            'original_id'   => 'required|integer',
+            'reason'        => 'nullable|string|max:500',
         ]);
 
         $originalType = $data['original_type'];
-        $originalId = $data['original_id'];
+        $originalId   = (int) $data['original_id'];
 
-        // allow only Sale or Purchase for now
-        if (!in_array($originalType, [Sale::class, Purchase::class])) {
-            return back()->withErrors(['original_type' => 'Invalid original type']);
+        // ── Guard: only allow known types ────────────────────────────────────
+        if (!in_array($originalType, self::ALLOWED_TYPES, true)) {
+            return back()->withErrors(['original_type' =>
+                'نوع السجل غير مدعوم للعكس. الأنواع المدعومة: '
+                . implode('، ', array_map('class_basename', self::ALLOWED_TYPES))
+            ]);
         }
 
-        $original = ($originalType)::find($originalId);
-        if (!$original) return back()->withErrors(['original_id' => 'Original record not found']);
-
-        if (!$original->is_posted) {
-            return back()->withErrors(['original_id' => 'Original record is not posted and cannot be reversed']);
+        $original = $originalType::find($originalId);
+        if (!$original) {
+            return back()->withErrors(['original_id' => 'السجل الأصلي غير موجود']);
         }
 
-        // check existing reversal or already reversed flag
-        if (Reversal::where('original_type', $originalType)->where('original_id', $originalId)->exists() || ($original->is_reversed ?? false)) {
-            return back()->withErrors(['original_id' => 'A reversal already exists for this record']);
+        // ── Guard: must be in a "posted/approved" state ──────────────────────
+        if (!$this->isPosted($original, $originalType)) {
+            return back()->withErrors(['original_id' =>
+                'لا يمكن عكس سجل غير مُرحَّل أو غير معتمد'
+            ]);
+        }
+
+        // ── Guard: no double reversal ────────────────────────────────────────
+        $alreadyReversed = Reversal::where('original_type', $originalType)
+                                   ->where('original_id', $originalId)
+                                   ->exists()
+                        || ($original->is_reversed ?? false);
+        if ($alreadyReversed) {
+            return back()->withErrors(['original_id' => 'يوجد قيد عكسي لهذا السجل مسبقاً']);
         }
 
         DB::transaction(function () use ($original, $originalType, $originalId, $data) {
-            // Find original GL entry
-            $je = JournalEntry::where('source_type', $originalType)->where('source_id', $originalId)->first();
-            if (!$je) throw new \Exception('Original journal entry not found');
+            // ── Find the original GL entry ────────────────────────────────────
+            $je = JournalEntry::where('source_type', $originalType)
+                              ->where('source_id', $originalId)
+                              ->first();
+            if (!$je) {
+                throw new \RuntimeException('لم يُعثر على القيد المحاسبي الأصلي');
+            }
 
-            // ACC-3: Reversal GL entry inherits branch_id from the original entry
+            // ── Build reversal GL entry (swap debit ↔ credit) ─────────────────
+            $ref = $this->refLabel($original, $originalId);
+
             $revEntry = JournalEntry::create([
                 'entry_date'  => now(),
-                'reference'   => 'REV-' . ($original->invoice_number ?? $originalId),
+                'reference'   => 'REV-' . $ref,
                 'source_type' => $originalType,
                 'source_id'   => $originalId,
                 'branch_id'   => $je->branch_id,
-                'description' => 'قيد عكسي للقيد رقم ' . $je->entry_number . ' — ' . class_basename($originalType) . ' #' . $originalId,
                 'user_id'     => auth()->id(),
                 'posted_at'   => now(),
+                'description' => 'قيد عكسي — ' . (self::TYPE_LABELS[$originalType] ?? class_basename($originalType))
+                                 . ' #' . $ref . ' / قيد رقم ' . $je->entry_number,
             ]);
 
             foreach ($je->lines as $line) {
@@ -105,71 +147,141 @@ class ReversalController extends Controller
                 ]);
             }
 
-            // ACC-4: Stock reversal via WarehouseService (updates stock_levels + products.quantity).
-            // warehouse_id is taken from the original transaction (sale/purchase warehouse).
-            // This was previously: product->increment/decrement() which bypassed stock_levels entirely
-            // and also produced StockMovement rows without warehouse_id (NOT NULL constraint → DB crash).
-            if ($originalType === Sale::class) {
-                $warehouseId = $original->warehouse_id
-                    ?? \App\Services\WarehouseService::getDefault()->id;
+            // ── Per-type stock reversal ───────────────────────────────────────
+            $this->reverseStock($original, $originalType, $revEntry->id);
 
-                foreach ($original->items as $item) {
-                    WarehouseService::in($warehouseId, $item->product_id, (float) $item->quantity);
-
-                    StockMovement::create([
-                        'product_id'     => $item->product_id,
-                        'warehouse_id'   => $warehouseId,
-                        'reference_type' => Reversal::class,
-                        'reference_id'   => $revEntry->id,
-                        'quantity'       => $item->quantity,
-                        'cost'           => $item->cost_price ?? 0,
-                        'movement_type'  => 'in',
-                        'notes'          => 'عكس مبيعات #' . ($original->invoice_number ?? $originalId),
-                    ]);
-                }
-            }
-
-            if ($originalType === Purchase::class) {
-                $warehouseId = $original->warehouse_id
-                    ?? \App\Services\WarehouseService::getDefault()->id;
-
-                foreach ($original->items as $item) {
-                    WarehouseService::out($warehouseId, $item->product_id, (float) $item->quantity);
-
-                    StockMovement::create([
-                        'product_id'     => $item->product_id,
-                        'warehouse_id'   => $warehouseId,
-                        'reference_type' => Reversal::class,
-                        'reference_id'   => $revEntry->id,
-                        'quantity'       => $item->quantity,
-                        'cost'           => $item->unit_price ?? 0,
-                        'movement_type'  => 'out',
-                        'notes'          => 'عكس مشتريات #' . ($original->invoice_number ?? $originalId),
-                    ]);
-                }
-            }
-
+            // ── Persist Reversal record ───────────────────────────────────────
             $reversal = Reversal::create([
-                'original_type' => $originalType,
-                'original_id' => $originalId,
+                'original_type'             => $originalType,
+                'original_id'               => $originalId,
                 'reversal_journal_entry_id' => $revEntry->id,
-                'reason' => $data['reason'] ?? null,
-                'created_by' => auth()->id(),
+                'reason'                    => $data['reason'] ?? null,
+                'created_by'                => auth()->id(),
             ]);
 
-            // mark original as reversed to prevent double reversal
-            $original->is_reversed = true;
-            $original->save();
+            // ── Mark original to prevent double reversal ─────────────────────
+            $this->markReversed($original, $originalType);
 
             \App\Models\AuditLog::create([
                 'user_id'        => auth()->id(),
                 'auditable_type' => Reversal::class,
                 'auditable_id'   => $reversal->id,
                 'action'         => 'created',
-                'ip_address'     => request()->ip() ?? null,
+                'ip_address'     => request()->ip(),
             ]);
         });
 
-        return redirect()->route('reversals.index')->with('success', 'تم إنشاء القيد العكسي بنجاح');
+        return redirect()->route('reversals.index')
+            ->with('success', 'تم إنشاء القيد العكسي بنجاح');
+    }
+
+    // ── Private helpers ───────────────────────────────────────────────────────
+
+    /** Check if the original record is in a reversible state */
+    private function isPosted(mixed $original, string $type): bool
+    {
+        return match($type) {
+            PayrollRun::class          => $original->status === 'approved',
+            InventoryAdjustment::class => true,  // always effective once created
+            default                    => (bool) ($original->is_posted ?? false),
+        };
+    }
+
+    /** Get a short reference label from the original record */
+    private function refLabel(mixed $original, int $fallback): string
+    {
+        return $original->invoice_number
+            ?? $original->voucher_number
+            ?? $original->reference
+            ?? $original->periodLabel()
+            ?? (string) $fallback;
+    }
+
+    /**
+     * Apply the inventory reversal for stock-affecting source types.
+     * GL-only types (vouchers, payroll) need no stock action.
+     */
+    private function reverseStock(mixed $original, string $type, int $revEntryId): void
+    {
+        $warehouseId = ($original->warehouse_id ?? null)
+                    ?? WarehouseService::getDefault()->id;
+
+        if ($type === Sale::class) {
+            foreach ($original->items as $item) {
+                WarehouseService::in($warehouseId, $item->product_id, (float) $item->quantity);
+                StockMovement::create([
+                    'product_id'     => $item->product_id,
+                    'warehouse_id'   => $warehouseId,
+                    'reference_type' => Reversal::class,
+                    'reference_id'   => $revEntryId,
+                    'quantity'       => $item->quantity,
+                    'cost'           => $item->cost_price ?? 0,
+                    'movement_type'  => 'in',
+                    'notes'          => 'عكس مبيعات',
+                ]);
+            }
+            return;
+        }
+
+        if ($type === Purchase::class) {
+            foreach ($original->items as $item) {
+                WarehouseService::out($warehouseId, $item->product_id, (float) $item->quantity);
+                StockMovement::create([
+                    'product_id'     => $item->product_id,
+                    'warehouse_id'   => $warehouseId,
+                    'reference_type' => Reversal::class,
+                    'reference_id'   => $revEntryId,
+                    'quantity'       => $item->quantity,
+                    'cost'           => $item->unit_price ?? 0,
+                    'movement_type'  => 'out',
+                    'notes'          => 'عكس مشتريات',
+                ]);
+            }
+            return;
+        }
+
+        if ($type === InventoryAdjustment::class) {
+            $qty    = abs((float) $original->quantity_change);
+            $isPlus = (float) $original->quantity_change > 0;
+
+            if ($isPlus) {
+                // Original added stock → reversal removes it
+                WarehouseService::out($warehouseId, $original->product_id, $qty);
+                $direction = 'out';
+            } else {
+                // Original removed stock → reversal adds it back
+                WarehouseService::in($warehouseId, $original->product_id, $qty);
+                $direction = 'in';
+            }
+
+            StockMovement::create([
+                'product_id'     => $original->product_id,
+                'warehouse_id'   => $warehouseId,
+                'reference_type' => Reversal::class,
+                'reference_id'   => $revEntryId,
+                'quantity'       => $qty,
+                'cost'           => $original->cost_per_unit ?? 0,
+                'movement_type'  => $direction,
+                'notes'          => 'عكس تعديل مخزون #' . $original->id,
+            ]);
+            return;
+        }
+
+        // ReceiptVoucher, PaymentVoucher, PayrollRun → GL reversal only, no stock impact
+    }
+
+    /** Mark the original record as reversed (per-model strategy) */
+    private function markReversed(mixed $original, string $type): void
+    {
+        match($type) {
+            PayrollRun::class => $original->update(['status' => 'reversed']),
+            // Sale + Purchase have is_reversed column
+            Sale::class, Purchase::class => (function () use ($original) {
+                $original->is_reversed = true;
+                $original->save();
+            })(),
+            // Vouchers + InventoryAdjustment: rely on Reversal table existence check
+            default => null,
+        };
     }
 }

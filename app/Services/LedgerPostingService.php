@@ -1163,6 +1163,85 @@ class LedgerPostingService
         ], $entryLines);
     }
 
+    /**
+     * تحويل بيني بين فرعين — Inter-Branch Cash Transfer
+     *
+     * Creates TWO journal entries — one per branch — following the Due-From/Due-To pattern
+     * used by SAP (company code intercompany clearing) and Oracle (intercompany accounting).
+     *
+     * Branch A (sender):   DR مستحق من الفرع B (1700.B)   = amount
+     *                      CR صندوق الفرع A (1000.A)       = amount
+     *
+     * Branch B (receiver): DR صندوق الفرع B (1000.B)       = amount
+     *                      CR مستحق للفرع A (2700.A)       = amount
+     *
+     * The two entries are linked via the inter_branch_transfers record.
+     *
+     * @return array{from: JournalEntry, to: JournalEntry}
+     */
+    public function postInterBranchTransfer(
+        \App\Models\InterBranchTransfer $transfer
+    ): array {
+        $amount      = round((float) $transfer->amount, 2);
+        $fromId      = (int) $transfer->from_branch_id;
+        $toId        = (int) $transfer->to_branch_id;
+        $dateStr     = $transfer->transfer_date->toDateString();
+        $ref         = $transfer->reference ?? 'IBT-' . $transfer->id;
+        $desc        = $transfer->description ?? '';
+
+        // ── Branch A (sender) entry ──────────────────────────────────────────
+        // DR Due-From Branch B  /  CR Cash Branch A
+        $fromEntry = $this->buildEntry([
+            'entry_date'  => $dateStr,
+            'reference'   => $ref,
+            'source_type' => \App\Models\InterBranchTransfer::class,
+            'source_id'   => $transfer->id,
+            'branch_id'   => $fromId,
+            'description' => 'تحويل صادر إلى ' . ($transfer->toBranch?->name ?? "فرع #{$toId}")
+                             . ($desc ? ' — ' . $desc : ''),
+        ], [
+            [
+                'account_id'       => \App\Services\BranchAccountingService::dueFromAccountId($toId),
+                'debit'            => $amount,
+                'credit'           => 0,
+                'line_description' => 'مستحق من فرع ' . ($transfer->toBranch?->name ?? $toId),
+            ],
+            [
+                'account_id'       => $this->cashId($fromId),
+                'debit'            => 0,
+                'credit'           => $amount,
+                'line_description' => 'صرف تحويل من صندوق ' . ($transfer->fromBranch?->name ?? $fromId),
+            ],
+        ]);
+
+        // ── Branch B (receiver) entry ────────────────────────────────────────
+        // DR Cash Branch B  /  CR Due-To Branch A
+        $toEntry = $this->buildEntry([
+            'entry_date'  => $dateStr,
+            'reference'   => $ref,
+            'source_type' => \App\Models\InterBranchTransfer::class,
+            'source_id'   => $transfer->id,
+            'branch_id'   => $toId,
+            'description' => 'تحويل وارد من ' . ($transfer->fromBranch?->name ?? "فرع #{$fromId}")
+                             . ($desc ? ' — ' . $desc : ''),
+        ], [
+            [
+                'account_id'       => $this->cashId($toId),
+                'debit'            => $amount,
+                'credit'           => 0,
+                'line_description' => 'استلام تحويل في صندوق ' . ($transfer->toBranch?->name ?? $toId),
+            ],
+            [
+                'account_id'       => \App\Services\BranchAccountingService::dueToAccountId($fromId),
+                'debit'            => 0,
+                'credit'           => $amount,
+                'line_description' => 'مستحق لفرع ' . ($transfer->fromBranch?->name ?? $fromId),
+            ],
+        ]);
+
+        return ['from' => $fromEntry, 'to' => $toEntry];
+    }
+
     private function varianceDirection(float $v): string
     {
         if ($v > 0) return 'فائض ' . number_format($v, 2);

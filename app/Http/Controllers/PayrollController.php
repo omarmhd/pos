@@ -281,6 +281,17 @@ class PayrollController extends Controller
             $daysAbsent    = $attendance->where('status', 'absent')->count();
             $overtimeHours = (float) $attendance->sum('overtime_hours');
 
+            // Approved unpaid leaves this month → treated same as absent (no pay)
+            $periodStart = \Carbon\Carbon::create($year, $month, 1)->startOfMonth();
+            $periodEnd   = \Carbon\Carbon::create($year, $month, 1)->endOfMonth();
+            $unpaidLeaveDays = \App\Models\EmployeeLeave::where('employee_id', $emp->id)
+                ->where('leave_type', 'unpaid')
+                ->where('status', 'approved')
+                ->where('start_date', '<=', $periodEnd)
+                ->where('end_date',   '>=', $periodStart)
+                ->sum('working_days');
+            $daysAbsent += (int) $unpaidLeaveDays;
+
             // Effective working days = present + 0.5 × half_day
             $effectiveDays = $daysWorked - ($halfDays * 0.5);
 
