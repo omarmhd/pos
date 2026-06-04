@@ -180,7 +180,14 @@ class CashShiftController extends Controller
     {
         $shift->load('user', 'closedBy', 'branch', 'posTerminal', 'journalEntry.lines.account');
 
-        // Sales summary for this shift
+        // For open shifts: recalculate live from actual sales and persist so the view
+        // always shows correct totals. Closed shifts already have saved values from storeClose().
+        if ($shift->status === 'open') {
+            $shift->recalculate();
+            $shift->saveQuietly();   // persist the live totals without triggering observers
+        }
+
+        // Sales summary for this shift (all payment methods)
         $salesSummary = $shift->sales()
             ->selectRaw('payment_method,
                          COUNT(*) as count,

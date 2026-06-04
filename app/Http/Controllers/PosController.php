@@ -264,11 +264,18 @@ class PosController extends Controller
             // Attach to the cashier's active shift (if one is open)
             $activeShift = CashShift::activeForUser(auth()->id());
 
+            // Resolve branch from: active shift → warehouse → user → system default
+            $saleBranchId = $activeShift?->branch_id
+                ?? \App\Models\Warehouse::where('id', $warehouseId)->value('branch_id')
+                ?? auth()->user()?->branch_id
+                ?? \App\Models\Setting::get('default_branch_id');
+
             $sale = Sale::create([
                 'user_id'        => auth()->id(),
                 'customer_id'    => ($isCredit || $balanceUsed > 0) ? $request->customer_id : null,
                 'is_credit'      => $isCredit,
                 'warehouse_id'   => $warehouseId,
+                'branch_id'      => $saleBranchId,
                 'cash_shift_id'  => $activeShift?->id,
                 'subtotal'       => $subtotal,
                 'discount'       => $discount,
