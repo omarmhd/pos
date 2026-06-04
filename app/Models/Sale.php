@@ -16,6 +16,7 @@ class Sale extends Model
         'warehouse_id',
         'branch_id',
         'sales_order_id',
+        'cash_shift_id',
         'is_credit',
         'subtotal',
         'discount',
@@ -70,6 +71,11 @@ class Sale extends Model
     public function saleReturns()
     {
         return $this->hasMany(SaleReturn::class);
+    }
+
+    public function cashShift()
+    {
+        return $this->belongsTo(CashShift::class);
     }
 
     public function outstandingBalance(): float

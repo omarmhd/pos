@@ -12,6 +12,17 @@ return [
             'dashboard.view' => 'عرض لوحة التحكم',
         ],
     ],
+    'pos_shifts' => [
+        'label' => 'الورديات النقدية',
+        'icon'  => 'bi-cash-register',
+        'permissions' => [
+            'pos.shifts.view'   => 'عرض الورديات النقدية',
+            'pos.shifts.open'   => 'افتتاح وردية نقدية',
+            'pos.shifts.close'  => 'إقفال وردية نقدية',
+            'pos.shifts.manage' => 'إدارة ورديات الآخرين',
+        ],
+    ],
+
     'sales' => [
         'label' => 'المبيعات',
         'icon'  => 'bi-receipt',

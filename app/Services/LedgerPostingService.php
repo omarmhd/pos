@@ -1048,6 +1048,83 @@ class LedgerPostingService
         ], $lines);
     }
 
+    /**
+     * إقفال وردية الكاشير — Cash Shift Close
+     *
+     * Only posts if |variance| ≥ 0.01 (skip zero-variance shifts).
+     *
+     * Short cash (variance < 0):  DR عجز نقدي (6520)  = |variance|
+     *                              CR صندوق (1000.XX)  = |variance|
+     *
+     * Over cash  (variance > 0):  DR صندوق (1000.XX)  = variance
+     *                              CR فائض نقدي (4150) = variance
+     */
+    public function postShiftClose(\App\Models\CashShift $shift): ?JournalEntry
+    {
+        $variance = round((float) $shift->variance_amount, 2);
+
+        if (abs($variance) < 0.01) {
+            return null;   // no GL entry for exact match
+        }
+
+        $branchId   = $shift->branch_id;
+        $cashAccId  = $this->cashId($branchId);
+
+        $shortageCode = Setting::get('account_pos_cash_shortage_code', '6520');
+        $overageCode  = Setting::get('account_pos_cash_overage_code',  '4150');
+
+        if ($variance < 0) {
+            // Short: cashier handed in less than expected
+            $lines = [
+                [
+                    'account_id'       => $this->account($shortageCode)->id,
+                    'debit'            => abs($variance),
+                    'credit'           => 0,
+                    'line_description' => 'عجز نقدي — وردية #' . $shift->id,
+                ],
+                [
+                    'account_id'       => $cashAccId,
+                    'debit'            => 0,
+                    'credit'           => abs($variance),
+                    'line_description' => 'تسوية عجز نقدي — وردية #' . $shift->id,
+                ],
+            ];
+        } else {
+            // Over: cashier handed in more than expected
+            $lines = [
+                [
+                    'account_id'       => $cashAccId,
+                    'debit'            => $variance,
+                    'credit'           => 0,
+                    'line_description' => 'فائض نقدي — وردية #' . $shift->id,
+                ],
+                [
+                    'account_id'       => $this->account($overageCode)->id,
+                    'debit'            => 0,
+                    'credit'           => $variance,
+                    'line_description' => 'تسوية فائض نقدي — وردية #' . $shift->id,
+                ],
+            ];
+        }
+
+        return $this->buildEntry([
+            'entry_date'  => $shift->closed_at->toDateString(),
+            'reference'   => 'SHIFT-' . $shift->id,
+            'source_type' => \App\Models\CashShift::class,
+            'source_id'   => $shift->id,
+            'branch_id'   => $branchId,
+            'description' => 'إقفال وردية نقدية #' . $shift->id
+                             . ' — ' . ($shift->user?->name ?? '')
+                             . ' / ' . $this->varianceDirection($variance),
+        ], $lines);
+    }
+
+    private function varianceDirection(float $v): string
+    {
+        if ($v > 0) return 'فائض ' . number_format($v, 2);
+        return 'عجز '  . number_format(abs($v), 2);
+    }
+
     /** Helper: Arabic month name */
     private function monthName(int $month): string
     {

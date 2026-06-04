@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Observers\AuditObserver;
 use Illuminate\Support\ServiceProvider;
 use App\Models\Reversal;
 use App\Policies\ReversalPolicy;
@@ -30,6 +31,22 @@ class AppServiceProvider extends ServiceProvider
         });
 
         Gate::policy(Reversal::class, ReversalPolicy::class);
+
+        // ── Comprehensive Audit Trail ────────────────────────────────────────
+        // Every create/update/delete on these models is logged automatically.
+        // The observer skips noise (updated_at, transient PENDING-* values).
+        \App\Models\Sale::observe(AuditObserver::class);
+        \App\Models\Purchase::observe(AuditObserver::class);
+        \App\Models\JournalEntry::observe(AuditObserver::class);
+        \App\Models\JournalEntryLine::observe(AuditObserver::class);
+        \App\Models\CustomerPayment::observe(AuditObserver::class);
+        \App\Models\SupplierPayment::observe(AuditObserver::class);
+        \App\Models\ReceiptVoucher::observe(AuditObserver::class);
+        \App\Models\PaymentVoucher::observe(AuditObserver::class);
+        \App\Models\Customer::observe(AuditObserver::class);
+        \App\Models\Supplier::observe(AuditObserver::class);
+        \App\Models\InventoryAdjustment::observe(AuditObserver::class);
+        \App\Models\FixedAsset::observe(AuditObserver::class);
 
         // Share $currency with every view so no controller needs to pass it manually.
         // Setting::get() is cached (1-day TTL) so this is a single cache lookup per request.

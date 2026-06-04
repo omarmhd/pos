@@ -30,7 +30,8 @@
       "PowerShell(cd \"d:\\\\2026\\\\supermarket-pos\"; Invoke-WebRequest -Uri \"http://127.0.0.1:8000/vouchers/receipts\" -Headers @{\"X-Requested-With\"=\"XMLHttpRequest\"; \"Accept\"=\"application/json\"} -UseBasicParsing 2>&1 | Select-Object StatusCode, Content | ForEach-Object { \"Status: $\\($_.StatusCode\\)\"; \"Body: $\\($_.Content.Substring\\(0, [Math]::Min\\(300, $_.Content.Length\\)\\)\\)\" })",
       "Bash(xargs grep -l \"EmployeeLoan\\\\|employee.*loan\\\\|advance\")",
       "Bash(git add *)",
-      "Bash(git commit -m ' *)"
+      "Bash(git commit -m ' *)",
+      "Bash(xargs grep -l \"audit\")"
     ]
   }
 }

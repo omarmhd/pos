@@ -352,9 +352,23 @@
                 {{-- ══════════════════════════════════════════════════════════════════ --}}
                 @can('sales.create')
                 <li class="nav-item">
-                    <a class="nav-link {{ request()->routeIs('pos.*') ? 'active' : '' }}"
+                    <a class="nav-link {{ request()->routeIs('pos.index') || request()->is('pos') ? 'active' : '' }}"
                        href="{{ route('pos.index') }}">
                         <i class="bi bi-cart-check-fill text-success"></i> <strong>نقطة البيع (POS)</strong>
+                    </a>
+                </li>
+                @endcan
+                @can('pos.shifts.view')
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->routeIs('pos.shifts.*') ? 'active' : '' }}"
+                       href="{{ route('pos.shifts.index') }}">
+                        <i class="bi bi-cash-register text-warning"></i> الورديات النقدية
+                        @php
+                            $myOpenShift = \App\Models\CashShift::activeForUser(auth()->id());
+                        @endphp
+                        @if($myOpenShift)
+                            <span class="badge bg-success ms-1" style="font-size:.65rem">مفتوحة</span>
+                        @endif
                     </a>
                 </li>
                 @endcan
@@ -1152,7 +1166,7 @@
     (function () {
         var p = window.location.pathname;
         var map = [
-            { id: 'ns-sales',  paths: ['/sales', '/sales-quotations', '/sales-orders', '/sale-returns', '/customers'] },
+            { id: 'ns-sales',  paths: ['/sales', '/sales-quotations', '/sales-orders', '/sale-returns', '/customers', '/pos/shifts'] },
             { id: 'ns-purch',  paths: ['/purchases', '/purchase-orders', '/purchase-returns', '/suppliers', '/expense-invoices'] },
             { id: 'ns-inv',    paths: ['/products', '/categories', '/inventory', '/stock-transfers'] },
             { id: 'ns-treas',  paths: ['/vouchers'] },

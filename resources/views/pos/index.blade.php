@@ -378,6 +378,24 @@
             <i class="bi bi-person-circle opacity-75"></i>{{ auth()->user()->name }}
         </span>
         <span id="clock" class="text-white-50 small d-none d-lg-inline flex-shrink-0"></span>
+
+        {{-- Shift indicator --}}
+        @if(isset($activeShift) && $activeShift)
+            <a href="{{ route('pos.shifts.show', $activeShift) }}"
+               class="badge bg-success text-white text-decoration-none flex-shrink-0 d-none d-md-flex align-items-center gap-1"
+               title="وردية مفتوحة منذ {{ $activeShift->opened_at->format('H:i') }}">
+                <i class="bi bi-unlock-fill"></i>
+                {{ $activeShift->opened_at->format('H:i') }}
+            </a>
+        @else
+            @can('pos.shifts.open')
+            <a href="{{ route('pos.shifts.open') }}"
+               class="badge bg-warning text-dark text-decoration-none flex-shrink-0 d-none d-md-flex align-items-center gap-1"
+               title="لا توجد وردية مفتوحة — اضغط لفتح وردية">
+                <i class="bi bi-lock-fill"></i> افتح وردية
+            </a>
+            @endcan
+        @endif
     </header>
 
     {{-- ── Sale success bar (hidden by default) ─── --}}

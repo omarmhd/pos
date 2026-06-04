@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Category;
+use App\Models\CashShift;
 use App\Models\Customer;
 use App\Models\CustomerDeposit;
 use App\Models\Product;
@@ -55,7 +56,9 @@ class PosController extends Controller
             'creditEnabled'    => (bool) Setting::get('credit_sales_enabled', 1),
         ];
 
-        return view('pos.index', compact('products', 'customers', 'categories', 'posSettings', 'allowNegStock'));
+        $activeShift = CashShift::activeForUser(auth()->id());
+
+        return view('pos.index', compact('products', 'customers', 'categories', 'posSettings', 'allowNegStock', 'activeShift'));
     }
 
     public function searchCustomers(Request $request)
@@ -258,11 +261,15 @@ class PosController extends Controller
                 }
             }
 
+            // Attach to the cashier's active shift (if one is open)
+            $activeShift = CashShift::activeForUser(auth()->id());
+
             $sale = Sale::create([
                 'user_id'        => auth()->id(),
                 'customer_id'    => ($isCredit || $balanceUsed > 0) ? $request->customer_id : null,
                 'is_credit'      => $isCredit,
                 'warehouse_id'   => $warehouseId,
+                'cash_shift_id'  => $activeShift?->id,
                 'subtotal'       => $subtotal,
                 'discount'       => $discount,
                 'tax'            => $tax,

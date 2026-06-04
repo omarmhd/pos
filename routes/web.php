@@ -188,6 +188,16 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/pos/receipt/{id}', [PosController::class, 'receipt'])->name('pos.receipt');
     Route::get('/pos/customers/search', [PosController::class, 'searchCustomers'])->name('pos.customers.search');
 
+    // ── Cash Shifts (وردية الكاشير) ───────────────────────────────────────────
+    Route::prefix('pos/shifts')->name('pos.shifts.')->group(function () {
+        Route::get('/',                  [\App\Http\Controllers\CashShiftController::class, 'index'])      ->name('index');
+        Route::get('/open',              [\App\Http\Controllers\CashShiftController::class, 'createOpen']) ->name('open');
+        Route::post('/open',             [\App\Http\Controllers\CashShiftController::class, 'storeOpen'])  ->name('store-open');
+        Route::get('/{shift}',           [\App\Http\Controllers\CashShiftController::class, 'show'])       ->name('show');
+        Route::get('/{shift}/close',     [\App\Http\Controllers\CashShiftController::class, 'createClose'])->name('close');
+        Route::post('/{shift}/close',    [\App\Http\Controllers\CashShiftController::class, 'storeClose']) ->name('store-close');
+    });
+
     // ── Sales ─────────────────────────────────────────────────────────────────
     Route::resource('sales', SaleController::class)->only(['index', 'show']);
     Route::get('sales/{sale}/pdf',    [SaleController::class, 'pdf'])    ->name('sales.pdf');
