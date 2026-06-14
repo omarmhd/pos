@@ -101,6 +101,14 @@
         main {
             transition: all 0.22s ease;
             flex: 1 1 auto !important;
+            width: auto !important;
+            min-width: 0 !important;
+        }
+        
+        /* When sidebar is compact, ensure main takes all remaining space */
+        .row main {
+            max-width: 100% !important;
+            width: auto !important;
         }
         /* Favorites / shortcuts */
         #sidebarFavorites .fav-item { background: rgba(255,255,255,0.06); color: #fff; padding:4px 8px; border-radius:6px; font-size:.78rem; display:flex; gap:6px; align-items:center }
@@ -1313,16 +1321,28 @@
     (function(){
         var compactKey = 'sidebarCompact';
         var sidebar = document.querySelector('nav.sidebar');
+        var main = document.querySelector('main');
         var btn = document.getElementById('sidebarCompactToggle');
+        
         function applyCompactState(saved) {
             if (saved === '1') {
                 sidebar.classList.add('compact');
                 document.documentElement.setAttribute('data-sidebar-compact', '1');
+                if (main) {
+                    main.style.flex = '1 1 auto';
+                    main.style.width = 'auto';
+                    main.style.minWidth = '0';
+                }
                 if (btn) btn.innerHTML = '<i class="bi bi-chevron-right"></i>';
                 if (btn) btn.setAttribute('aria-pressed', 'true');
             } else {
                 sidebar.classList.remove('compact');
                 document.documentElement.removeAttribute('data-sidebar-compact');
+                if (main) {
+                    main.style.flex = '';
+                    main.style.width = '';
+                    main.style.minWidth = '';
+                }
                 if (btn) btn.innerHTML = '<i class="bi bi-chevron-left"></i>';
                 if (btn) btn.setAttribute('aria-pressed', 'false');
             }
@@ -1455,6 +1475,40 @@
                 }, 120);
             });
         }
+    })();
+
+    // Sidebar scroll position persistence across page navigation
+    (function(){
+        var sidebarScrollKey = 'sidebarScrollPos';
+        var sidebarContainer = document.querySelector('nav.sidebar .position-sticky');
+        
+        if (sidebarContainer) {
+            // Restore scroll position on page load
+            try {
+                var savedScroll = localStorage.getItem(sidebarScrollKey);
+                if (savedScroll) {
+                    sidebarContainer.scrollTop = parseInt(savedScroll, 10);
+                }
+            } catch(e) {}
+            
+            // Save scroll position on every scroll event
+            sidebarContainer.addEventListener('scroll', function() {
+                try {
+                    localStorage.setItem(sidebarScrollKey, sidebarContainer.scrollTop.toString());
+                } catch(e) {}
+            });
+        }
+        
+        // Also save position when clicking any sidebar link
+        document.querySelectorAll('nav.sidebar a.nav-link').forEach(function(link) {
+            link.addEventListener('click', function() {
+                if (sidebarContainer) {
+                    try {
+                        localStorage.setItem(sidebarScrollKey, sidebarContainer.scrollTop.toString());
+                    } catch(e) {}
+                }
+            });
+        });
     })();
 
     // ── Alerts: stay until user closes them manually ──────────
