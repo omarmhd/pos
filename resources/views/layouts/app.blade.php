@@ -77,6 +77,7 @@
         nav.sidebar.compact {
             width: 72px !important;
         }
+        nav.sidebar.compact { flex: 0 0 72px !important; max-width:72px !important; }
         nav.sidebar.compact .sidebar-brand h5 { font-size: .92rem; overflow: hidden; }
         nav.sidebar.compact .sidebar-brand small { display:none; }
         /* hide only the textual part, keep icons visible and spacing */
@@ -87,6 +88,15 @@
         nav.sidebar.compact .sub-nav { display: none; }
         nav.sidebar.compact .collapse.show > .sub-nav { display: block; }
         nav.sidebar.compact .sidebar-close-btn { display: none; }
+
+        /* When sidebar is compact, let main content expand to fill remaining space */
+        nav.sidebar.compact + main,
+        nav.sidebar.compact ~ main {
+            margin-right: 72px !important; /* RTL: right side is the sidebar */
+            flex: 1 0 calc(100% - 72px) !important;
+            width: calc(100% - 72px) !important;
+            max-width: calc(100% - 72px) !important;
+        }
         /* Favorites / shortcuts */
         #sidebarFavorites .fav-item { background: rgba(255,255,255,0.06); color: #fff; padding:4px 8px; border-radius:6px; font-size:.78rem; display:flex; gap:6px; align-items:center }
         .fav-toggle { margin-left:6px; font-size:.85rem; opacity:0.8; cursor:pointer }
