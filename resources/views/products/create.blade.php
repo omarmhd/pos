@@ -2,14 +2,25 @@
 {{-- resources/views/products/create.blade.php --}}
 @extends('layouts.app')
 
-@section('page-title', 'إضافة منتج جديد')
+@php $mode = $mode ?? 'item'; $isProduct = $mode === 'product'; @endphp
+@section('page-title', $isProduct ? 'إضافة منتج مصنّع' : 'إضافة صنف')
 
 @section('content')
     <div class="row">
-        <div class="col-lg-8 mx-auto">
+        <div class="col-lg-11 mx-auto">
             <div class="card">
-                <div class="card-header bg-white">
-                    <h5 class="mb-0"><i class="bi bi-plus-circle"></i> إضافة منتج جديد</h5>
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        @if($isProduct)
+                            <i class="bi bi-diagram-3 text-primary"></i> إضافة منتج مصنّع (تامّ الصنع)
+                        @else
+                            <i class="bi bi-box text-success"></i> إضافة صنف (بضاعة / مادة خام)
+                        @endif
+                    </h5>
+                    <div class="btn-group btn-group-sm">
+                        <a href="{{ route('products.create', ['mode'=>'item']) }}" class="btn btn-outline-success {{ !$isProduct ? 'active' : '' }}">صنف</a>
+                        <a href="{{ route('products.create', ['mode'=>'product']) }}" class="btn btn-outline-primary {{ $isProduct ? 'active' : '' }}">منتج مصنّع</a>
+                    </div>
                 </div>
                 <div class="card-body">
                     <form action="{{ route('products.store') }}" method="POST" enctype="multipart/form-data">
@@ -112,6 +123,8 @@
                                           rows="3">{{ old('description') }}</textarea>
                                 @error('description')<div class="invalid-feedback">{{ $message }}</div>@enderror
                             </div>
+
+                            @include('products._form_extras', ['mode' => $mode])
 
                             <div class="col-12">
                                 <button type="submit" class="btn btn-primary">

@@ -692,6 +692,15 @@ $productsData = $products->map(fn($p) => [
     'cat'            => $p->category_id,
     'allowFractions' => (bool)  $p->allow_fractions,
     'unit'           => $p->unit ?: 'قطعة',
+    'type'           => $p->product_type ?? 'goods',
+    'vatRate'        => $p->effectiveVatRate(),   // 0 إذا معفى أو الضريبة معطلة
+    'units'          => $p->units->where('is_active', true)->map(fn($u) => [
+        'id'      => $u->id,
+        'name'    => $u->name,
+        'factor'  => (float) $u->factor,
+        'price'   => $u->effectiveSellingPrice(),
+        'barcode' => $u->barcode ?? '',
+    ])->values(),
 ]);
 @endphp
 {{-- Hidden data containers — Blade escapes into HTML text nodes; JS reads via textContent --}}
@@ -813,23 +822,40 @@ document.addEventListener('DOMContentLoaded', () => {
             addToCart(p.id);
             searchEl.value = '';
             applyFilter();
-        } else {
-            // Server lookup for unlisted products
-            fetch(`/products/barcode/${encodeURIComponent(val)}`)
-                .then(r => r.ok ? r.json() : null)
-                .then(data => {
-                    if (data?.id) {
-                        PRODUCTS.push({ id: data.id, name: data.name, price: parseFloat(data.selling_price),
-                            qty: data.quantity, barcode: data.barcode ?? '', cat: data.category_id });
-                        addToCart(data.id);
-                        searchEl.value = '';
-                        applyFilter();
-                    } else {
-                        showToast('الباركود غير موجود', 'danger');
-                        searchEl.select();
-                    }
-                });
+            return;
         }
+        // باركود وحدة إضافية (كرتون/دستة) محملة محلياً؟
+        const pu = PRODUCTS.find(x => (x.units || []).some(u => u.barcode === val));
+        if (pu) {
+            const unit = pu.units.find(u => u.barcode === val);
+            addToCart(pu.id, unit);
+            searchEl.value = '';
+            applyFilter();
+            return;
+        }
+        // Server lookup for unlisted products (يدعم باركود الوحدات أيضاً)
+        fetch(`/products/barcode/${encodeURIComponent(val)}`)
+            .then(r => r.ok ? r.json() : null)
+            .then(data => {
+                if (data?.id) {
+                    if (!PRODUCTS.find(x => x.id === data.id)) {
+                        PRODUCTS.push({ id: data.id, name: data.name, price: parseFloat(data.selling_price),
+                            qty: parseFloat(data.quantity), barcode: data.barcode ?? '', cat: data.category_id,
+                            allowFractions: !!data.allow_fractions, unit: data.unit || 'قطعة',
+                            type: data.product_type || 'goods',
+                            vatRate: (POS_SETTINGS.vatEnabled && data.is_taxable)
+                                ? (data.vat_rate !== null ? parseFloat(data.vat_rate) : POS_SETTINGS.vatRate)
+                                : 0,
+                            units: [] });
+                    }
+                    addToCart(data.id, data.scanned_unit || null);
+                    searchEl.value = '';
+                    applyFilter();
+                } else {
+                    showToast('الباركود غير موجود', 'danger');
+                    searchEl.select();
+                }
+            });
     });
 });
 
@@ -891,11 +917,13 @@ function confirmFracQty() {
         showToast('لا يوجد مخزون كافٍ (المتاح: ' + formatQty(p.qty) + ' ' + (p.unit || '') + ')', 'warning');
         return;
     }
-    const item = cart.find(x => x.id === p.id);
+    const item = cart.find(x => x.id === p.id && !x.unitId);
     if (item) {
         item.qty = qty;
     } else {
-        cart.push({ id: p.id, name: p.name, price: p.price, qty: qty, maxQty: p.qty, allowFractions: true, unit: p.unit || 'قطعة' });
+        cart.push({ id: p.id, name: p.name, price: p.price, qty: qty, maxQty: p.qty,
+                    allowFractions: true, unit: p.unit || 'قطعة',
+                    vatRate: p.vatRate, type: p.type });
     }
     fracModal.hide();
     renderCart();
@@ -904,22 +932,57 @@ function confirmFracQty() {
 }
 
 // ── Cart ──────────────────────────────────────────
-function addToCart(productId) {
+function isStockTracked(p) {
+    return !p.type || p.type === 'goods';
+}
+
+function addToCart(productId, unitInfo = null) {
     const p = PRODUCTS.find(x => x.id === productId);
     if (!p) return;
-    if (!POS_SETTINGS.allowNegStock && p.qty <= 0) { showToast('المنتج نفذ من المخزون', 'warning'); return; }
+    // الخدمات والتجميعي لا فحص مخزون لها هنا (الخادم يفحص مكونات التجميعي)
+    if (isStockTracked(p) && !POS_SETTINGS.allowNegStock && p.qty <= 0 && !unitInfo) {
+        showToast('المنتج نفذ من المخزون', 'warning'); return;
+    }
+
+    // ── بيع بوحدة إضافية (كرتون/دستة) — سطر مستقل لكل وحدة ─────────────
+    if (unitInfo) {
+        const key  = productId + ':u' + unitInfo.id;
+        const item = cart.find(x => x.key === key);
+        const factor = unitInfo.factor || 1;
+        if (item) {
+            if (isStockTracked(p) && !POS_SETTINGS.allowNegStock && (item.qty + 1) * factor > p.qty) {
+                showToast('لا يوجد مخزون كافٍ', 'warning'); return;
+            }
+            item.qty++;
+        } else {
+            if (isStockTracked(p) && !POS_SETTINGS.allowNegStock && factor > p.qty) {
+                showToast('لا يوجد مخزون كافٍ لوحدة كاملة (' + unitInfo.name + ')', 'warning'); return;
+            }
+            cart.push({ key: key, id: p.id, unitId: unitInfo.id, factor: factor,
+                        name: p.name + ' — ' + unitInfo.name,
+                        price: unitInfo.price, qty: 1, maxQty: p.qty,
+                        allowFractions: false, unit: unitInfo.name,
+                        vatRate: p.vatRate, type: p.type });
+        }
+        renderCart();
+        flashCard(productId);
+        focusSearch();
+        return;
+    }
 
     if (p.allowFractions) {
         openFracModal(p);
         return;
     }
 
-    const item = cart.find(x => x.id === productId);
+    const item = cart.find(x => x.id === productId && !x.unitId);
     if (item) {
-        if (!POS_SETTINGS.allowNegStock && item.qty >= p.qty) { showToast('لا يوجد مخزون كافٍ', 'warning'); return; }
+        if (isStockTracked(p) && !POS_SETTINGS.allowNegStock && item.qty >= p.qty) { showToast('لا يوجد مخزون كافٍ', 'warning'); return; }
         item.qty++;
     } else {
-        cart.push({ id: p.id, name: p.name, price: p.price, qty: 1, maxQty: p.qty, allowFractions: false, unit: p.unit || 'قطعة' });
+        cart.push({ id: p.id, name: p.name, price: p.price, qty: 1, maxQty: p.qty,
+                    allowFractions: false, unit: p.unit || 'قطعة',
+                    vatRate: p.vatRate, type: p.type });
     }
 
     renderCart();
@@ -943,7 +1006,9 @@ function changeQty(idx, delta) {
     }
     const newQty = cart[idx].qty + delta;
     if (newQty <= 0) { removeItem(idx); return; }
-    if (!POS_SETTINGS.allowNegStock && newQty > cart[idx].maxQty) { showToast('لا يوجد مخزون كافٍ', 'warning'); return; }
+    const tracked = !cart[idx].type || cart[idx].type === 'goods';
+    const baseNeeded = newQty * (cart[idx].factor || 1);
+    if (tracked && !POS_SETTINGS.allowNegStock && baseNeeded > cart[idx].maxQty) { showToast('لا يوجد مخزون كافٍ', 'warning'); return; }
     cart[idx].qty = newQty;
     renderCart();
 }
@@ -1059,13 +1124,24 @@ function renderCart() {
     updateTotals();
 }
 
-// ── VAT helper ────────────────────────────────────
+// ── VAT helper: per-line, per-product rate (ضريبة لكل صنف) ─────────────
+// الخصم يوزَّع نسبياً على السطور قبل احتساب الضريبة (نفس منطق الخادم).
 function calcTax(afterDiscount) {
     if (!POS_SETTINGS.vatEnabled || afterDiscount <= 0) return 0;
-    if (POS_SETTINGS.vatInclusive) {
-        return Math.round((afterDiscount - afterDiscount / (1 + POS_SETTINGS.vatRate / 100)) * 100) / 100;
-    }
-    return Math.round(afterDiscount * POS_SETTINGS.vatRate / 100 * 100) / 100;
+    const subtotal = cart.reduce((s, i) => s + i.qty * i.price, 0);
+    if (subtotal <= 0) return 0;
+    const discount = Math.max(0, subtotal - afterDiscount);
+    let tax = 0;
+    cart.forEach(i => {
+        const rate = (i.vatRate !== undefined && i.vatRate !== null) ? i.vatRate : POS_SETTINGS.vatRate;
+        if (rate <= 0) return;
+        const lineTotal = i.qty * i.price;
+        const netLine   = Math.max(0, lineTotal - discount * lineTotal / subtotal);
+        tax += POS_SETTINGS.vatInclusive
+            ? netLine - netLine / (1 + rate / 100)
+            : netLine * rate / 100;
+    });
+    return Math.round(tax * 100) / 100;
 }
 
 function updateTotals() {
@@ -1074,7 +1150,8 @@ function updateTotals() {
     const disc        = Math.min(discRaw, subtotal);
     const afterDisc   = Math.max(0, subtotal - disc);
     const tax         = calcTax(afterDisc);
-    const total       = afterDisc + tax;
+    // ضريبة شاملة: الإجمالي = بعد الخصم (الضريبة ضمن السعر) — وإلا تُضاف
+    const total       = POS_SETTINGS.vatInclusive ? afterDisc : afterDisc + tax;
     const count       = cart.length; // number of distinct product lines
 
     document.getElementById('subtotalDisp').textContent   = subtotal.toFixed(2) + ' ' + CUR;
@@ -1103,7 +1180,7 @@ function getTotal() {
     const subtotal  = cart.reduce((s, i) => s + i.qty * i.price, 0);
     const disc      = Math.min(parseFloat(document.getElementById('discountInput').value) || 0, subtotal);
     const afterDisc = Math.max(0, subtotal - disc);
-    return afterDisc + calcTax(afterDisc);
+    return POS_SETTINGS.vatInclusive ? afterDisc : afterDisc + calcTax(afterDisc);
 }
 
 // ── Credit toggle ─────────────────────────────────
@@ -1280,7 +1357,8 @@ async function completeSale() {
                 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
             },
             body: JSON.stringify({
-                items:          cart.map(i => ({ product_id: i.id, quantity: i.qty, unit_price: i.price })),
+                items:          cart.map(i => ({ product_id: i.id, quantity: i.qty, unit_price: i.price,
+                                                 product_unit_id: i.unitId || null })),
                 subtotal, discount: disc, tax, total_amount: total,
                 is_credit:      isCredit ? 1 : 0,
                 customer_id:    document.getElementById('customerSel').value || null,
@@ -1394,7 +1472,7 @@ function rePrint() { if (lastReceipt) printReceipt(lastReceipt); }
 function buildReceiptHTML(r) {
     const rows = r.items.map(i => `
         <tr>
-            <td>${esc(i.name)}</td>
+            <td>${esc(i.name)}${i.bonus ? '<br><small>+ بونص مجاني: ' + esc(i.bonus) + '</small>' : ''}</td>
             <td style="text-align:center">${formatQty(i.qty)} ${esc(i.unit||'')}</td>
             <td style="text-align:left">${i.price}</td>
             <td style="text-align:left"><b>${i.total}</b></td>

@@ -80,6 +80,8 @@ Route::middleware(['auth'])->group(function () {
         [ProductController::class, 'lowStock'])->name('products.low-stock');
     Route::get('products-expiring',
         [ProductController::class, 'expiring'])->name('products.expiring');
+    Route::get('products-reorder',
+        [ProductController::class, 'reorder'])->name('products.reorder');
     Route::get('inventory/lot-expiry',
         [ProductController::class, 'lotExpiry'])->name('inventory.lot-expiry');
 
@@ -191,8 +193,32 @@ Route::middleware(['auth'])->group(function () {
     Route::post('expense-invoices/{expenseInvoice}/pay',
         [ExpenseInvoiceController::class, 'pay'])->name('expense-invoices.pay');
 
+    // ── Customs Declarations (الإقرارات الجمركية — ضريبة الواردات) ────────────
+    Route::resource('customs-declarations', \App\Http\Controllers\CustomsDeclarationController::class)
+        ->parameters(['customs-declarations' => 'customs_declaration'])
+        ->only(['index', 'create', 'store', 'show', 'destroy']);
+
+    // ── Checks (الشيكات الواردة والصادرة) ────────────────────────────────────
+    Route::prefix('checks')->name('checks.')->group(function () {
+        Route::get('/',                    [\App\Http\Controllers\CheckController::class, 'index'])     ->name('index');
+        Route::get('/data',                [\App\Http\Controllers\CheckController::class, 'data'])      ->name('data');
+        Route::get('/create',              [\App\Http\Controllers\CheckController::class, 'create'])    ->name('create');
+        Route::post('/',                   [\App\Http\Controllers\CheckController::class, 'store'])     ->name('store');
+        Route::get('/{check}',             [\App\Http\Controllers\CheckController::class, 'show'])      ->name('show');
+        Route::post('/{check}/transition', [\App\Http\Controllers\CheckController::class, 'transition'])->name('transition');
+        Route::post('/{check}/endorse',    [\App\Http\Controllers\CheckController::class, 'endorse'])   ->name('endorse');
+        Route::delete('/{check}',          [\App\Http\Controllers\CheckController::class, 'destroy'])   ->name('destroy');
+    });
+
     // ── Vouchers (سندات القبض والصرف) ────────────────────────────────────────
     Route::prefix('vouchers')->name('vouchers.')->middleware('throttle:vouchers')->group(function () {
+        // رصيد حساب أثناء إدخال السند (AJAX)
+        Route::get('account-balance/{account}',
+            [\App\Http\Controllers\ReceiptVoucherController::class, 'accountBalance'])
+            ->name('account-balance')->withoutMiddleware('throttle:vouchers');
+        // السندات المتعددة (إدخال دفعي)
+        Route::get('bulk',  [\App\Http\Controllers\BulkVoucherController::class, 'create'])->name('bulk.create');
+        Route::post('bulk', [\App\Http\Controllers\BulkVoucherController::class, 'store'])->name('bulk.store');
         Route::get('receipts/data',    [\App\Http\Controllers\ReceiptVoucherController::class, 'data'])->name('receipts.data')->withoutMiddleware('throttle:vouchers');
         Route::resource('receipts', \App\Http\Controllers\ReceiptVoucherController::class)->except(['edit', 'update']);
         Route::get('receipts/{receipt}/pdf', [\App\Http\Controllers\ReceiptVoucherController::class, 'pdf'])->name('receipts.pdf')->withoutMiddleware('throttle:vouchers');
@@ -251,6 +277,11 @@ Route::middleware(['auth'])->group(function () {
     // ── Sale Returns ──────────────────────────────────────────────────────────
     Route::resource('sale-returns', SaleReturnController::class)->only(['index', 'create', 'store', 'show']);
 
+    // ── Service Revenue Invoices (فواتير إيراد الخدمات — IFRS 15) ──────────────
+    Route::resource('service-invoices', \App\Http\Controllers\ServiceInvoiceController::class)
+        ->parameters(['service-invoices' => 'service_invoice'])
+        ->only(['index', 'create', 'store', 'show']);
+
     // ── Reports ───────────────────────────────────────────────────────────────
     Route::prefix('reports')->name('reports.')->group(function () {
         Route::get('/',             [ReportController::class, 'index'])      ->name('index');
@@ -261,7 +292,22 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/top-products', [ReportController::class, 'topProducts'])->name('top-products');
         Route::get('/ar-aging',     [ReportController::class, 'arAging'])   ->name('ar-aging');
         Route::get('/ap-aging',     [ReportController::class, 'apAging'])   ->name('ap-aging');
+        // تقارير المخزون الذكية (مستوحاة من الأصيل)
+        Route::get('/stock-alerts', [ReportController::class, 'stockAlerts'])->name('stock-alerts');
+        Route::get('/dead-stock',   [ReportController::class, 'deadStock'])  ->name('dead-stock');
+        Route::get('/price-changes',[ReportController::class, 'priceChanges'])->name('price-changes');
+        Route::get('/withholding',  [ReportController::class, 'withholding']) ->name('withholding');
+        Route::get('/inventory-valuation', [ReportController::class, 'inventoryValuation'])->name('inventory-valuation');
+        Route::get('/fifo-valuation',      [ReportController::class, 'fifoValuation'])     ->name('fifo-valuation');
+        Route::get('/landed-cost',         [ReportController::class, 'landedCost'])        ->name('landed-cost');
+        Route::get('/analytics',           [ReportController::class, 'analytics'])         ->name('analytics');
     });
+
+    // ── Revenue & Expense Statements (كشوف الإيرادات والمصروفات) ─────────────
+    Route::get('res/{re_statement}/print',
+        [\App\Http\Controllers\RevenueExpenseStatementController::class, 'print'])->name('res.print');
+    Route::resource('res', \App\Http\Controllers\RevenueExpenseStatementController::class)
+        ->parameters(['res' => 're_statement']);
 
     // ── Accounting ────────────────────────────────────────────────────────────
     Route::get('/accounting', [AccountingController::class, 'index'])->name('accounting.index');
@@ -336,6 +382,21 @@ Route::middleware(['auth'])->group(function () {
         [StockTransferController::class, 'cancel'])->name('stock-transfers.cancel');
     Route::get('stock-transfers/level',
         [StockTransferController::class, 'stockLevel'])->name('stock-transfers.level');
+
+    // ── Assemblies (التصنيع والتجميع) ────────────────────────────────────────
+    Route::resource('assemblies', \App\Http\Controllers\AssemblyController::class)
+        ->only(['index', 'create', 'store', 'show']);
+
+    // ── Currencies (العملات) ─────────────────────────────────────────────────
+    Route::resource('currencies', \App\Http\Controllers\CurrencyController::class)
+        ->except(['show']);
+
+    // ── Purchase Price Lists (قوائم أسعار الشراء) ────────────────────────────
+    Route::resource('purchase-price-lists', \App\Http\Controllers\PurchasePriceListController::class)
+        ->except(['show']);
+    Route::match(['get','post'], 'purchase-price-lists/{purchasePriceList}/products',
+        [\App\Http\Controllers\PurchasePriceListController::class, 'products'])
+        ->name('purchase-price-lists.products');
 
     // ── Branches & Warehouses ────────────────────────────────────────────────
     Route::resource('branches', BranchController::class)->except(['show']);

@@ -98,13 +98,14 @@
                         <table class="table" id="productsTable" style="min-width:640px;">
                             <thead class="table-light">
                             <tr>
-                                <th style="width:32%">المنتج</th>
-                                <th style="width:12%;min-width:100px">الكمية</th>
-                                <th style="width:15%;min-width:120px">سعر الوحدة</th>
-                                <th style="width:12%;min-width:110px">المجموع</th>
+                                <th style="width:28%">المنتج</th>
+                                <th style="width:10%;min-width:95px">الوحدة</th>
+                                <th style="width:10%;min-width:90px">الكمية</th>
+                                <th style="width:13%;min-width:110px">سعر الوحدة</th>
+                                <th style="width:11%;min-width:100px">المجموع</th>
                                 <th style="width:10%">رقم الدُّفعة</th>
-                                <th style="width:11%">تاريخ الانتهاء</th>
-                                <th style="width:8%"></th>
+                                <th style="width:10%">تاريخ الانتهاء</th>
+                                <th style="width:6%"></th>
                             </tr>
                             </thead>
                             <tbody id="productRows"></tbody>
@@ -120,12 +121,22 @@
             </div>
 
             <div class="row mb-4">
-                <div class="col-md-6">
+                <div class="col-md-3">
+                    <label class="form-label">ضريبة المدخلات ({{ $currency }})</label>
+                    <input type="number" name="tax_amount" class="form-control"
+                           id="taxAmount" value="0" step="0.01" min="0" oninput="calculateTotal()">
+                    <div class="form-text">تُرحَّل لحساب "ضريبة مدخلات" (1260) ولا تدخل في تكلفة المخزون</div>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">الإجمالي شامل الضريبة</label>
+                    <input type="text" class="form-control" id="grandTotal" value="0.00 {{ $currency }}" readonly>
+                </div>
+                <div class="col-md-3">
                     <label class="form-label">المبلغ المدفوع <span class="text-danger">*</span></label>
                     <input type="number" name="paid_amount" class="form-control"
                            id="paidAmount" value="0" step="0.01" min="0" required>
                 </div>
-                <div class="col-md-6">
+                <div class="col-md-3">
                     <label class="form-label">المبلغ المتبقي</label>
                     <input type="text" class="form-control" id="remainingAmount" value="0.00 {{ $currency }}" readonly>
                 </div>
@@ -227,6 +238,13 @@
                         required></select>
             </td>
             <td>
+                <select name="items[${id}][product_unit_id]"
+                        class="form-select form-select-sm unit-select"
+                        id="us_${id}" onchange="onUnitChange(${id})">
+                    <option value="">رئيسية</option>
+                </select>
+            </td>
+            <td>
                 <input type="number" name="items[${id}][quantity]"
                        class="form-control quantity-input"
                        value="1" min="0.001" step="0.001"
@@ -279,12 +297,18 @@
                 url: SEARCH_URL,
                 dataType: 'json',
                 delay: 200,
-                data: function(params) { return { q: params.term || '' }; },
+                data: function(params) {
+                    return {
+                        q: params.term || '',
+                        supplier_id: $('select[name=supplier_id]').val() || ''   // تكلفة قائمة المورد
+                    };
+                },
                 processResults: function(data, params) {
                     var term = (params.term || '').trim();
                     var items = [];
                     for (var i = 0; i < data.length; i++) {
-                        items.push({ id: data[i].id, text: data[i].text, cost_price: data[i].cost_price });
+                        items.push({ id: data[i].id, text: data[i].text, cost_price: data[i].cost_price,
+                                     from_list: data[i].from_list, units: data[i].units || [] });
                     }
                     if (term.length > 0) {
                         items.push({ id: '__new__', text: '＋ إضافة منتج جديد: ' + term, isNew: true, term: term });
@@ -322,13 +346,43 @@
 
             // Set cost price in the unit price field
             $(`#row${id} .unit-price`).val(data.cost_price || 0);
+            if (data.from_list) {
+                $(`#row${id} .unit-price`).addClass('border-success').attr('title', 'سعر من قائمة أسعار المورد');
+            } else {
+                $(`#row${id} .unit-price`).removeClass('border-success').removeAttr('title');
+            }
+
+            // تعبئة الوحدات الإضافية (كرتون/دستة...) لهذا الصنف
+            rowData[id] = { baseCost: data.cost_price || 0, units: data.units || [] };
+            const $unitSel = $(`#us_${id}`);
+            $unitSel.empty().append('<option value="">رئيسية</option>');
+            (data.units || []).forEach(u => {
+                $unitSel.append(`<option value="${u.id}" data-factor="${u.factor}" data-cost="${u.cost}">${u.name} (×${u.factor})</option>`);
+            });
+
             calculateRow(id);
         });
 
         $sel.on('select2:clear', function () {
             $(`#row${id} .unit-price`).val('');
+            $(`#us_${id}`).empty().append('<option value="">رئيسية</option>');
+            rowData[id] = null;
             calculateRow(id);
         });
+    }
+
+    // ── تغيير وحدة السطر: السعر = تكلفة الوحدة المختارة ─────────────────────
+    const rowData = {};
+    function onUnitChange(id) {
+        const $opt = $(`#us_${id} option:selected`);
+        const data = rowData[id];
+        if (!$opt.val()) {
+            // العودة للوحدة الرئيسية
+            $(`#row${id} .unit-price`).val(data ? data.baseCost : '');
+        } else {
+            $(`#row${id} .unit-price`).val(parseFloat($opt.data('cost')) || 0);
+        }
+        calculateRow(id);
     }
 
     // ── Row math ─────────────────────────────────────────────────────────────
@@ -348,22 +402,29 @@
         let total = 0;
         $('.row-total').each(function () { total += parseFloat($(this).val()) || 0; });
         $('#totalAmount').text(total.toFixed(2) + ' ' + CURRENCY);
+
+        // الإجمالي شامل ضريبة المدخلات
+        const tax   = parseFloat($('#taxAmount').val()) || 0;
+        const grand = total + tax;
+        $('#grandTotal').val(grand.toFixed(2) + ' ' + CURRENCY);
+
         if ($('#paymentStatus').val() === 'paid') {
-            $('#paidAmount').val(total.toFixed(2));
+            $('#paidAmount').val(grand.toFixed(2));
         }
         updateRemaining();
     }
 
     function updateRemaining() {
         const total = parseFloat($('#totalAmount').text()) || 0;
+        const tax   = parseFloat($('#taxAmount').val())    || 0;
         const paid  = parseFloat($('#paidAmount').val())   || 0;
-        $('#remainingAmount').val((total - paid).toFixed(2) + ' ' + CURRENCY);
+        $('#remainingAmount').val((total + tax - paid).toFixed(2) + ' ' + CURRENCY);
     }
 
     $('#paidAmount').on('input', updateRemaining);
 
     $('#paymentStatus').on('change', function () {
-        const total = parseFloat($('#totalAmount').text()) || 0;
+        const total = (parseFloat($('#totalAmount').text()) || 0) + (parseFloat($('#taxAmount').val()) || 0);
         if ($(this).val() === 'paid')   $('#paidAmount').val(total.toFixed(2));
         if ($(this).val() === 'unpaid') $('#paidAmount').val('0');
         updateRemaining();

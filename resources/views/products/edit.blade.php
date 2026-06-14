@@ -4,7 +4,7 @@
 
 @section('content')
     <div class="row">
-        <div class="col-lg-8 mx-auto">
+        <div class="col-lg-11 mx-auto">
             <div class="card">
                 <div class="card-header bg-white">
                     <h5 class="mb-0"><i class="bi bi-pencil"></i> تعديل المنتج: {{ $product->name }}</h5>
@@ -81,10 +81,10 @@
                             </div>
 
                             <div class="col-md-6">
-                                <label class="form-label">الكمية <span class="text-danger">*</span></label>
-                                <input type="number" name="quantity" class="form-control @error('quantity') is-invalid @enderror"
-                                       value="{{ old('quantity', $product->quantity) }}" min="0" required>
-                                @error('quantity')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                                <label class="form-label">الكمية</label>
+                                <input type="number" name="quantity" class="form-control"
+                                       value="{{ old('quantity', $product->quantity) }}" min="0" readonly>
+                                <div class="form-text">الرصيد يُعدَّل عبر تسويات الجرد أو المشتريات (سلامة محاسبية)</div>
                             </div>
 
                             <div class="col-md-6">
@@ -117,6 +117,8 @@
                                           rows="3">{{ old('description', $product->description) }}</textarea>
                                 @error('description')<div class="invalid-feedback">{{ $message }}</div>@enderror
                             </div>
+
+                            @include('products._form_extras')
 
                             @if($product->image)
                                 <div class="col-12">

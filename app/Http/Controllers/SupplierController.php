@@ -23,7 +23,8 @@ class SupplierController extends Controller
 
     public function create()
     {
-        return view('suppliers.create');
+        $purchasePriceLists = \App\Models\PurchasePriceList::where('is_active', true)->orderBy('name')->get();
+        return view('suppliers.create', compact('purchasePriceLists'));
     }
 
     public function store(Request $request)
@@ -33,7 +34,9 @@ class SupplierController extends Controller
             'email' => 'nullable|email|max:255',
             'phone' => 'required|string|max:20',
             'address' => 'nullable|string',
-            'company' => 'nullable|string|max:255'
+            'company' => 'nullable|string|max:255',
+            'tax_number' => 'nullable|string|max:50',
+            'purchase_price_list_id' => 'nullable|exists:purchase_price_lists,id',
         ]);
 
         Supplier::create($validated);
@@ -53,7 +56,8 @@ class SupplierController extends Controller
 
     public function edit(Supplier $supplier)
     {
-        return view('suppliers.edit', compact('supplier'));
+        $purchasePriceLists = \App\Models\PurchasePriceList::where('is_active', true)->orderBy('name')->get();
+        return view('suppliers.edit', compact('supplier', 'purchasePriceLists'));
     }
 
     public function update(Request $request, Supplier $supplier)
@@ -63,7 +67,9 @@ class SupplierController extends Controller
             'email' => 'nullable|email|max:255',
             'phone' => 'required|string|max:20',
             'address' => 'nullable|string',
-            'company' => 'nullable|string|max:255'
+            'company' => 'nullable|string|max:255',
+            'tax_number' => 'nullable|string|max:50',
+            'purchase_price_list_id' => 'nullable|exists:purchase_price_lists,id',
         ]);
 
         $supplier->update($validated);

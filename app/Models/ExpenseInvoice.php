@@ -3,14 +3,17 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class ExpenseInvoice extends Model
 {
+    use SoftDeletes;
+
     protected $fillable = [
         'invoice_number', 'vendor_name', 'supplier_id',
         'expense_account_id', 'user_id', 'branch_id', 'journal_entry_id',
         'invoice_date', 'due_date', 'vendor_invoice_number',
-        'total_amount', 'paid_amount', 'payment_status',
+        'total_amount', 'tax_amount', 'paid_amount', 'payment_status',
         'notes', 'is_posted',
     ];
 
@@ -18,6 +21,7 @@ class ExpenseInvoice extends Model
         'invoice_date'  => 'date',
         'due_date'      => 'date',
         'total_amount'  => 'decimal:2',
+        'tax_amount'    => 'decimal:2',
         'paid_amount'   => 'decimal:2',
         'is_posted'     => 'boolean',
     ];

@@ -159,6 +159,8 @@ class InventoryAdjustmentController extends Controller
     // ── Build GL entry for a single adjustment ────────────────────────
     private function createGLEntry(InventoryAdjustment $adj, Product $product): ?JournalEntry
     {
+        \App\Services\PeriodLockService::assertOpen(now()->toDateString());
+
         $invCode      = Setting::get('account_inventory_code', '1300');
         $shortageCode = Setting::get('account_inventory_shortage_code', '6510');
         $surplusCode  = Setting::get('account_inventory_surplus_code',  '4100');

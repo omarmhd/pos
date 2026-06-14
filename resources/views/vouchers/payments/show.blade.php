@@ -36,6 +36,19 @@
                         {{ number_format($payment->amount, 2) }} {{ $currency }}
                     </dd>
 
+                    @if($payment->currency_id && $payment->currency)
+                    <dt class="col-5 text-muted">المبلغ بالعملة</dt>
+                    <dd class="col-7">
+                        {{ number_format($payment->amount_fc, 2) }} {{ $payment->currency->code }}
+                        <small class="text-muted">(سعر الصرف: {{ rtrim(rtrim(number_format($payment->exchange_rate, 6), '0'), '.') }})</small>
+                    </dd>
+                    @endif
+
+                    @if($payment->second_date)
+                    <dt class="col-5 text-muted">تاريخ ثانٍ</dt>
+                    <dd class="col-7">{{ $payment->second_date->format('Y-m-d') }}</dd>
+                    @endif
+
                     <dt class="col-5 text-muted">طريقة الصرف</dt>
                     <dd class="col-7">{{ $payment->paymentMethodLabel() }}</dd>
 

@@ -14,8 +14,15 @@ class Supplier extends Model
         'email',
         'phone',
         'address',
-        'company'
+        'company',
+        'tax_number',   // رقم التسجيل الضريبي (TRN)
+        'purchase_price_list_id',
     ];
+
+    public function purchasePriceList()
+    {
+        return $this->belongsTo(PurchasePriceList::class);
+    }
 
     public function purchases()
     {
@@ -27,11 +34,21 @@ class Supplier extends Model
         return $this->hasMany(SupplierPayment::class);
     }
 
+    public function returns()
+    {
+        return $this->hasMany(PurchaseReturn::class);
+    }
+
     public function outstandingBalance(): float
     {
-        return (float) $this->purchases()
-            ->whereIn('payment_status', ['unpaid', 'partial'])
+        $billed = (float) $this->purchases()
             ->selectRaw('COALESCE(SUM(total_amount - paid_amount), 0) as balance')
             ->value('balance');
+
+        $returned = (float) $this->returns()
+            ->where('refund_method', 'ap_deduction')
+            ->sum('total_amount');
+
+        return max(0, $billed - $returned);
     }
 }

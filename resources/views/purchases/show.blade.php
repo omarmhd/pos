@@ -78,6 +78,16 @@
                         @endforeach
                         </tbody>
                         <tfoot class="table-light">
+                        @if(($purchase->tax_amount ?? 0) > 0)
+                        <tr>
+                            <td colspan="4" class="text-end">المجموع قبل الضريبة:</td>
+                            <td>{{ number_format($purchase->total_amount - $purchase->tax_amount, 2) }} {{ $currency }}</td>
+                        </tr>
+                        <tr>
+                            <td colspan="4" class="text-end">ضريبة المدخلات:</td>
+                            <td>{{ number_format($purchase->tax_amount, 2) }} {{ $currency }}</td>
+                        </tr>
+                        @endif
                         <tr>
                             <td colspan="4" class="text-end"><strong>الإجمالي:</strong></td>
                             <td><strong>{{ number_format($purchase->total_amount, 2) }} {{ $currency }}</strong></td>

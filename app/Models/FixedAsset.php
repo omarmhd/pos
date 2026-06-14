@@ -9,16 +9,18 @@ class FixedAsset extends Model
     protected $fillable = [
         'asset_code', 'name', 'description',
         'category_id', 'branch_id', 'user_id', 'journal_entry_id',
-        'purchase_date', 'purchase_cost', 'residual_value', 'supplier_name',
+        'purchase_date', 'purchase_cost', 'tax_amount', 'residual_value', 'supplier_name',
         'depreciation_method', 'useful_life_months', 'depreciation_rate',
         'accumulated_depreciation', 'net_book_value',
         'status', 'disposal_date', 'disposal_amount', 'notes',
+        'res_statement_id',
     ];
 
     protected $casts = [
         'purchase_date'           => 'date',
         'disposal_date'           => 'date',
         'purchase_cost'           => 'decimal:2',
+        'tax_amount'              => 'decimal:2',
         'residual_value'          => 'decimal:2',
         'accumulated_depreciation'=> 'decimal:2',
         'net_book_value'          => 'decimal:2',
@@ -31,6 +33,7 @@ class FixedAsset extends Model
     public function user()           { return $this->belongsTo(User::class); }
     public function journalEntry()   { return $this->belongsTo(JournalEntry::class); }
     public function depreciationEntries() { return $this->hasMany(AssetDepreciationEntry::class, 'fixed_asset_id'); }
+    public function resStatement()   { return $this->belongsTo(RevenueExpenseStatement::class, 'res_statement_id'); }
 
     /** Depreciable amount = cost - residual value */
     public function depreciableAmount(): float

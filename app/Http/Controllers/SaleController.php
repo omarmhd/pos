@@ -27,7 +27,7 @@ class SaleController extends Controller
 
             return DataTables::eloquent($query)
                 ->addColumn('user_name', fn($s) => e($s->user?->name ?? '—'))
-                ->addColumn('payment_badge', fn($s) => $this->paymentBadge($s->payment_method))
+                ->addColumn('payment_badge', fn($s) => $this->paymentBadge($s))
                 ->addColumn('credit_badge', fn($s) => $s->is_credit
                     ? "<span class='badge bg-warning text-dark'>آجل</span>"
                     : "<span class='badge bg-light text-dark border'>نقدي</span>")
@@ -73,13 +73,15 @@ class SaleController extends Controller
                 ->with('error', 'لا يمكن حذف الفاتورة بعد ترحيلها. استخدم قيد تصحيح.');
         }
 
-        foreach ($sale->items as $item) {
-            if ($item->product) {
-                $item->product->increment('quantity', $item->quantity);
+        \Illuminate\Support\Facades\DB::transaction(function () use ($sale) {
+            // Explicitly delete items to fire SaleItem::deleting() hook
+            // which handles correct stock restoration via WarehouseService.
+            foreach ($sale->items as $item) {
+                $item->delete();
             }
-        }
 
-        $sale->delete();
+            $sale->delete();
+        });
 
         \App\Models\AuditLog::create([
             'user_id'        => auth()->id(),
@@ -96,8 +98,12 @@ class SaleController extends Controller
 
     // ── private helpers ──────────────────────────────────────────────────────
 
-    private function paymentBadge(string $method): string
+    private function paymentBadge(Sale $sale): string
     {
+        if ($sale->isMixed()) {
+            return "<span class='badge bg-warning text-dark'>دفع مختلط</span>";
+        }
+        $method = $sale->payment_method;
         $map = [
             'cash'            => ['success', 'نقدي'],
             'card'            => ['primary', 'بطاقة'],

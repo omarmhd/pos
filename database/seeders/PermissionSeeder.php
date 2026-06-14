@@ -29,6 +29,7 @@ class PermissionSeeder extends Seeder
         // ── Ensure all roles exist ──────────────────────────────────────────
         $admin          = Role::firstOrCreate(['name' => 'admin',           'guard_name' => 'web']);
         $manager        = Role::firstOrCreate(['name' => 'manager',         'guard_name' => 'web']);
+        $branchManager  = Role::firstOrCreate(['name' => 'branch_manager',  'guard_name' => 'web']);
         $cashier        = Role::firstOrCreate(['name' => 'cashier',         'guard_name' => 'web']);
         $accountant     = Role::firstOrCreate(['name' => 'accountant',      'guard_name' => 'web']);
         $reversalMgr    = Role::firstOrCreate(['name' => 'reversal_manager','guard_name' => 'web']);
@@ -36,8 +37,10 @@ class PermissionSeeder extends Seeder
         // ── Admin — all permissions ─────────────────────────────────────────
         $admin->syncPermissions($allKeys);
 
-        // ── Manager ────────────────────────────────────────────────────────
-        $manager->syncPermissions([
+        // ── Manager (company-wide — see Controller::GLOBAL_ROLES) ───────────
+        // ── Branch Manager (same operational permissions, but scoped to their
+        //    own branch via branch_id — NOT in Controller::GLOBAL_ROLES) ─────
+        $managerPermissions = [
             'dashboard.view',
             // Cash Shifts
             'pos.shifts.view', 'pos.shifts.open', 'pos.shifts.close', 'pos.shifts.manage',
@@ -54,6 +57,10 @@ class PermissionSeeder extends Seeder
             'purchase_orders.view', 'purchase_orders.create',
             'purchase_orders.send', 'purchase_orders.cancel', 'purchase_orders.convert',
             'expenses.view', 'expenses.create', 'expenses.pay',
+            // Customs Declarations
+            'customs.view', 'customs.manage',
+            // Service Revenue Invoices
+            'services.view', 'services.manage',
             // Branches & Warehouses
             'branches.view', 'branches.manage',
             'pos_terminals.view', 'pos_terminals.manage',
@@ -61,6 +68,11 @@ class PermissionSeeder extends Seeder
             'stock_transfers.complete', 'stock_transfers.cancel',
             // Price Lists
             'price_lists.view', 'price_lists.manage',
+            'purchase_price_lists.view', 'purchase_price_lists.manage',
+            // Currencies
+            'currencies.view', 'currencies.manage',
+            // Assemblies (التصنيع والتجميع)
+            'assemblies.view', 'assemblies.create',
             // Fixed Assets
             'fixed_assets.view', 'fixed_assets.create',
             'fixed_assets.depreciate', 'fixed_assets.dispose',
@@ -75,6 +87,8 @@ class PermissionSeeder extends Seeder
             'inventory.view', 'inventory.adjust', 'inventory.count',
             // Vouchers
             'vouchers.view', 'vouchers.create', 'vouchers.delete',
+            // Checks
+            'checks.view', 'checks.create', 'checks.transition', 'checks.delete',
             // Accounting (read + basic)
             'accounts.view',
             'journal_entries.view',
@@ -82,6 +96,7 @@ class PermissionSeeder extends Seeder
             'accounting.periods.view',
             // Reports
             'reports.view',
+            'res.view', 'res.manage',
             // HR
             'hr.view_employees', 'hr.create_employees', 'hr.edit_employees',
             'hr.view_payroll', 'hr.create_payroll', 'hr.approve_payroll',
@@ -92,7 +107,10 @@ class PermissionSeeder extends Seeder
             'hr.eosb.view', 'hr.eosb.post',
             // Reversals
             'reversals.view', 'reversals.create',
-        ]);
+        ];
+
+        $manager->syncPermissions($managerPermissions);
+        $branchManager->syncPermissions($managerPermissions);
 
         // ── Cashier ─────────────────────────────────────────────────────────
         $cashier->syncPermissions([
@@ -121,18 +139,25 @@ class PermissionSeeder extends Seeder
             'purchase_orders.view', 'purchase_orders.create',
             'purchase_orders.send', 'purchase_orders.cancel', 'purchase_orders.convert',
             'expenses.view', 'expenses.create', 'expenses.pay',
+            'customs.view', 'customs.manage',
+            'services.view', 'services.manage',
             'branches.view',
             'price_lists.view',
+            'purchase_price_lists.view',
+            'currencies.view',
+            'assemblies.view',
             'fixed_assets.view', 'fixed_assets.depreciate',
             'customers.view', 'customers.payments',
             'suppliers.view', 'suppliers.payments',
             'vouchers.view', 'vouchers.create', 'vouchers.delete',
+            'checks.view', 'checks.create', 'checks.transition', 'checks.delete',
             'accounts.view', 'accounts.create', 'accounts.edit', 'accounts.delete', 'accounts.import',
             'journal_entries.view', 'journal_entries.create',
             'ledger.view', 'trial_balance.view', 'financial_statements.view',
             'accounting.year_end_close', 'accounting.post', 'accounting.reverse',
             'accounting.periods.view', 'accounting.periods.manage',
             'reports.view',
+            'res.view', 'res.manage',
             'audit_logs.view',
             'reversals.view', 'reversals.create',
             'hr.eosb.view', 'hr.eosb.post',

@@ -39,4 +39,17 @@ class Account extends Model
     {
         return $this->hasMany(JournalEntryLine::class);
     }
+
+    /**
+     * الرصيد الحالي للحساب = مجموع المدين − مجموع الدائن.
+     * موجب = رصيد مدين، سالب = رصيد دائن.
+     */
+    public function currentBalance(): float
+    {
+        $row = $this->journalEntryLines()
+            ->selectRaw('COALESCE(SUM(debit), 0) as d, COALESCE(SUM(credit), 0) as c')
+            ->first();
+
+        return round((float) $row->d - (float) $row->c, 2);
+    }
 }

@@ -43,6 +43,8 @@
                                         <span class="badge bg-danger">مدير</span>
                                     @elseif($user->hasRole('manager'))
                                         <span class="badge bg-warning">مشرف</span>
+                                    @elseif($user->hasRole('branch_manager'))
+                                        <span class="badge bg-warning">مدير فرع</span>
                                     @else
                                         <span class="badge bg-secondary">{{ $r }}</span>
                                     @endif

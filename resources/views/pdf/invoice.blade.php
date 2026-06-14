@@ -125,6 +125,9 @@
                 <div class="box-title">بيانات العميل</div>
                 @if($sale->customer)
                     <div class="info-line"><strong>العميل:</strong> {{ $sale->customer->name }}</div>
+                    @if($sale->customer->tax_number)
+                    <div class="info-line"><strong>الرقم الضريبي:</strong> {{ $sale->customer->tax_number }}</div>
+                    @endif
                     @if($sale->customer->phone)
                     <div class="info-line"><strong>الهاتف:</strong> {{ $sale->customer->phone }}</div>
                     @endif

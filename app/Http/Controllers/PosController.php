@@ -28,8 +28,12 @@ class PosController extends Controller
     {
         $allowNegStock = (bool) Setting::get('allow_negative_stock', 0);
 
-        $products = Product::with('category')
-            ->when(!$allowNegStock, fn($q) => $q->where('quantity', '>', 0))
+        $products = Product::with('category', 'units')
+            ->when(!$allowNegStock, fn($q) => $q->where(function ($qq) {
+                // الخدمات والأصناف التجميعية لا مخزون لها — تظهر دائماً
+                $qq->where('quantity', '>', 0)
+                   ->orWhereIn('product_type', [Product::TYPE_SERVICE, Product::TYPE_BUNDLE]);
+            }))
             ->orderBy('name')
             ->limit(200)
             ->get();
@@ -118,19 +122,28 @@ class PosController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'items'              => 'required|array|min:1',
-            'items.*.product_id' => 'required|exists:products,id',
-            'items.*.quantity'   => 'required|numeric|min:0.001',
-            'items.*.unit_price' => 'required|numeric|min:0',
+            'items'                   => 'required|array|min:1',
+            'items.*.product_id'      => 'required|exists:products,id',
+            'items.*.product_unit_id' => 'nullable|exists:product_units,id',
+            'items.*.quantity'        => 'required|numeric|min:0.001',
+            'items.*.unit_price'      => 'required|numeric|min:0',
             'subtotal'           => 'required|numeric|min:0',
             'discount'           => 'nullable|numeric|min:0',
             'tax'                => 'nullable|numeric|min:0',
             'total_amount'       => 'required|numeric|min:0',
             'is_credit'          => 'nullable|boolean',
             'customer_id'        => 'required_if:is_credit,true|nullable|exists:customers,id',
-            'payment_method'     => 'required_unless:is_credit,true|nullable|in:cash,card,mobile_wallet,deposit_balance',
+            'payment_method'     => 'required_unless:is_credit,true|nullable|in:cash,card,mobile_wallet,deposit_balance,mixed',
             'paid_amount'        => 'required|numeric|min:0',
             'balance_used'       => 'nullable|numeric|min:0',
+            // ── تحسينات الأصيل: خصم نسبة، شامل الضريبة، مرجع مقاصة، دفع مختلط بالشيكات ──
+            'discount_percent'   => 'nullable|numeric|min:0|max:100',
+            'tax_inclusive'      => 'nullable|boolean',
+            'setoff_ref'         => 'nullable|string|max:255',
+            'cheque_amount'      => 'nullable|numeric|min:0',
+            'cheque_ref'         => 'nullable|string|max:100',
+            'cheque_bank'        => 'nullable|string|max:255',
+            'cheque_due_date'    => 'nullable|date',
         ]);
 
         // ── Load settings (authoritative for calculation) ──────────────────
@@ -139,6 +152,11 @@ class PosController extends Controller
         $vatInclusive  = (bool) Setting::get('vat_inclusive',         0);
         $allowNegStock = (bool) Setting::get('allow_negative_stock',  0);
         $maxDiscPct    = (float) Setting::get('max_discount_percent', 100);
+
+        // تجاوز "شامل الضريبة" لكل فاتورة (اختياري) — يبقى الإعداد العام إن لم يُرسل
+        if ($request->has('tax_inclusive') && $request->input('tax_inclusive') !== null) {
+            $vatInclusive = (bool) $request->input('tax_inclusive');
+        }
 
         // ── Resolve price list for this transaction ─────────────────────────
         $customer  = $request->customer_id ? Customer::find($request->customer_id) : null;
@@ -153,20 +171,69 @@ class PosController extends Controller
         $discount    = round((float) ($request->discount ?? 0), 2);
         $balanceUsed = round((float) ($request->balance_used ?? 0), 2);
 
-        // ── Recalculate subtotal using server-authoritative prices ───────────
-        // This prevents clients from manipulating unit prices on the frontend.
-        $serverSubtotal = 0;
+        // ── Normalize lines: unit conversion + server-authoritative prices ──
+        // كل سطر يُحوَّل للوحدة الرئيسية (baseQty) والسعر للوحدة الرئيسية.
+        // هذا يمنع تلاعب الواجهة بالأسعار ويوحّد حسابات المخزون والتكلفة.
+        $lineProductIds = collect($request->items)->pluck('product_id')->map('intval')->unique()->all();
+        $lineProducts   = Product::with('components.component', 'units')
+            ->whereIn('id', $lineProductIds)->get()->keyBy('id');
+
+        $normalized = [];   // [{product, unit, factor, baseQty, basePrice, lineTotal, ...}]
         foreach ($request->items as $item) {
-            $authorizedPrice = $serverPrices[(int) $item['product_id']] ?? (float) $item['unit_price'];
-            $serverSubtotal += $item['quantity'] * $authorizedPrice;
+            $product = $lineProducts->get((int) $item['product_id']);
+            if (!$product) {
+                return response()->json(['error' => 'منتج غير موجود: #' . $item['product_id']], 400);
+            }
+
+            $unit   = null;
+            $factor = 1.0;
+            if (!empty($item['product_unit_id'])) {
+                $unit = $product->units->firstWhere('id', (int) $item['product_unit_id']);
+                if (!$unit) {
+                    return response()->json(['error' => 'وحدة غير صحيحة للمنتج: ' . $product->name], 422);
+                }
+                $factor = (float) $unit->factor;
+            }
+
+            $qtyEntered = (float) $item['quantity'];          // بالوحدة المختارة
+            $baseQty    = round($qtyEntered * $factor, 4);    // بالوحدة الرئيسية
+
+            // السعر المعتمد من الخادم (للوحدة الرئيسية)
+            $resolvedBase = (float) ($serverPrices[(int) $item['product_id']] ?? (float) $product->selling_price);
+            if ($unit) {
+                $unitPrice = $unit->selling_price !== null
+                    ? (float) $unit->selling_price
+                    : round($resolvedBase * $factor, 2);
+                $basePrice = $factor > 0 ? round($unitPrice / $factor, 4) : $resolvedBase;
+            } else {
+                $basePrice = $resolvedBase;
+            }
+
+            $normalized[] = [
+                'product'   => $product,
+                'unit'      => $unit,
+                'factor'    => $factor,
+                'baseQty'   => $baseQty,
+                'basePrice' => $basePrice,
+                'lineTotal' => round($baseQty * $basePrice, 2),
+            ];
         }
-        $serverSubtotal = round($serverSubtotal, 2);
+
+        $serverSubtotal = round(array_sum(array_column($normalized, 'lineTotal')), 2);
 
         // Accept if client's subtotal matches (within 1 fils rounding tolerance)
         // If mismatch → use server value (protects against price tampering)
         if (abs($serverSubtotal - $subtotal) > 0.01) {
             $subtotal = $serverSubtotal;
         }
+
+        // خصم نسبة على مستوى الفاتورة (يُضاف لمبلغ الخصم قبل الضريبة)
+        $discountPercent = round((float) ($request->discount_percent ?? 0), 2);
+        if ($discountPercent > 0 && $subtotal > 0) {
+            $discount = round($discount + $subtotal * $discountPercent / 100, 2);
+        }
+        // الدفع المختلط: جزء الشيكات
+        $chequeAmount = round((float) ($request->cheque_amount ?? 0), 2);
 
         // ── Validate discount ceiling ──────────────────────────────────────
         if ($maxDiscPct < 100 && $subtotal > 0) {
@@ -178,49 +245,98 @@ class PosController extends Controller
             }
         }
 
-        // ── Server-side VAT calculation (overrides frontend value) ─────────
-        $afterDiscount = max(0.0, $subtotal - $discount);
-        if ($vatEnabled && !$vatInclusive) {
-            $tax = round($afterDiscount * $vatRate / 100, 2);
-        } elseif ($vatEnabled && $vatInclusive) {
-            $tax = round($afterDiscount - $afterDiscount / (1 + $vatRate / 100), 2);
-        } else {
-            $tax = 0.0;
+        // ── Server-side VAT: per-line, per-product rate (ضريبة لكل صنف) ─────
+        // الخصم على مستوى الفاتورة يُوزَّع نسبياً على السطور قبل احتساب الضريبة
+        // (المعالجة الضريبية القياسية للخصومات).
+        $tax = 0.0;
+        foreach ($normalized as $k => $line) {
+            $rate = $line['product']->effectiveVatRate();   // 0 إذا معفى أو الضريبة معطلة
+
+            $discountShare = ($subtotal > 0 && $discount > 0)
+                ? round($discount * $line['lineTotal'] / $subtotal, 4)
+                : 0.0;
+            $netLine = max(0.0, $line['lineTotal'] - $discountShare);
+
+            if ($rate > 0 && $vatInclusive) {
+                $lineVat = round($netLine - $netLine / (1 + $rate / 100), 2);
+            } elseif ($rate > 0) {
+                $lineVat = round($netLine * $rate / 100, 2);
+            } else {
+                $lineVat = 0.0;
+            }
+
+            $normalized[$k]['vatRate']   = $rate;
+            $normalized[$k]['vatAmount'] = $lineVat;
+            $tax += $lineVat;
         }
-        $totalAmount = round($afterDiscount + $tax, 2);
+        $tax = round($tax, 2);
+
+        $afterDiscount = max(0.0, $subtotal - $discount);
+        $totalAmount   = $vatInclusive
+            ? round($afterDiscount, 2)                       // الضريبة ضمن السعر
+            : round($afterDiscount + $tax, 2);
 
         DB::beginTransaction();
         try {
             // Resolve warehouse for this sale (user's branch → system default)
             $warehouseId = WarehouseService::getForUser(auth()->user())->id;
 
-            $productIds = collect($request->items)->pluck('product_id')->unique()->values()->all();
+            // ── حساب البونص + الاحتياج الفعلي من المخزون لكل صنف ──────────────
+            // بضاعة: الاحتياج = الكمية الأساسية + البونص
+            // تجميعي: الاحتياج يقع على المكونات (كمية الأب × كمية المكوّن)
+            // خدمة: لا احتياج مخزني
+            $requirements = [];   // [product_id => baseQty needed]
+            foreach ($normalized as $k => $line) {
+                $product = $line['product'];
+
+                if ($product->isService()) {
+                    $normalized[$k]['bonusQty'] = 0.0;
+                    continue;
+                }
+
+                if ($product->isBundle()) {
+                    $normalized[$k]['bonusQty'] = 0.0;
+                    if ($product->components->isEmpty()) {
+                        return response()->json(['error' => 'الصنف التجميعي "' . $product->name . '" بلا مكونات — عرّف مكوناته أولاً'], 422);
+                    }
+                    foreach ($product->components as $comp) {
+                        $requirements[$comp->component_id] = ($requirements[$comp->component_id] ?? 0)
+                            + $line['baseQty'] * (float) $comp->quantity;
+                    }
+                    continue;
+                }
+
+                // بضاعة: البونص (الكمية الإضافية) يُحتسب على الكمية الأساسية
+                $bonus = $product->bonusFor($line['baseQty']);
+                $normalized[$k]['bonusQty'] = $bonus;
+                $requirements[$product->id] = ($requirements[$product->id] ?? 0)
+                    + $line['baseQty'] + $bonus;
+            }
+
+            $stockProductIds = array_keys($requirements);
 
             // ── CRITICAL: Lock order must be consistent to prevent deadlocks ──
             // Always lock stock_levels FIRST, then products (consistent order = no deadlock)
             $stockLevels = \App\Models\StockLevel::where('warehouse_id', $warehouseId)
-                ->whereIn('product_id', $productIds)
-                ->lockForUpdate()   // ← ADDED: prevents overselling in concurrent requests
+                ->whereIn('product_id', $stockProductIds)
+                ->lockForUpdate()   // ← prevents overselling in concurrent requests
                 ->get()
                 ->keyBy('product_id');
 
-            $products = Product::whereIn('id', $productIds)->lockForUpdate()->get()->keyBy('id');
+            $products = Product::whereIn('id', $stockProductIds)->lockForUpdate()->get()->keyBy('id');
 
-            foreach ($request->items as $item) {
-                $product = $products->get($item['product_id']);
-                if (!$product) {
-                    return response()->json(['error' => 'منتج غير موجود: #' . $item['product_id']], 400);
-                }
-                if (!$allowNegStock) {
-                    // Check per-warehouse stock; fall back to global if no stock_level record yet
-                    $available = isset($stockLevels[$item['product_id']])
-                        ? (float) $stockLevels[$item['product_id']]->quantity
-                        : (float) $product->quantity;
+            if (!$allowNegStock) {
+                foreach ($requirements as $pid => $needed) {
+                    $stockProduct = $products->get($pid);
+                    $available = isset($stockLevels[$pid])
+                        ? (float) $stockLevels[$pid]->quantity
+                        : (float) ($stockProduct->quantity ?? 0);
 
-                    if ($available < $item['quantity']) {
+                    if ($available < $needed) {
                         return response()->json([
-                            'error' => 'المنتج "' . $product->name . '" غير متوفر بالكمية المطلوبة'
-                                     . ' (المتاح في المخزن: ' . number_format($available, 2) . ')',
+                            'error' => 'المنتج "' . ($stockProduct->name ?? "#$pid") . '" غير متوفر بالكمية المطلوبة'
+                                     . ' (المطلوب شاملاً البونص/المكونات: ' . number_format($needed, 2)
+                                     . ' / المتاح في المخزن: ' . number_format($available, 2) . ')',
                         ], 400);
                     }
                 }
@@ -241,11 +357,11 @@ class PosController extends Controller
             }
 
             $paidAmount   = $isCredit ? 0 : (float) $request->paid_amount;
-            $changeAmount = $isCredit ? 0 : max(0, $paidAmount - ($totalAmount - $balanceUsed));
+            $changeAmount = $isCredit ? 0 : max(0, $paidAmount - ($totalAmount - $balanceUsed - $chequeAmount));
 
-            // Validate cash paid + balance_used >= total for cash sales
-            if (!$isCredit && ($paidAmount + $balanceUsed) < $totalAmount - 0.005) {
-                return response()->json(['error' => 'المبلغ المدفوع (نقدي + رصيد) أقل من الإجمالي المستحق'], 422);
+            // Validate cash + cheque + balance_used >= total for cash sales
+            if (!$isCredit && ($paidAmount + $balanceUsed + $chequeAmount) < $totalAmount - 0.005) {
+                return response()->json(['error' => 'المبلغ المدفوع (نقدي + شيكات + رصيد) أقل من الإجمالي المستحق'], 422);
             }
 
             if ($isCredit && $request->customer_id) {
@@ -270,6 +386,8 @@ class PosController extends Controller
                 ?? auth()->user()?->branch_id
                 ?? \App\Models\Setting::get('default_branch_id');
 
+            $basePaymentMethod = $isCredit ? 'cash' : $request->payment_method;
+
             $sale = Sale::create([
                 'user_id'        => auth()->id(),
                 'customer_id'    => ($isCredit || $balanceUsed > 0) ? $request->customer_id : null,
@@ -277,31 +395,72 @@ class PosController extends Controller
                 'warehouse_id'   => $warehouseId,
                 'branch_id'      => $saleBranchId,
                 'cash_shift_id'  => $activeShift?->id,
-                'subtotal'       => $subtotal,
-                'discount'       => $discount,
-                'tax'            => $tax,
-                'total_amount'   => $totalAmount,
-                'payment_method' => $isCredit ? 'cash' : $request->payment_method,
-                'paid_amount'    => $paidAmount,
-                'balance_used'   => $balanceUsed,
-                'change_amount'  => $changeAmount,
+                'subtotal'         => $subtotal,
+                'discount'         => $discount,
+                'discount_percent' => $discountPercent,
+                'tax'              => $tax,
+                'tax_inclusive'    => $vatInclusive,
+                'total_amount'     => $totalAmount,
+                'payment_method'   => $basePaymentMethod, // keeps original tender for GL
+                'paid_amount'      => $paidAmount,
+                'cash_amount'      => $isCredit ? 0 : round(max(0, $totalAmount - $balanceUsed - $chequeAmount), 2),
+                'cheque_amount'    => $chequeAmount,
+                'balance_used'     => $balanceUsed,
+                'change_amount'    => $changeAmount,
+                'setoff_ref'       => $request->input('setoff_ref'),
             ]);
 
-            foreach ($request->items as $item) {
-                $product = $products->get($item['product_id']);
-                // Use server-authoritative price (prevents frontend price manipulation)
-                $unitPrice = $serverPrices[(int) $item['product_id']] ?? (float) $item['unit_price'];
+            foreach ($normalized as $line) {
+                $product = $line['product'];
+
+                // تكلفة الوحدة: للتجميعي = مجموع تكلفة مكوناته، للخدمة = 0 (إلا إذا حُددت تكلفة)
+                $costPrice = $product->isBundle()
+                    ? $product->componentsCost()
+                    : (float) $product->cost_price;
+
                 SaleItem::create([
-                    'sale_id'     => $sale->id,
-                    'product_id'  => $item['product_id'],
-                    'quantity'    => $item['quantity'],
-                    'unit_price'  => $unitPrice,
-                    'cost_price'  => $product->cost_price,
-                    'total_price' => round($item['quantity'] * $unitPrice, 2),
+                    'sale_id'         => $sale->id,
+                    'product_id'      => $product->id,
+                    'quantity'        => $line['baseQty'],           // دائماً بالوحدة الرئيسية
+                    'unit_price'      => $line['basePrice'],         // سعر الوحدة الرئيسية
+                    'cost_price'      => $costPrice,
+                    'total_price'     => $line['lineTotal'],
+                    'vat_rate'        => $line['vatRate'],
+                    'vat_amount'      => $line['vatAmount'],
+                    'bonus_qty'       => $line['bonusQty'],
+                    'product_unit_id' => $line['unit']?->id,
+                    'unit_factor'     => $line['factor'],
+                    'unit_label'      => $line['unit']?->name,
                 ]);
-                // SaleItem::created() boot handles products.quantity decrement.
-                // Update per-warehouse stock_level here.
-                WarehouseService::out($warehouseId, $item['product_id'], $item['quantity']);
+                // SaleItem::created() boot handles stock movements (incl. bundle components & bonus).
+                // Update per-warehouse stock_level here:
+                if ($product->isBundle()) {
+                    foreach ($product->components as $comp) {
+                        WarehouseService::out($warehouseId, $comp->component_id,
+                            round($line['baseQty'] * (float) $comp->quantity, 4));
+                    }
+                } elseif (!$product->isService()) {
+                    WarehouseService::out($warehouseId, $product->id,
+                        round($line['baseQty'] + $line['bonusQty'], 4));
+                }
+            }
+
+            // ── سجل الشيك في حافظة الشيكات وربطه بالفاتورة (الدفع المختلط) ──
+            if ($chequeAmount > 0) {
+                $cheque = \App\Models\Check::create([
+                    'type'        => 'receivable',
+                    'check_ref'   => $request->input('cheque_ref'),
+                    'check_date'  => now()->toDateString(),
+                    'due_date'    => $request->input('cheque_due_date') ?: now()->toDateString(),
+                    'amount'      => $chequeAmount,
+                    'bank_name'   => $request->input('cheque_bank'),
+                    'customer_id' => $request->customer_id,
+                    'party_name'  => $sale->customer?->name ?? 'عميل نقدي',
+                    'status'      => 'received',
+                    'branch_id'   => $saleBranchId,
+                    'user_id'     => auth()->id(),
+                ]);
+                $sale->update(['cheque_id' => $cheque->id]);
             }
 
             (new LedgerPostingService())->postSale($sale->load('items', 'customer'));
@@ -309,13 +468,13 @@ class PosController extends Controller
             DB::commit();
 
             $sale->load('items.product', 'customer', 'user');
-            $payLabel = $isCredit ? 'آجل' : match ($sale->payment_method) {
+            $payLabel = $isCredit ? 'آجل' : ($sale->isMixed() ? 'دفع مختلط' : match ($sale->payment_method) {
                 'cash'            => 'نقدي',
                 'card'            => 'بطاقة بنكية',
                 'mobile_wallet'   => 'محفظة إلكترونية',
                 'deposit_balance' => 'رصيد إيداع',
                 default           => $sale->payment_method,
-            };
+            });
 
             return response()->json([
                 'success'        => true,
@@ -329,13 +488,21 @@ class PosController extends Controller
                     'payment_method' => $payLabel,
                     'customer'       => $sale->customer?->name ?? '',
                     'is_credit'      => $isCredit,
-                    'items'          => $sale->items->map(fn($i) => [
-                        'name'  => $i->product->name,
-                        'qty'   => $i->quantity,
-                        'unit'  => $i->product->unit ?? 'قطعة',
-                        'price' => number_format($i->unit_price, 2),
-                        'total' => number_format($i->total_price, 2),
-                    ])->toArray(),
+                    'items'          => $sale->items->map(function ($i) {
+                        $factor = (float) ($i->unit_factor ?: 1);
+                        $isUnit = $i->product_unit_id && $factor > 0;
+                        return [
+                            'name'  => $i->product->name . ($isUnit ? ' — ' . $i->unit_label : ''),
+                            // العرض بالوحدة المختارة (كرتون...) بينما التخزين بالوحدة الرئيسية
+                            'qty'   => $isUnit ? round($i->quantity / $factor, 3) : $i->quantity,
+                            'unit'  => $i->unit_label ?: ($i->product->unit ?? 'قطعة'),
+                            'price' => number_format($isUnit ? $i->unit_price * $factor : $i->unit_price, 2),
+                            'total' => number_format($i->total_price, 2),
+                            'bonus' => (float) ($i->bonus_qty ?? 0) > 0
+                                ? rtrim(rtrim(number_format($i->bonus_qty, 3), '0'), '.')
+                                : null,
+                        ];
+                    })->toArray(),
                     'subtotal'    => number_format($sale->subtotal, 2),
                     'discount'    => number_format($sale->discount, 2),
                     'has_discount'=> $sale->discount > 0,

@@ -13,6 +13,17 @@
         </a>
     </div>
 
+    {{-- Info Note --}}
+    <div class="alert alert-info d-flex align-items-center mb-4 no-print" role="alert">
+        <i class="bi bi-info-circle-fill fs-4 me-3 ms-2"></i>
+        <div>
+            <strong>دليل التقرير:</strong>
+            يُظهر هذا التقرير جميع الديون (الذمم الدائنة) المستحقة للموردين أو لجهات المصاريف والتي لم يتم سدادها بعد.
+            ويقوم بتوزيع هذه الديون حسب أقدمية كل فاتورة لمساعدتك في أولوية السداد وإدارة التدفق النقدي (السيولة).
+            يتضمن التقرير فقط المبالغ المتبقية بعد طرح المدفوعات وأي مرتجعات.
+        </div>
+    </div>
+
     {{-- Summary Cards --}}
     <div class="row g-3 mb-4">
         <div class="col-md-3">
@@ -20,7 +31,6 @@
                 <div class="card-body">
                     <div class="fs-5 fw-bold text-primary">{{ number_format($buckets['current'], 2) }} {{ $cur }}</div>
                     <div class="small fw-semibold">الجاري (0–30 يوم)</div>
-                    <div class="small text-muted">{{ collect($rows)->where('bucket','current')->count() }} فاتورة</div>
                 </div>
             </div>
         </div>
@@ -29,7 +39,6 @@
                 <div class="card-body">
                     <div class="fs-5 fw-bold text-warning">{{ number_format($buckets['31_60'], 2) }} {{ $cur }}</div>
                     <div class="small fw-semibold">31–60 يوم</div>
-                    <div class="small text-muted">{{ collect($rows)->where('bucket','31_60')->count() }} فاتورة</div>
                 </div>
             </div>
         </div>
@@ -38,7 +47,6 @@
                 <div class="card-body">
                     <div class="fs-5 fw-bold" style="color:#fd7e14">{{ number_format($buckets['61_90'], 2) }} {{ $cur }}</div>
                     <div class="small fw-semibold">61–90 يوم</div>
-                    <div class="small text-muted">{{ collect($rows)->where('bucket','61_90')->count() }} فاتورة</div>
                 </div>
             </div>
         </div>
@@ -47,7 +55,6 @@
                 <div class="card-body">
                     <div class="fs-5 fw-bold text-danger">{{ number_format($buckets['over_90'], 2) }} {{ $cur }}</div>
                     <div class="small fw-semibold">أكثر من 90 يوم</div>
-                    <div class="small text-muted">{{ collect($rows)->where('bucket','over_90')->count() }} فاتورة</div>
                 </div>
             </div>
         </div>
@@ -69,14 +76,8 @@
             <i class="bi bi-truck"></i> تفاصيل فواتير الموردين غير المسددة
         </div>
         <div class="card-body p-0">
-            @if(count($rows) === 0)
-                <div class="text-center text-muted py-5">
-                    <i class="bi bi-check2-circle fs-1 text-success"></i>
-                    <p class="mt-2">لا توجد ذمم دائنة مستحقة — جميع الفواتير مسددة</p>
-                </div>
-            @else
             <div class="table-responsive">
-                <table class="table table-hover mb-0 small dt-table" data-title="تقادم الذمم الدائنة">
+                <table class="table table-hover mb-0 small" id="apAgingTable" style="width:100%" data-title="تقادم الذمم الدائنة">
                     <thead class="table-dark">
                         <tr>
                             <th>المورد</th>
@@ -89,62 +90,35 @@
                             <th class="text-center">التقادم</th>
                         </tr>
                     </thead>
-                    <tbody>
-                    @foreach($rows as $row)
-                        <tr>
-                            <td class="fw-semibold">
-                                @if(isset($row['type']) && $row['type'] === 'expense')
-                                    <span class="badge bg-danger me-1 small">مصروف</span>
-                                    {{ $row['vendor'] ?? $row['supplier'] ?? '—' }}
-                                @elseif($row['supplier_id'])
-                                    <span class="badge bg-primary me-1 small">شراء</span>
-                                    <a href="{{ route('suppliers.show', $row['supplier_id']) }}" class="text-decoration-none">
-                                        {{ $row['vendor'] ?? $row['supplier'] ?? '—' }}
-                                    </a>
-                                @else
-                                    {{ $row['vendor'] ?? $row['supplier'] ?? '—' }}
-                                @endif
-                            </td>
-                            <td><span class="badge bg-light text-dark">{{ $row['invoice'] }}</span></td>
-                            <td>{{ $row['invoice_date'] }}</td>
-                            <td class="text-end">{{ number_format($row['total'], 2) }}</td>
-                            <td class="text-end text-success">{{ number_format($row['paid'], 2) }}</td>
-                            <td class="text-end fw-bold {{ $row['age_days'] > 60 ? 'text-danger' : '' }}">
-                                {{ number_format($row['outstanding'], 2) }}
-                            </td>
-                            <td class="text-center {{ $row['age_days'] > 90 ? 'text-danger fw-bold' : '' }}">
-                                {{ $row['age_days'] }}
-                            </td>
-                            <td class="text-center">
-                                @switch($row['bucket'])
-                                    @case('current')
-                                        <span class="badge bg-primary">جاري</span>
-                                        @break
-                                    @case('31_60')
-                                        <span class="badge bg-warning text-dark">31–60</span>
-                                        @break
-                                    @case('61_90')
-                                        <span class="badge" style="background:#fd7e14;color:white">61–90</span>
-                                        @break
-                                    @default
-                                        <span class="badge bg-danger">+90 يوم</span>
-                                @endswitch
-                            </td>
-                        </tr>
-                    @endforeach
-                    </tbody>
-                    <tfoot class="table-secondary fw-bold">
-                        <tr>
-                            <td colspan="5">الإجمالي</td>
-                            <td class="text-end text-danger">{{ number_format($totalOutstanding, 2) }}</td>
-                            <td colspan="2"></td>
-                        </tr>
-                    </tfoot>
+                    <tbody></tbody>
                 </table>
             </div>
-            @endif
         </div>
     </div>
 
 </div>
+@endsection
+
+@section('scripts')
+<script>
+$(function () {
+    $('#apAgingTable').DataTable({
+        serverSide: true,
+        processing: true,
+        ajax: "{{ route('reports.ap-aging') }}",
+        order: [],
+        columns: [
+            { data: 'vendor_col',      orderable: false, searchable: true  },
+            { data: 'invoice_col',     orderable: false, searchable: true  },
+            { data: 'invoice_date',    orderable: false, searchable: true  },
+            { data: 'total_fmt',       orderable: false, searchable: false, className: 'text-end'    },
+            { data: 'paid_fmt',        orderable: false, searchable: false, className: 'text-end'    },
+            { data: 'outstanding_fmt', orderable: false, searchable: false, className: 'text-end'    },
+            { data: 'age_fmt',         orderable: false, searchable: false, className: 'text-center' },
+            { data: 'bucket_col',      orderable: false, searchable: false, className: 'text-center' },
+        ],
+        language: { url: 'https://cdn.datatables.net/plug-ins/1.13.7/i18n/ar.json' },
+    });
+});
+</script>
 @endsection

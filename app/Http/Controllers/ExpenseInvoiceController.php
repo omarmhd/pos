@@ -77,8 +77,14 @@ class ExpenseInvoiceController extends Controller
             'expense_account_id'   => 'required|exists:accounts,id',
             'vendor_invoice_number'=> 'nullable|string|max:100',
             'total_amount'         => 'required|numeric|min:0.01',
+            'tax_amount'           => 'nullable|numeric|min:0',
             'notes'                => 'nullable|string',
         ]);
+
+        // ضريبة المدخلات لا يمكن أن تتجاوز إجمالي الفاتورة
+        if ((float) ($request->tax_amount ?? 0) >= (float) $request->total_amount) {
+            return back()->withInput()->with('error', 'ضريبة المدخلات يجب أن تكون أقل من إجمالي الفاتورة');
+        }
 
         // Ensure the selected account is an expense leaf account
         $account = Account::findOrFail($request->expense_account_id);
@@ -100,6 +106,7 @@ class ExpenseInvoiceController extends Controller
                 'due_date'              => $request->due_date ?: null,
                 'vendor_invoice_number' => $request->vendor_invoice_number ?: null,
                 'total_amount'          => $request->total_amount,
+                'tax_amount'            => round((float) ($request->tax_amount ?? 0), 2),
                 'notes'                 => $request->notes,
             ]);
 

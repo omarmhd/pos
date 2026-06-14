@@ -101,6 +101,9 @@
                 @if($purchase->supplier->company)
                 <div class="info-line"><strong>الشركة:</strong> {{ $purchase->supplier->company }}</div>
                 @endif
+                @if($purchase->supplier->tax_number)
+                <div class="info-line"><strong>الرقم الضريبي:</strong> {{ $purchase->supplier->tax_number }}</div>
+                @endif
                 <div class="info-line"><strong>الهاتف:</strong> {{ $purchase->supplier->phone ?? '—' }}</div>
                 @if($purchase->supplier->email)
                 <div class="info-line"><strong>البريد:</strong> {{ $purchase->supplier->email }}</div>

@@ -27,10 +27,11 @@
                 <tr>
                     <td>
                         <span class="badge fs-6
-                            {{ $role->name === 'admin'      ? 'bg-danger'  :
-                              ($role->name === 'manager'    ? 'bg-primary' :
-                              ($role->name === 'accountant' ? 'bg-info'    :
-                              ($role->name === 'cashier'    ? 'bg-success' : 'bg-secondary'))) }}">
+                            {{ $role->name === 'admin'          ? 'bg-danger'  :
+                              ($role->name === 'manager'        ? 'bg-primary' :
+                              ($role->name === 'branch_manager'  ? 'bg-primary' :
+                              ($role->name === 'accountant'     ? 'bg-info'    :
+                              ($role->name === 'cashier'        ? 'bg-success' : 'bg-secondary')))) }}">
                             {{ $role->name }}
                         </span>
                     </td>

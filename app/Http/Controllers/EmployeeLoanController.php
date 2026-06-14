@@ -126,8 +126,46 @@ class EmployeeLoanController extends Controller
         if ($loan->status !== 'active') {
             return back()->with('error', 'السلفة ليست نشطة');
         }
-        $loan->update(['status' => 'cancelled']);
+
+        if ($loan->installments_paid > 0 || $loan->remaining_balance < $loan->amount) {
+            return back()->with('error', 'لا يمكن إلغاء سلفة تم تسديد جزء منها، يجب الاستقطاع أو التسوية');
+        }
+
+        try {
+            \App\Services\PeriodLockService::assertOpen(now()->toDateString());
+        } catch (\RuntimeException $e) {
+            return back()->with('error', $e->getMessage());
+        }
+
+        \Illuminate\Support\Facades\DB::transaction(function () use ($loan) {
+            $loan->update(['status' => 'cancelled']);
+
+            $je = $loan->journalEntry;
+            if ($je) {
+                $revEntry = \App\Models\JournalEntry::create([
+                    'entry_date'  => now()->toDateString(),
+                    'description' => 'إلغاء وعكس سلفة موظف — ' . $loan->employee->name,
+                    'reference'   => 'REV-LOAN-' . $loan->id,
+                    'source_type' => get_class($loan),
+                    'source_id'   => $loan->id,
+                    'branch_id'   => $je->branch_id,
+                    'user_id'     => auth()->id(),
+                    'posted_at'   => now(),
+                ]);
+
+                foreach ($je->lines as $line) {
+                    \App\Models\JournalEntryLine::create([
+                        'journal_entry_id' => $revEntry->id,
+                        'account_id'       => $line->account_id,
+                        'debit'            => $line->credit,
+                        'credit'           => $line->debit,
+                        'line_description' => 'عكس — ' . $line->line_description,
+                    ]);
+                }
+            }
+        });
+
         return redirect()->route('hr.loans.index')
-            ->with('success', 'تم إلغاء السلفة');
+            ->with('success', 'تم إلغاء السلفة وعكس القيد المحاسبي بنجاح');
     }
 }

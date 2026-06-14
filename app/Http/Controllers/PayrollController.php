@@ -7,8 +7,6 @@ use App\Models\Attendance;
 use App\Models\EmployeeLoan;
 use App\Services\PdfService;
 use App\Models\Employee;
-use App\Models\JournalEntry;
-use App\Models\JournalEntryLine;
 use App\Models\PayrollItem;
 use App\Models\PayrollRun;
 use App\Models\Setting;
@@ -189,25 +187,7 @@ class PayrollController extends Controller
                 ];
             }
 
-            $debits  = round(array_sum(array_column($lines, 'debit')),  2);
-            $credits = round(array_sum(array_column($lines, 'credit')), 2);
-            if (abs($debits - $credits) > 0.005) {
-                throw new \RuntimeException("قيد الرواتب غير متوازن — مدين: {$debits} / دائن: {$credits}");
-            }
-
-            $entry = JournalEntry::create([
-                'entry_date'  => $payrollRun->pay_date,
-                'reference'   => $payrollRun->reference,
-                'source_type' => PayrollRun::class,
-                'source_id'   => $payrollRun->id,
-                'description' => 'مسير رواتب ' . $payrollRun->periodLabel(),
-                'user_id'     => auth()->id(),
-                'posted_at'   => now(),
-            ]);
-
-            foreach ($lines as $line) {
-                JournalEntryLine::create(array_merge(['journal_entry_id' => $entry->id], $line));
-            }
+            $entry = (new \App\Services\LedgerPostingService())->postPayrollRun($payrollRun, $lines);
 
             // ── تحديث أرصدة السلف بعد الاستقطاع ──────────────────────────
             foreach ($payrollRun->items as $item) {

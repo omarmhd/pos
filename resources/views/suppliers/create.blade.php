@@ -28,6 +28,26 @@
                         </div>
 
                         <div class="mb-3">
+                            <label class="form-label">رقم التسجيل الضريبي (TRN)</label>
+                            <input type="text" name="tax_number" class="form-control @error('tax_number') is-invalid @enderror"
+                                   value="{{ old('tax_number') }}">
+                            @error('tax_number')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">قائمة أسعار الشراء</label>
+                            <select name="purchase_price_list_id" class="form-select">
+                                <option value="">— بدون —</option>
+                                @foreach($purchasePriceLists as $pl)
+                                    <option value="{{ $pl->id }}" {{ old('purchase_price_list_id') == $pl->id ? 'selected' : '' }}>
+                                        {{ $pl->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            <div class="form-text">تُقترح أسعار هذه القائمة تلقائياً في فواتير شراء هذا المورد</div>
+                        </div>
+
+                        <div class="mb-3">
                             <label class="form-label">رقم الهاتف <span class="text-danger">*</span></label>
                             <input type="text" name="phone" class="form-control @error('phone') is-invalid @enderror"
                                    value="{{ old('phone') }}" required>

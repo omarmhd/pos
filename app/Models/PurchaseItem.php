@@ -14,13 +14,17 @@ class PurchaseItem extends Model
         'purchase_id', 'product_id',
         'quantity', 'unit_price', 'total_price',
         'lot_number', 'expiry_date',
+        'product_unit_id', 'unit_factor', 'unit_label',
     ];
 
     protected $casts = [
         'unit_price'  => 'decimal:2',
         'total_price' => 'decimal:2',
         'expiry_date' => 'date',
+        'unit_factor' => 'decimal:4',
     ];
+
+    public function productUnit() { return $this->belongsTo(ProductUnit::class); }
 
     public function purchase() { return $this->belongsTo(Purchase::class); }
     public function product()  { return $this->belongsTo(Product::class); }

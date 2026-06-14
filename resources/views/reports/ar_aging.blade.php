@@ -25,41 +25,48 @@
         </a>
     </div>
 
+    {{-- Info Note --}}
+    <div class="alert alert-info d-flex align-items-center mb-4 no-print" role="alert">
+        <i class="bi bi-info-circle-fill fs-4 me-3 ms-2"></i>
+        <div>
+            <strong>دليل التقرير:</strong>
+            يُظهر هذا التقرير جميع الديون (الذمم المدينة) المستحقة على العملاء والتي لم يتم سدادها بعد.
+            ويقوم بتوزيع هذه الديون حسب أقدمية كل فاتورة لمساعدتك في متابعة التحصيل وتقليل الديون المعدومة.
+            الرصيد المعروض هنا هو "الرصيد الصافي" (Net Outstanding) للفاتورة بعد خصم أي مدفوعات نقدية، شيكات، أرصدة إيداع، أو إشعارات دائنة وتصحيحات.
+        </div>
+    </div>
+
     {{-- Bucket Summary --}}
     <div class="row g-3 mb-4">
         <div class="col-md-3">
             <div class="card border-0 bg-success bg-opacity-10 text-center h-100">
                 <div class="card-body">
-                    <div class="fs-5 fw-bold text-success">{{ number_format($buckets['current'], 2) }} {{ $cur }}</div>
+                    <div class="fs-5 fw-bold text-success">{{ number_format($buckets['current'] ?? 0, 2) }} {{ $cur }}</div>
                     <div class="small fw-semibold">جارية (0–30 يوم)</div>
-                    <div class="small text-muted">{{ collect($rows)->where('bucket','current')->count() }} فاتورة</div>
                 </div>
             </div>
         </div>
         <div class="col-md-3">
             <div class="card border-0 bg-warning bg-opacity-10 text-center h-100">
                 <div class="card-body">
-                    <div class="fs-5 fw-bold text-warning">{{ number_format($buckets['31_60'], 2) }} {{ $cur }}</div>
+                    <div class="fs-5 fw-bold text-warning">{{ number_format($buckets['31_60'] ?? 0, 2) }} {{ $cur }}</div>
                     <div class="small fw-semibold">31–60 يوم</div>
-                    <div class="small text-muted">{{ collect($rows)->where('bucket','31_60')->count() }} فاتورة</div>
                 </div>
             </div>
         </div>
         <div class="col-md-3">
             <div class="card border-0 text-center h-100" style="background:#fff3e0;">
                 <div class="card-body">
-                    <div class="fs-5 fw-bold" style="color:#e65100;">{{ number_format($buckets['61_90'], 2) }} {{ $cur }}</div>
+                    <div class="fs-5 fw-bold" style="color:#e65100;">{{ number_format($buckets['61_90'] ?? 0, 2) }} {{ $cur }}</div>
                     <div class="small fw-semibold">61–90 يوم</div>
-                    <div class="small text-muted">{{ collect($rows)->where('bucket','61_90')->count() }} فاتورة</div>
                 </div>
             </div>
         </div>
         <div class="col-md-3">
             <div class="card border-0 bg-danger bg-opacity-10 text-center h-100">
                 <div class="card-body">
-                    <div class="fs-5 fw-bold text-danger">{{ number_format($buckets['over_90'], 2) }} {{ $cur }}</div>
+                    <div class="fs-5 fw-bold text-danger">{{ number_format($buckets['over_90'] ?? 0, 2) }} {{ $cur }}</div>
                     <div class="small fw-semibold">أكثر من 90 يوم</div>
-                    <div class="small text-muted">{{ collect($rows)->where('bucket','over_90')->count() }} فاتورة</div>
                 </div>
             </div>
         </div>
@@ -79,86 +86,53 @@
     <div class="card border-0 shadow-sm">
         <div class="card-header bg-white fw-bold"><i class="bi bi-table"></i> تفاصيل الفواتير المستحقة</div>
         <div class="card-body p-0">
-        @if(empty($rows))
-            <div class="text-center text-success py-5">
-                <i class="bi bi-check-circle fs-1 d-block mb-2"></i>
-                لا توجد ذمم مستحقة — جميع الفواتير مسددة
-            </div>
-        @else
-            <table class="table table-hover mb-0 dt-table" style="width:100%" data-title="تقادم الذمم المدينة">
+            <table class="table table-hover mb-0" id="arAgingTable" style="width:100%" data-title="تقادم الذمم المدينة">
                 <thead class="table-dark">
                     <tr>
                         <th class="ps-3">العميل</th>
                         <th>رقم الفاتورة</th>
                         <th>تاريخ الفاتورة</th>
-                        <th class="text-center">عمر الدين (يوم)</th>
                         <th class="text-end">إجمالي الفاتورة ({{ $cur }})</th>
-                        <th class="text-end">المدفوع ({{ $cur }})</th>
                         <th class="text-end">المستحق ({{ $cur }})</th>
+                        <th class="text-center">عمر الدين (يوم)</th>
                         <th class="text-center">الفئة</th>
-                        <th class="no-print"></th>
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach($rows as $row)
-                    @php
-                        $bucket = $row['bucket'];
-                        $rowClass = match($bucket) {
-                            'current' => '',
-                            '31_60'   => 'table-warning',
-                            '61_90'   => '',
-                            'over_90' => 'table-danger',
-                        };
-                        $badgeClass = match($bucket) {
-                            'current' => 'bg-success',
-                            '31_60'   => 'bg-warning text-dark',
-                            '61_90'   => 'bg-orange',
-                            'over_90' => 'bg-danger',
-                        };
-                        $bucketLabel = match($bucket) {
-                            'current' => '0–30 يوم',
-                            '31_60'   => '31–60 يوم',
-                            '61_90'   => '61–90 يوم',
-                            'over_90' => '> 90 يوم',
-                        };
-                    @endphp
-                    <tr class="{{ $rowClass }}">
-                        <td class="ps-3 fw-semibold">
-                            <a href="{{ route('customers.show', $row['customer_id']) }}" class="text-decoration-none">
-                                {{ $row['customer'] }}
-                            </a>
-                        </td>
-                        <td class="text-muted small">{{ $row['invoice'] }}</td>
-                        <td class="text-muted">{{ $row['invoice_date'] }}</td>
-                        <td class="text-center fw-bold {{ $row['age_days'] > 60 ? 'text-danger' : '' }}">
-                            {{ $row['age_days'] }}
-                        </td>
-                        <td class="text-end">{{ number_format($row['total'], 2) }}</td>
-                        <td class="text-end text-success">{{ number_format($row['paid'], 2) }}</td>
-                        <td class="text-end fw-bold text-danger">{{ number_format($row['outstanding'], 2) }}</td>
-                        <td class="text-center">
-                            <span class="badge {{ $badgeClass }}">{{ $bucketLabel }}</span>
-                        </td>
-                        <td class="pe-2 no-print">
-                            <a href="{{ route('customer-payments.create', [$row['customer_id'], 'sale_id' => null]) }}"
-                               class="btn btn-sm btn-outline-success py-0 px-2">
-                                <i class="bi bi-cash"></i>
-                            </a>
-                        </td>
-                    </tr>
-                    @endforeach
                 </tbody>
                 <tfoot class="table-secondary fw-bold">
                     <tr>
-                        <td colspan="6" class="ps-3">الإجمالي</td>
+                        <td colspan="4" class="ps-3">الإجمالي</td>
                         <td class="text-end text-danger">{{ number_format($totalOutstanding, 2) }}</td>
                         <td colspan="2"></td>
                     </tr>
                 </tfoot>
             </table>
-        @endif
         </div>
     </div>
 
 </div>
+@endsection
+
+@section('scripts')
+<script>
+$(function () {
+    $('#arAgingTable').DataTable({
+        serverSide: true,
+        processing: true,
+        ajax: "{{ route('reports.ar-aging') }}",
+        order: [],
+        columns: [
+            { data: 'customer_col',    orderable: false, searchable: true  },
+            { data: 'invoice_col',     orderable: false, searchable: true  },
+            { data: 'invoice_date',    orderable: false, searchable: true  },
+            { data: 'total_fmt',       orderable: false, searchable: false, className: 'text-end'    },
+            { data: 'outstanding_fmt', orderable: false, searchable: false, className: 'text-end'    },
+            { data: 'age_fmt',         orderable: false, searchable: false, className: 'text-center' },
+            { data: 'bucket_col',      orderable: false, searchable: false, className: 'text-center' },
+        ],
+        language: { url: 'https://cdn.datatables.net/plug-ins/1.13.7/i18n/ar.json' },
+    });
+});
+</script>
 @endsection

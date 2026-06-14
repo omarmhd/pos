@@ -45,15 +45,22 @@
 
         <div class="row g-3 mb-3">
             {{-- Voucher date --}}
-            <div class="col-md-6">
+            <div class="col-md-4">
                 <label class="form-label fw-semibold">التاريخ <span class="text-danger">*</span></label>
                 <input type="date" name="voucher_date" class="form-control @error('voucher_date') is-invalid @enderror"
                        value="{{ old('voucher_date', today()->format('Y-m-d')) }}" required>
                 @error('voucher_date')<div class="invalid-feedback">{{ $message }}</div>@enderror
             </div>
 
+            {{-- Second date (كما في الأصيل) --}}
+            <div class="col-md-4">
+                <label class="form-label fw-semibold">تاريخ ثانٍ (اختياري)</label>
+                <input type="date" name="second_date" class="form-control"
+                       value="{{ old('second_date') }}">
+            </div>
+
             {{-- Payment method --}}
-            <div class="col-md-6">
+            <div class="col-md-4">
                 <label class="form-label fw-semibold">طريقة الصرف <span class="text-danger">*</span></label>
                 <select name="payment_method" class="form-select" required>
                     <option value="cash"          {{ old('payment_method','cash') == 'cash'          ? 'selected':'' }}>نقدي</option>
@@ -85,16 +92,38 @@
         </div>
 
         <div class="row g-3 mb-3">
-            {{-- Amount --}}
-            <div class="col-md-6">
+            {{-- Currency --}}
+            <div class="col-md-3">
+                <label class="form-label fw-semibold">العملة</label>
+                <select name="currency_id" id="vCurrency" class="form-select" onchange="onCurrencyChange()">
+                    <option value="" data-rate="1">الأساسية ({{ $currency }})</option>
+                    @foreach(($currencies ?? collect())->where('is_base', false) as $cur)
+                        <option value="{{ $cur->id }}" data-rate="{{ $cur->exchange_rate }}"
+                            {{ old('currency_id') == $cur->id ? 'selected':'' }}>
+                            {{ $cur->code }} — صرف: {{ rtrim(rtrim(number_format($cur->exchange_rate, 6), '0'), '.') }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+
+            {{-- Amount in FC --}}
+            <div class="col-md-3" id="fcWrap" style="display:none">
+                <label class="form-label fw-semibold">المبلغ بالعملة <span class="text-danger">*</span></label>
+                <input type="number" name="amount_fc" id="vAmountFc" class="form-control @error('amount_fc') is-invalid @enderror"
+                       value="{{ old('amount_fc') }}" step="0.0001" min="0.01" oninput="onCurrencyChange()">
+                @error('amount_fc')<div class="invalid-feedback">{{ $message }}</div>@enderror
+            </div>
+
+            {{-- Amount (base) --}}
+            <div class="col-md-3">
                 <label class="form-label fw-semibold">المبلغ ({{ $currency }}) <span class="text-danger">*</span></label>
-                <input type="number" name="amount" class="form-control @error('amount') is-invalid @enderror"
-                       value="{{ old('amount') }}" step="0.01" min="0.01" placeholder="0.00" required>
+                <input type="number" name="amount" id="vAmount" class="form-control @error('amount') is-invalid @enderror"
+                       value="{{ old('amount') }}" step="0.01" min="0.01" placeholder="0.00">
                 @error('amount')<div class="invalid-feedback">{{ $message }}</div>@enderror
             </div>
 
             {{-- Reference --}}
-            <div class="col-md-6">
+            <div class="col-md-3">
                 <label class="form-label fw-semibold">المرجع / رقم الوثيقة</label>
                 <input type="text" name="reference" class="form-control"
                        value="{{ old('reference') }}" placeholder="رقم الفاتورة أو المرجع">
@@ -112,7 +141,7 @@
                     الحساب المقابل <span class="text-danger">*</span>
                     <span class="badge bg-primary ms-1">مدين</span>
                 </label>
-                <select name="account_id" class="form-select @error('account_id') is-invalid @enderror" required>
+                <select name="account_id" id="vAccount" class="form-select @error('account_id') is-invalid @enderror" required onchange="fetchBalance()">
                     <option value="">اختر الحساب</option>
                     @php
                         $typeLabels = ['asset'=>'أصول','liability'=>'التزامات','equity'=>'حقوق الملكية','revenue'=>'إيرادات','expense'=>'مصروفات'];
@@ -128,6 +157,7 @@
                     @endforeach
                 </select>
                 @error('account_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                <div id="vBalance" class="form-text fw-semibold" style="display:none"></div>
             </div>
 
             {{-- Cash/Bank account (CREDIT side) --}}
@@ -165,4 +195,46 @@
         </form>
     </div>
 </div>
+@endsection
+
+@section('scripts')
+<script>
+// ── العملة: تحويل تلقائي للعملة الأساسية ─────────────────────────────────
+function onCurrencyChange() {
+    const sel    = document.getElementById('vCurrency');
+    const opt    = sel.options[sel.selectedIndex];
+    const rate   = parseFloat(opt.dataset.rate) || 1;
+    const fcWrap = document.getElementById('fcWrap');
+    const amount = document.getElementById('vAmount');
+    const fc     = document.getElementById('vAmountFc');
+
+    if (sel.value) {
+        fcWrap.style.display = '';
+        amount.readOnly = true;
+        const v = parseFloat(fc.value) || 0;
+        amount.value = v > 0 ? (v * rate).toFixed(2) : '';
+    } else {
+        fcWrap.style.display = 'none';
+        amount.readOnly = false;
+    }
+}
+
+// ── رصيد الحساب المقابل ──────────────────────────────────────────────────
+function fetchBalance() {
+    const id  = document.getElementById('vAccount').value;
+    const box = document.getElementById('vBalance');
+    if (!id) { box.style.display = 'none'; return; }
+    fetch(`{{ url('vouchers/account-balance') }}/${id}`)
+        .then(r => r.ok ? r.json() : null)
+        .then(d => {
+            if (!d) { box.style.display = 'none'; return; }
+            box.style.display = '';
+            box.className = 'form-text fw-semibold ' + (d.side === 'مدين' ? 'text-danger' : 'text-success');
+            box.innerHTML = 'الرصيد الحالي: ' + d.balance_fmt + ' {{ $currency }} (' + d.side + ')';
+        })
+        .catch(() => { box.style.display = 'none'; });
+}
+
+document.addEventListener('DOMContentLoaded', () => { onCurrencyChange(); fetchBalance(); });
+</script>
 @endsection

@@ -127,10 +127,11 @@ class PaymentVoucherController extends Controller
 
         $branchId     = $this->effectiveBranchId(request());
         $branchLocked = $this->isBranchLocked();
+        $currencies   = \App\Models\Currency::where('is_active', true)->orderByDesc('is_base')->get();
 
         return view('vouchers.payments.create', compact(
             'accounts', 'suppliers', 'currency', 'defaultCashAccount',
-            'cashCode', 'bankCode', 'branches', 'branchId', 'branchLocked'
+            'cashCode', 'bankCode', 'branches', 'branchId', 'branchLocked', 'currencies'
         ));
     }
 
@@ -138,11 +139,14 @@ class PaymentVoucherController extends Controller
     {
         $request->validate([
             'voucher_date'    => 'required|date',
+            'second_date'     => 'nullable|date',
             'paid_to'         => 'required|string|max:255',
             'supplier_id'     => 'nullable|exists:suppliers,id',
             'account_id'      => 'required|exists:accounts,id',
             'cash_account_id' => 'required|exists:accounts,id',
-            'amount'          => 'required|numeric|min:0.01',
+            'amount'          => 'required_without:amount_fc|nullable|numeric|min:0.01',
+            'currency_id'     => 'nullable|exists:currencies,id',
+            'amount_fc'       => 'nullable|numeric|min:0.01',
             'payment_method'  => 'required|in:cash,bank,mobile_wallet',
             'reference'       => 'nullable|string|max:255',
             'notes'           => 'nullable|string',
@@ -158,6 +162,28 @@ class PaymentVoucherController extends Controller
             return back()->withErrors(['account_id' => 'الحساب المدين والدائن لا يمكن أن يكونا نفس الحساب'])->withInput();
         }
 
+        // ── العملة: التحويل للعملة الأساسية بسعر صرف لحظة السند ──────────────
+        $currencyId   = null;
+        $exchangeRate = 1.0;
+        $amountFc     = null;
+        $amount       = round((float) $request->amount, 2);
+
+        if ($request->currency_id) {
+            $cur = \App\Models\Currency::find($request->currency_id);
+            if ($cur && !$cur->is_base) {
+                if (!$request->filled('amount_fc')) {
+                    return back()->withErrors(['amount_fc' => 'أدخل المبلغ بالعملة المختارة'])->withInput();
+                }
+                $currencyId   = $cur->id;
+                $exchangeRate = (float) $cur->exchange_rate;
+                $amountFc     = round((float) $request->amount_fc, 4);
+                $amount       = round($amountFc * $exchangeRate, 2);
+            }
+        }
+        if ($amount < 0.01) {
+            return back()->withErrors(['amount' => 'المبلغ غير صحيح'])->withInput();
+        }
+
         DB::beginTransaction();
         try {
             // Branch resolution (SAP: Company Code selection):
@@ -169,11 +195,15 @@ class PaymentVoucherController extends Controller
 
             $voucher = PaymentVoucher::create([
                 'voucher_date'    => $request->voucher_date,
+                'second_date'     => $request->second_date ?: null,
                 'paid_to'         => $request->paid_to,
                 'supplier_id'     => $request->supplier_id ?: null,
                 'account_id'      => $request->account_id,
                 'cash_account_id' => $request->cash_account_id,
-                'amount'          => $request->amount,
+                'amount'          => $amount,
+                'currency_id'     => $currencyId,
+                'exchange_rate'   => $exchangeRate,
+                'amount_fc'       => $amountFc,
                 'payment_method'  => $request->payment_method,
                 'reference'       => $request->reference,
                 'notes'           => $request->notes,

@@ -17,13 +17,17 @@ class ProductController extends Controller
         $this->middleware('can:products.create')->only(['create', 'store', 'importTemplate', 'import']);
         $this->middleware('can:products.edit')->only(['edit', 'update']);
         $this->middleware('can:products.delete')->only(['destroy']);
-        $this->middleware('can:inventory.view')->only(['lowStock', 'expiring']);
+        $this->middleware('can:inventory.view')->only(['lowStock', 'expiring', 'reorder']);
     }
 
     public function index(Request $request)
     {
+        $class = $request->input('class'); // null=الكل | items=أصناف | manufactured=منتجات مصنّعة
+
         if ($request->ajax()) {
-            $query = Product::with('category')->select('products.*');
+            $query = Product::with('category')->select('products.*')
+                ->when($class === 'items', fn($q) => $q->whereIn('product_class', [Product::CLASS_MERCHANDISE, Product::CLASS_RAW]))
+                ->when($class === 'manufactured', fn($q) => $q->where('product_class', Product::CLASS_MANUFACTURED));
 
             return DataTables::eloquent($query)
                 ->addColumn('category_name', fn($p) => e($p->category?->name ?? '—'))
@@ -49,75 +53,242 @@ class ProductController extends Controller
                 ->make(true);
         }
 
-        return view('products.index');
+        return view('products.index', compact('class'));
     }
 
-    public function create()
+    public function create(Request $request)
     {
-        $categories = Category::orderBy('name')->get();
-        return view('products.create', compact('categories'));
+        // وضع الشاشة: صنف (بضاعة/مواد خام) أو منتج مصنّع — لفصل النماذج
+        $mode        = $request->input('mode') === 'product' ? 'product' : 'item';
+        $categories  = Category::orderBy('name')->get();
+        $currencies  = \App\Models\Currency::where('is_active', true)->orderByDesc('is_base')->get();
+        $allProducts = Product::where('product_type', Product::TYPE_GOODS)
+            ->orderBy('name')->get(['id', 'name', 'cost_price']);
+        return view('products.create', compact('categories', 'currencies', 'allProducts', 'mode'));
     }
 
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'name'          => 'required|string|max:255',
-            'barcode'       => 'required|string|unique:products,barcode',
-            'category_id'   => 'required|exists:categories,id',
-            'description'   => 'nullable|string',
-            'cost_price'    => 'required|numeric|min:0',
-            'selling_price' => 'required|numeric|min:0',
-            'quantity'      => 'required|numeric|min:0',
-            'min_quantity'  => 'required|numeric|min:0',
-            'unit'          => 'required|in:piece,kg,g,liter,ml',
-            'allow_fractions' => 'nullable|boolean',
-            'expiry_date'   => 'nullable|date|after:today',
-            'image'         => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
-        ]);
+        $validated = $request->validate($this->rules());
 
-        $validated['allow_fractions'] = $request->boolean('allow_fractions');
+        $validated = $this->prepareProductPayload($request, $validated);
 
         if ($request->hasFile('image')) {
             $validated['image'] = $request->file('image')->store('products', 'public');
         }
 
-        Product::create($validated);
+        $product = Product::create($validated);
+
+        $this->syncUnits($request, $product);
+        $this->syncComponents($request, $product);
 
         return redirect()->route('products.index')->with('success', 'تم إضافة المنتج بنجاح');
     }
 
+    /** قواعد التحقق المشتركة لإنشاء/تعديل صنف */
+    private function rules(?Product $product = null): array
+    {
+        $unitValues = implode(',', array_column(\App\Enums\ProductUnit::cases(), 'value'));
+        $barcodeRule = 'required|string|unique:products,barcode' . ($product ? ',' . $product->id : '');
+
+        return [
+            'name'             => 'required|string|max:255',
+            'barcode'          => $barcodeRule,
+            'category_id'      => 'required|exists:categories,id',
+            'product_type'     => 'required|in:' . implode(',', array_keys(Product::$types)),
+            'product_class'    => 'nullable|in:' . implode(',', array_keys(Product::$classes)),
+            'description'      => 'nullable|string',
+            'cost_price'       => 'required|numeric|min:0',
+            'selling_price'    => 'required|numeric|min:0',
+            'quantity'         => 'required|numeric|min:0',
+            'min_quantity'     => 'required|numeric|min:0',
+            'max_quantity'     => 'nullable|numeric|min:0',
+            'reorder_level'    => 'nullable|numeric|min:0',
+            'unit'             => 'required|in:' . $unitValues,
+            'allow_fractions'  => 'nullable|boolean',
+            'expiry_date'      => 'nullable|date|after:today',
+            'image'            => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
+            // الضريبة لكل صنف
+            'is_taxable'       => 'nullable|boolean',
+            'vat_rate'         => 'nullable|numeric|min:0|max:100',
+            // البونص
+            'bonus_after_qty'  => 'nullable|numeric|min:0',
+            'bonus_every_qty'  => 'nullable|numeric|min:0.001',
+            'bonus_free_qty'   => 'nullable|numeric|min:0.001',
+            // العملة الأجنبية
+            'currency_id'      => 'nullable|exists:currencies,id',
+            'cost_price_fc'    => 'nullable|numeric|min:0',
+            'selling_price_fc' => 'nullable|numeric|min:0',
+            // الوحدات الإضافية
+            'units'                  => 'nullable|array|max:5',
+            'units.*.id'             => 'nullable|integer',
+            'units.*.name'           => 'required_with:units.*.factor|string|max:50',
+            'units.*.factor'         => 'required_with:units.*.name|numeric|min:0.0001',
+            'units.*.barcode'        => 'nullable|string|max:64',
+            'units.*.selling_price'  => 'nullable|numeric|min:0',
+            'units.*.cost_price'     => 'nullable|numeric|min:0',
+            // مكونات التجميعي/التصنيع
+            'components'             => 'nullable|array',
+            'components.*.component_id' => 'nullable|exists:products,id',
+            'components.*.quantity'     => 'nullable|numeric|min:0.0001',
+        ];
+    }
+
+    /** تجهيز الحقول المحسوبة (ضريبة/بونص/عملة) قبل الحفظ */
+    private function prepareProductPayload(Request $request, array $validated): array
+    {
+        $validated['allow_fractions'] = $request->boolean('allow_fractions');
+        $validated['is_taxable']      = $request->boolean('is_taxable', true);
+
+        // الخدمة والتجميعي: لا مخزون يُتتبع
+        if (in_array($validated['product_type'], [Product::TYPE_SERVICE, Product::TYPE_BUNDLE], true)) {
+            $validated['quantity'] = 0;
+        }
+
+        // أسعار بعملة أجنبية: تُحوَّل للعملة الأساسية تلقائياً وتبقى الأساسية هي المعتمدة محاسبياً
+        if (!empty($validated['currency_id'])) {
+            $currency = \App\Models\Currency::find($validated['currency_id']);
+            if ($currency && !$currency->is_base) {
+                if (!empty($validated['cost_price_fc'])) {
+                    $validated['cost_price'] = round($currency->toBase((float) $validated['cost_price_fc']), 2);
+                }
+                if (!empty($validated['selling_price_fc'])) {
+                    $validated['selling_price'] = round($currency->toBase((float) $validated['selling_price_fc']), 2);
+                }
+            } else {
+                // عملة أساسية → لا حاجة لحقول الـ FC
+                $validated['cost_price_fc'] = null;
+                $validated['selling_price_fc'] = null;
+            }
+        } else {
+            $validated['cost_price_fc'] = null;
+            $validated['selling_price_fc'] = null;
+        }
+
+        unset($validated['units'], $validated['components']);
+
+        return $validated;
+    }
+
+    /** حفظ الوحدات الإضافية للصنف */
+    private function syncUnits(Request $request, Product $product): void
+    {
+        $rows = collect($request->input('units', []))
+            ->filter(fn($u) => !empty($u['name']) && !empty($u['factor']));
+
+        $keepIds = [];
+        foreach ($rows as $row) {
+            $sell = $row['selling_price'] ?? null;
+            $cost = $row['cost_price'] ?? null;
+            $payload = [
+                'name'          => $row['name'],
+                'factor'        => (float) $row['factor'],
+                'barcode'       => ($row['barcode'] ?? null) ?: null,
+                'selling_price' => ($sell !== null && $sell !== '') ? (float) $sell : null,
+                'cost_price'    => ($cost !== null && $cost !== '') ? (float) $cost : null,
+                'is_active'     => true,
+            ];
+
+            if (!empty($row['id'])) {
+                $unit = $product->units()->find($row['id']);
+                if ($unit) {
+                    $unit->update($payload);
+                    $keepIds[] = $unit->id;
+                    continue;
+                }
+            }
+            $keepIds[] = $product->units()->create($payload)->id;
+        }
+
+        // حذف الوحدات المزالة من النموذج (إلا المستخدمة في مستندات)
+        $product->units()->whereNotIn('id', $keepIds)->get()->each(function ($unit) {
+            $used = \App\Models\SaleItem::where('product_unit_id', $unit->id)->exists()
+                 || \App\Models\PurchaseItem::where('product_unit_id', $unit->id)->exists();
+            if ($used) {
+                $unit->update(['is_active' => false]);
+            } else {
+                $unit->delete();
+            }
+        });
+    }
+
+    /** حفظ مكونات الصنف التجميعي/المصنّع */
+    private function syncComponents(Request $request, Product $product): void
+    {
+        $rows = collect($request->input('components', []))
+            ->filter(fn($c) => !empty($c['component_id']) && !empty($c['quantity']))
+            ->reject(fn($c) => (int) $c['component_id'] === $product->id); // لا يدخل الصنف في تكوين نفسه
+
+        $product->components()->delete();
+        foreach ($rows as $row) {
+            $product->components()->create([
+                'component_id' => (int) $row['component_id'],
+                'quantity'     => (float) $row['quantity'],
+            ]);
+        }
+    }
+
     public function show(Product $product)
     {
-        $product->load('category', 'purchaseItems.purchase', 'saleItems.sale');
+        $product->load('category', 'purchaseItems.purchase', 'saleItems.sale',
+                       'units', 'components.component', 'currency');
         $costHistory = $product->costHistory()->with('changedBy:id,name')->limit(30)->get();
         $currency    = \App\Models\Setting::get('currency_symbol', 'ج.م');
-        return view('products.show', compact('product', 'costHistory', 'currency'));
+
+        // ── رسم بياني لحركات الصنف: وارد/صادر شهرياً لآخر 12 شهر ────────────
+        $from = now()->subMonths(11)->startOfMonth();
+        $movementStats = \App\Models\StockMovement::selectRaw(
+                "DATE_FORMAT(created_at, '%Y-%m') as ym,
+                 SUM(CASE WHEN movement_type = 'in'  THEN quantity ELSE 0 END) as qty_in,
+                 SUM(CASE WHEN movement_type = 'out' THEN quantity ELSE 0 END) as qty_out"
+            )
+            ->where('product_id', $product->id)
+            ->where('created_at', '>=', $from)
+            ->groupBy('ym')->orderBy('ym')
+            ->get()->keyBy('ym');
+
+        $chartLabels = [];
+        $chartIn     = [];
+        $chartOut    = [];
+        for ($i = 11; $i >= 0; $i--) {
+            $ym = now()->subMonths($i)->format('Y-m');
+            $chartLabels[] = $ym;
+            $chartIn[]     = (float) ($movementStats[$ym]->qty_in  ?? 0);
+            $chartOut[]    = (float) ($movementStats[$ym]->qty_out ?? 0);
+        }
+
+        // إحصاءات بطاقة الصنف (كما في الأصيل: عدد الحركات وتاريخ آخر حركة)
+        $movementsCount   = \App\Models\StockMovement::where('product_id', $product->id)->count();
+        $lastMovementDate = \App\Models\StockMovement::where('product_id', $product->id)->latest()->value('created_at');
+
+        return view('products.show', compact(
+            'product', 'costHistory', 'currency',
+            'chartLabels', 'chartIn', 'chartOut',
+            'movementsCount', 'lastMovementDate'
+        ));
     }
 
     public function edit(Product $product)
     {
-        $categories = Category::orderBy('name')->get();
-        return view('products.edit', compact('product', 'categories'));
+        $categories  = Category::orderBy('name')->get();
+        $currencies  = \App\Models\Currency::where('is_active', true)->orderByDesc('is_base')->get();
+        $allProducts = Product::where('product_type', Product::TYPE_GOODS)
+            ->where('id', '!=', $product->id)
+            ->orderBy('name')->get(['id', 'name', 'cost_price']);
+        $product->load('units', 'components.component');
+        return view('products.edit', compact('product', 'categories', 'currencies', 'allProducts'));
     }
 
     public function update(Request $request, Product $product)
     {
-        $validated = $request->validate([
-            'name'          => 'required|string|max:255',
-            'barcode'       => 'required|string|unique:products,barcode,'.$product->id,
-            'category_id'   => 'required|exists:categories,id',
-            'description'   => 'nullable|string',
-            'cost_price'    => 'required|numeric|min:0',
-            'selling_price' => 'required|numeric|min:0',
-            'quantity'      => 'required|numeric|min:0',
-            'min_quantity'  => 'required|numeric|min:0',
-            'unit'          => 'required|in:piece,kg,g,liter,ml',
-            'allow_fractions' => 'nullable|boolean',
-            'expiry_date'   => 'nullable|date|after:today',
-            'image'         => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
-        ]);
+        $validated = $request->validate($this->rules($product));
 
-        $validated['allow_fractions'] = $request->boolean('allow_fractions');
+        $validated = $this->prepareProductPayload($request, $validated);
+
+        // الكمية لا تُعدَّل من هنا للأصناف المخزنية (تُدار بالحركات) — نحافظ على القيمة الحالية
+        if ($product->tracksStock()) {
+            unset($validated['quantity']);
+        }
 
         if ($request->hasFile('image')) {
             if ($product->image) {
@@ -127,6 +298,9 @@ class ProductController extends Controller
         }
 
         $product->update($validated);
+
+        $this->syncUnits($request, $product);
+        $this->syncComponents($request, $product);
 
         return redirect()->route('products.index')->with('success', 'تم تحديث المنتج بنجاح');
     }
@@ -149,16 +323,37 @@ class ProductController extends Controller
     public function getByBarcode(string $barcode)
     {
         $product = Product::with('category')->where('barcode', $barcode)->first();
+        $unit    = null;
+
+        // باركود وحدة إضافية (كرتون/دستة...)؟
+        if (!$product) {
+            $unit = \App\Models\ProductUnit::with('product.category')
+                ->where('barcode', $barcode)
+                ->where('is_active', true)
+                ->first();
+            $product = $unit?->product;
+        }
 
         if (!$product) {
             return response()->json(['error' => 'المنتج غير موجود'], 404);
         }
 
-        if ($product->quantity <= 0) {
+        // الخدمات والتجميعي لا يخضعان لفحص المخزون هنا
+        if ($product->tracksStock() && $product->quantity <= 0) {
             return response()->json(['error' => 'المنتج غير متوفر في المخزون'], 400);
         }
 
-        return response()->json($product);
+        $payload = $product->toArray();
+        if ($unit) {
+            $payload['scanned_unit'] = [
+                'id'            => $unit->id,
+                'name'          => $unit->name,
+                'factor'        => (float) $unit->factor,
+                'selling_price' => $unit->effectiveSellingPrice(),
+            ];
+        }
+
+        return response()->json($payload);
     }
 
     public function lowStock(Request $request)
@@ -188,6 +383,32 @@ class ProductController extends Controller
         $branchLocked = $this->isBranchLocked();
 
         return view('products.low-stock', compact('lowLevels', 'branches', 'branchId', 'branchLocked'));
+    }
+
+    /**
+     * تقرير حد إعادة الطلب: الأصناف التي بلغ رصيدها حد إعادة الطلب
+     * (مستوحى من "حد إعادة الطلب" في الأصيل) + الأصناف المتجاوزة للحد الأقصى.
+     */
+    public function reorder()
+    {
+        $reorderProducts = Product::with('category')
+            ->where('product_type', Product::TYPE_GOODS)
+            ->whereNotNull('reorder_level')
+            ->whereColumn('quantity', '<=', 'reorder_level')
+            ->orderBy('quantity')
+            ->get();
+
+        $overMaxProducts = Product::with('category')
+            ->where('product_type', Product::TYPE_GOODS)
+            ->whereNotNull('max_quantity')
+            ->where('max_quantity', '>', 0)
+            ->whereColumn('quantity', '>', 'max_quantity')
+            ->orderByDesc('quantity')
+            ->get();
+
+        $currency = \App\Models\Setting::get('currency_symbol', 'ج.م');
+
+        return view('products.reorder', compact('reorderProducts', 'overMaxProducts', 'currency'));
     }
 
     public function expiring()

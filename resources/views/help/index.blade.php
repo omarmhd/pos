@@ -80,8 +80,12 @@
                 <a class="nav-link" href="#sec-purchase-orders">أوامر الشراء</a>
                 <a class="nav-link" href="#sec-purchases">المشتريات والموردون</a>
                 <a class="nav-link" href="#sec-purchase-returns">مرتجعات المشتريات</a>
+                <a class="nav-link" href="#sec-customs">الإقرارات الجمركية</a>
+                <a class="nav-link" href="#sec-services">فواتير إيراد الخدمات</a>
                 <a class="nav-link" href="#sec-expenses">فواتير المصروفات</a>
                 <a class="nav-link" href="#sec-customers">العملاء والذمم المدينة</a>
+                <a class="nav-link sub-item" href="#sec-customer-deposits">└ إيداع رصيد العميل</a>
+                <a class="nav-link" href="#sec-vouchers">سندات القبض والصرف</a>
                 <a class="nav-link" href="#sec-hr">الموارد البشرية والرواتب</a>
                 <a class="nav-link" href="#sec-zkteco"><i class="bi bi-fingerprint"></i> ربط جهاز البصمة</a>
                 <a class="nav-link" href="#sec-accounting">المحاسبة والقيود</a>
@@ -97,9 +101,20 @@
                 <a class="nav-link" href="#sec-cost-centers">مراكز التكلفة</a>
                 <a class="nav-link" href="#sec-budgets">الموازنات التقديرية</a>
                 <a class="nav-link" href="#sec-lot-batch">تتبع الدُّفعات (Lot/Batch)</a>
+                <a class="nav-link" href="#sec-multi-units">الوحدات المتعددة للصنف</a>
+                <a class="nav-link" href="#sec-item-types">أنواع الأصناف (بضاعة/خدمة/تجميعي)</a>
+                <a class="nav-link" href="#sec-assembly">التصنيع والتجميع (BOM)</a>
+                <a class="nav-link" href="#sec-bonus">الكمية الإضافية (البونص)</a>
+                <a class="nav-link" href="#sec-item-vat">ضريبة لكل صنف</a>
+                <a class="nav-link" href="#sec-reorder">الحد الأقصى وحد إعادة الطلب</a>
+                <a class="nav-link" href="#sec-purchase-pricing">قوائم أسعار الشراء</a>
+                <a class="nav-link" href="#sec-currencies">العملات وأسعار الصرف</a>
+                <a class="nav-link" href="#sec-voucher-extras">السندات: عملة / خصم مصدر / دفعي</a>
+                <a class="nav-link" href="#sec-res">كشوف الإيرادات والمصروفات</a>
                 <a class="nav-link" href="#sec-cash-flow">قائمة التدفقات النقدية</a>
                 <a class="nav-link" href="#sec-pos-offline">POS بدون اتصال</a>
                 <a class="nav-link" href="#sec-opening-balance">الأرصدة الافتتاحية</a>
+                <a class="nav-link" href="#sec-checks"><i class="bi bi-bank2"></i> إدارة الشيكات</a>
                 <a class="nav-link" href="#sec-reports">التقارير</a>
                 <a class="nav-link" href="#sec-settings">إعدادات النظام</a>
                 <a class="nav-link sub-item" href="#sec-settings">└ المتجر / العملة / الضريبة</a>
@@ -194,7 +209,12 @@
                             <tr>
                                 <td><span class="role-badge-manager">مدير/مشرف</span></td>
                                 <td><code>manager</code></td>
-                                <td>جميع الوحدات التشغيلية (مبيعات، مشتريات، HR، محاسبة، تقارير) — بدون إدارة مستخدمين أو إعدادات</td>
+                                <td>جميع الوحدات التشغيلية (مبيعات، مشتريات، HR، محاسبة، تقارير) — وصول شامل لكل الفروع. يُستخدم للمدير العام على مستوى الشركة فقط</td>
+                            </tr>
+                            <tr>
+                                <td><span class="role-badge-manager">مدير فرع</span></td>
+                                <td><code>branch_manager</code></td>
+                                <td>نفس صلاحيات "مدير/مشرف" التشغيلية، لكن مقيّدة بالفرع المرتبط بحساب المستخدم فقط (لا يرى بيانات الفروع الأخرى). هذا هو الدور المناسب لأي مستخدم يدير فرعًا محددًا</td>
                             </tr>
                             <tr>
                                 <td><span class="role-badge-cashier">كاشير</span></td>
@@ -375,7 +395,7 @@
                     <div class="col-md-4">
                         <div class="card border-success mb-2">
                             <div class="card-body p-2 small">
-                                <strong class="text-success">شركة بسيطة (الحالة الافتراضية)</strong><br>
+                                <strong class="text-success"> شركة بسيطة (الحالة الافتراضية)</strong><br>
                                 مخزن واحد افتراضي — لا تغيير في أي سلوك. كل المعاملات تذهب للمخزن الرئيسي.
                             </div>
                         </div>
@@ -525,6 +545,19 @@
                     المنتج هو الوحدة الأساسية للبيع والشراء. كل منتج مرتبط بفئة وله سعر تكلفة وسعر بيع وكمية في المخزون.
                 </p>
 
+                <h6 class="subsection-title"><i class="bi bi-rulers"></i> الكميات الكسرية (Fractional Quantities)</h6>
+                <p class="small text-muted">
+                    يدعم النظام بيع المنتجات بالوزن أو بكميات كسرية (مثل 1.5 كيلو). لتفعيل هذه الميزة لمنتج معين:
+                </p>
+                <ol class="small text-muted">
+                    <li>عند إضافة أو تعديل المنتج، اذهب إلى تبويب "الوحدات".</li>
+                    <li>اختر الوحدة الأساسية (مثلاً، "حبة" أو "كيلو").</li>
+                    <li>فعّل خيار <strong>"السماح بكميات كسرية"</strong>.</li>
+                </ol>
+                <p class="small text-muted">
+                    في نقطة البيع، سيسمح لك النظام بإدخال كميات مثل 0.25, 1.5, 2.75 لهذا المنتج.
+                </p>
+
                 <h6 class="subsection-title"><i class="bi bi-list-check"></i> حقول المنتج المهمة</h6>
                 <div class="table-responsive">
                     <table class="table table-sm term-table small">
@@ -551,7 +584,7 @@
                 <i class="bi bi-file-earmark-text fs-5"></i> أوامر الشراء (Purchase Orders)
             </div>
             <div class="section-body">
-                <p>أمر الشراء هو وثيقة رسمية تُرسَل للمورد تُحدِّد الأصناف المطلوبة والكميات والأسعار المتفق عليها — <strong>لا يُنشئ قيداً محاسبياً</strong> عند إنشائه.</p>
+                <p> أمر الشراء هو وثيقة رسمية تُرسَل للمورد تُحدِّد الأصناف المطلوبة والكميات والأسعار المتفق عليها — <strong>لا يُنشئ قيداً محاسبياً</strong> عند إنشائه.</p>
 
                 <div class="subsection-title">دورة الحياة</div>
                 <div class="d-flex gap-2 flex-wrap mb-3">
@@ -596,6 +629,12 @@
             </div>
             <div class="section-body">
                 <p class="small text-muted">تسجيل فواتير الشراء يزيد المخزون ويُنشئ ذمة دائنة للمورد في حالة الشراء الآجل.</p>
+
+                <h6 class="subsection-title"><i class="bi bi-search"></i> البحث السريع عن المنتجات</h6>
+                <p class="small text-muted">
+                    عند إضافة الأصناف في فاتورة الشراء، يمكنك البحث بالاسم أو الكود أو الباركود. يبدأ البحث تلقائياً بعد كتابة حرفين.
+                    إذا لم يكن المنتج موجوداً، يمكنك إضافته بسرعة من نفس الشاشة دون الحاجة لمغادرة صفحة الفاتورة.
+                </p>
 
                 <h6 class="subsection-title"><i class="bi bi-file-earmark-text"></i> حالات الدفع</h6>
                 <div class="table-responsive">
@@ -730,6 +769,62 @@
         </div>
 
         {{-- ══════════════════════════════════════════════════════════ --}}
+        {{-- الإقرارات الجمركية --}}
+        {{-- ══════════════════════════════════════════════════════════ --}}
+        <div class="help-section" id="sec-customs">
+            <div class="section-header">
+                <i class="bi bi-box-arrow-in-down fs-5"></i> الإقرارات الجمركية (Customs Declarations / Import VAT)
+            </div>
+            <div class="section-body">
+                <p>تُسجّل <strong>الواردات</strong> المارّة بالجمارك: قيمة الواردات والرسوم الجمركية،
+                   و<strong>ضريبة القيمة المضافة على الواردات</strong> (ضريبة مدخلات قابلة للخصم).
+                   المسار: المشتريات → الإقرارات الجمركية → إقرار جديد.</p>
+
+                <div class="workflow-step"><span class="step-num">1</span>
+                    <div><div class="step-title">التسجيل</div>
+                    <div class="step-desc">حدد التاريخ، المورد (أو اسم المورد الأجنبي)، رقم البيان الجمركي، قيمة الواردات/الرسوم، وضريبة الواردات.</div></div>
+                </div>
+                <div class="workflow-step"><span class="step-num">2</span>
+                    <div><div class="step-title">الإدراج في الكشف</div>
+                    <div class="step-desc">يلتقطه كشف الإيرادات والمصروفات تلقائياً عبر العضوية الحصرية — وتُخصَم ضريبة مدخلاته من صافي ض.ق.م المستحقة.</div></div>
+                </div>
+
+                <div class="alert-tip">لا يمكن حذف إقرار مُدرَج ضمن كشف — أزله من الكشف أولاً. الصلاحيات: <code>customs.view</code> و<code>customs.manage</code>.</div>
+            </div>
+        </div>
+
+        {{-- ══════════════════════════════════════════════════════════ --}}
+        {{-- فواتير إيراد الخدمات --}}
+        {{-- ══════════════════════════════════════════════════════════ --}}
+        <div class="help-section" id="sec-services">
+            <div class="section-header">
+                <i class="bi bi-lightning-charge fs-5"></i> فواتير إيراد الخدمات (Service Revenue — IFRS 15)
+            </div>
+            <div class="section-body">
+                <p>لإثبات إيراد خدمة (صيانة، توصيل، اشتراك...) منفصلاً عن بيع البضائع. المسار: المبيعات → فواتير إيراد الخدمات → فاتورة جديدة.</p>
+                <p>تُرحَّل تلقائياً عند الحفظ، وتُلتقط في كشف الإيرادات والمصروفات كإيراد + ضريبة مخرجات:</p>
+                <div class="gl-example">
+                    <table class="w-100">
+                        <tr><td class="gl-debit">مدين: نقدية/بنك (نقدي) أو ذمم عميل (آجل)</td><td>الإجمالي</td></tr>
+                        <tr><td class="gl-credit">دائن: إيرادات الخدمات (4200)</td><td>الصافي</td></tr>
+                        <tr><td class="gl-credit">دائن: ض.ق.م مستحقة (2200)</td><td>الضريبة</td></tr>
+                    </table>
+                </div>
+                <div class="alert-tip">الصلاحيات: <code>services.view</code> و<code>services.manage</code>. مفتاح حساب الإيراد: <code>account_service_revenue_code</code> (افتراضي 4200).</div>
+
+                <div class="subsection-title">تحسينات على فاتورة البيع (مستوحاة من الأصيل)</div>
+                <table class="term-table">
+                    <tr><th>الميزة</th><th>الوصف</th></tr>
+                    <tr><td>رقم التسجيل الضريبي (TRN)</td><td>حقل على العميل والمورد يظهر على طباعة الفاتورة (فاتورة ضريبية نظامية).</td></tr>
+                    <tr><td>خصم نسبة</td><td>خصم على مستوى الفاتورة بنسبة مئوية يُضاف لمبلغ الخصم قبل الضريبة (<code>discount_percent</code>).</td></tr>
+                    <tr><td>شامل الضريبة لكل فاتورة</td><td>تجاوز إعداد <code>vat_inclusive</code> العام على مستوى الفاتورة (<code>tax_inclusive</code>).</td></tr>
+                    <tr><td>الدفع المختلط بالشيكات</td><td>تقسيم تحصيل الفاتورة (نقد + شيك). جزء الشيك يُرحَّل لـ"شيكات تحت التحصيل" ويُسجَّل تلقائياً في حافظة الشيكات.</td></tr>
+                    <tr><td>مرجع المقاصة (Set-off)</td><td>حقل <code>setoff_ref</code> يربط الفاتورة بقيد مقاصة (IAS 32).</td></tr>
+                </table>
+            </div>
+        </div>
+
+        {{-- ══════════════════════════════════════════════════════════ --}}
         {{-- 6. Customers --}}
         {{-- ══════════════════════════════════════════════════════════ --}}
         <div class="help-section" id="sec-customers">
@@ -757,7 +852,7 @@
 
                 <h6 class="subsection-title"><i class="bi bi-clock-history"></i> تقرير تقادم الذمم (AR Aging)</h6>
                 <p class="small text-muted">
-                    يُصنِّف الفواتير المستحقة غير المسددة إلى أربع شرائح زمنية:
+                    يُصنّف الفواتير المستحقة غير المسددة إلى أربع شرائح زمنية:
                 </p>
                 <div class="table-responsive">
                     <table class="table table-sm small">
@@ -1015,6 +1110,170 @@
         </div>
 
         {{-- ══════════════════════════════════════════════════════════ --}}
+        {{-- Checks Management --}}
+        {{-- ══════════════════════════════════════════════════════════ --}}
+        <div class="help-section" id="sec-checks">
+            <div class="section-header">
+                <i class="bi bi-bank2 fs-5"></i> إدارة الشيكات (واردة / صادرة)
+            </div>
+            <div class="section-body">
+                <p>
+                    تتيح هذه الوحدة تسجيل ومتابعة <strong>شيكات القبض الواردة</strong> من العملاء
+                    و<strong>شيكات الدفع الصادرة</strong> للموردين، مع ترحيل قيد محاسبي تلقائياً عند كل تغيير
+                    في حالة الشيك.
+                </p>
+
+                {{-- أنواع الشيكات --}}
+                <div class="subsection-title">أنواع الشيكات</div>
+                <table class="term-table">
+                    <tr>
+                        <th>النوع</th>
+                        <th>الوصف</th>
+                    </tr>
+                    <tr>
+                        <td><span class="badge bg-success">وارد (receivable)</span></td>
+                        <td>شيك مستلَم من عميل — يُسجَّل كأصل متداول حتى تحصيله</td>
+                    </tr>
+                    <tr>
+                        <td><span class="badge bg-danger">صادر (payable)</span></td>
+                        <td>شيك صادر لمورد — يُسجَّل كالتزام حتى يتم صرفه</td>
+                    </tr>
+                </table>
+
+                {{-- دورة حياة الشيك الوارد --}}
+                <div class="subsection-title">دورة حياة الشيك الوارد</div>
+                <div class="workflow-step">
+                    <span class="step-num">1</span>
+                    <div>
+                        <div class="step-title">استلام الشيك (received)</div>
+                        <div class="step-desc">عند تسجيل الشيك يُرحَّل القيد التالي تلقائياً:</div>
+                        <div class="gl-example">
+                            <table class="w-100">
+                                <tr><td class="gl-debit">مدين: شيكات تحت التحصيل (1120)</td><td>مبلغ الشيك</td></tr>
+                                <tr><td class="gl-credit">دائن: ذمم العملاء (1200)</td><td>مبلغ الشيك</td></tr>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <div class="workflow-step">
+                    <span class="step-num">1ب</span>
+                    <div>
+                        <div class="step-title">تجيير الشيك لمورد (endorsed) — مُضاف</div>
+                        <div class="step-desc">بدل إيداع الشيك الوارد، يمكن <strong>تجييره لمورد</strong> لسداد ذمته (زر "تجيير" في صفحة الشيك مع اختيار المورد):</div>
+                        <div class="gl-example">
+                            <table class="w-100">
+                                <tr><td class="gl-debit">مدين: ذمم الموردين (2000)</td><td>مبلغ الشيك</td></tr>
+                                <tr><td class="gl-credit">دائن: شيكات تحت التحصيل (1120)</td><td>مبلغ الشيك</td></tr>
+                            </table>
+                        </div>
+                        <div class="alert-tip">يخرج الشيك من دفاترنا (انتقل للمورد)، وتُسجَّل حالته "مُجيَّر" مع اسم المورد. مستوحى من مسار التجيير في الأصيل.</div>
+                    </div>
+                </div>
+                <div class="workflow-step">
+                    <span class="step-num">2</span>
+                    <div>
+                        <div class="step-title">إيداع في البنك (deposited)</div>
+                        <div class="step-desc">عند إيداع الشيك في البنك:</div>
+                        <div class="gl-example">
+                            <table class="w-100">
+                                <tr><td class="gl-debit">مدين: البنك (1100)</td><td>مبلغ الشيك</td></tr>
+                                <tr><td class="gl-credit">دائن: شيكات تحت التحصيل (1120)</td><td>مبلغ الشيك</td></tr>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <div class="workflow-step">
+                    <span class="step-num">3أ</span>
+                    <div>
+                        <div class="step-title">مُقاصّ / محصَّل (cleared)</div>
+                        <div class="step-desc">الشيك المودَع اعتُمد من البنك — لا يوجد قيد إضافي (الرصيد استقر في البنك).</div>
+                    </div>
+                </div>
+                <div class="workflow-step">
+                    <span class="step-num">3ب</span>
+                    <div>
+                        <div class="step-title">مرتجع / ملتوي (bounced)</div>
+                        <div class="step-desc">إذا رُفض الشيك يُعاد الدَّيْن للعميل:</div>
+                        <div class="gl-example">
+                            <table class="w-100">
+                                <tr><td class="gl-debit">مدين: ذمم العملاء (1200)</td><td>مبلغ الشيك</td></tr>
+                                <tr><td class="gl-credit">دائن: البنك (1100) أو شيكات تحت التحصيل (1120)</td><td>مبلغ الشيك</td></tr>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- دورة حياة الشيك الصادر --}}
+                <div class="subsection-title">دورة حياة الشيك الصادر</div>
+                <div class="workflow-step">
+                    <span class="step-num">1</span>
+                    <div>
+                        <div class="step-title">إصدار الشيك (pending)</div>
+                        <div class="step-desc">عند تسجيل الشيك الصادر:</div>
+                        <div class="gl-example">
+                            <table class="w-100">
+                                <tr><td class="gl-debit">مدين: ذمم الموردين (2000)</td><td>مبلغ الشيك</td></tr>
+                                <tr><td class="gl-credit">دائن: شيكات مستحقة الدفع (2030)</td><td>مبلغ الشيك</td></tr>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <div class="workflow-step">
+                    <span class="step-num">2أ</span>
+                    <div>
+                        <div class="step-title">صُرف / مُقاصّ (cleared)</div>
+                        <div class="step-desc">عند صرف الشيك من البنك:</div>
+                        <div class="gl-example">
+                            <table class="w-100">
+                                <tr><td class="gl-debit">مدين: شيكات مستحقة الدفع (2030)</td><td>مبلغ الشيك</td></tr>
+                                <tr><td class="gl-credit">دائن: البنك (1100)</td><td>مبلغ الشيك</td></tr>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <div class="workflow-step">
+                    <span class="step-num">2ب</span>
+                    <div>
+                        <div class="step-title">أُعيد للمورد (returned)</div>
+                        <div class="step-desc">إذا أُعيد الشيك قبل صرفه:</div>
+                        <div class="gl-example">
+                            <table class="w-100">
+                                <tr><td class="gl-debit">مدين: شيكات مستحقة الدفع (2030)</td><td>مبلغ الشيك</td></tr>
+                                <tr><td class="gl-credit">دائن: ذمم الموردين (2000)</td><td>مبلغ الشيك</td></tr>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- صلاحيات --}}
+                <div class="subsection-title">الصلاحيات المطلوبة</div>
+                <table class="term-table">
+                    <tr><th>الصلاحية</th><th>الوظيفة</th></tr>
+                    <tr><td><code>checks.view</code></td><td>عرض قائمة الشيكات وبطاقة كل شيك</td></tr>
+                    <tr><td><code>checks.create</code></td><td>تسجيل شيك جديد (وارد أو صادر)</td></tr>
+                    <tr><td><code>checks.transition</code></td><td>تغيير حالة الشيك (إيداع / مقاصة / ارتداد)</td></tr>
+                    <tr><td><code>checks.delete</code></td><td>حذف الشيك في مرحلة الاستلام / الإصدار فقط</td></tr>
+                </table>
+
+                {{-- إعدادات الحسابات --}}
+                <div class="alert-tip">
+                    <strong>إعدادات الحسابات:</strong> يمكن تغيير أكواد الحسابات المستخدمة من
+                    <strong>إدارة النظام ← إعدادات النظام ← حسابات الأصول / الالتزامات</strong>:
+                    <ul class="mb-0 mt-1">
+                        <li><code>account_checks_receivable_code</code> — شيكات تحت التحصيل (افتراضي: 1120)</li>
+                        <li><code>account_checks_payable_code</code> — شيكات مستحقة الدفع (افتراضي: 2030)</li>
+                    </ul>
+                </div>
+
+                {{-- ملاحظة الحساب --}}
+                <div class="alert-warn">
+                    تأكد من إضافة الحسابَين <strong>1120 — شيكات تحت التحصيل</strong>
+                    و<strong>2030 — شيكات مستحقة الدفع</strong> في دليل الحسابات قبل استخدام هذه الوحدة.
+                </div>
+            </div>
+        </div>
+
+        {{-- ══════════════════════════════════════════════════════════ --}}
         {{-- 9. Reports --}}
         {{-- ══════════════════════════════════════════════════════════ --}}
         <div class="help-section" id="sec-reports">
@@ -1033,9 +1292,18 @@
                             <tr><td class="fw-bold">أكثر مبيعاً</td><td>ترتيب المنتجات حسب الإيراد أو الكمية</td><td>قرارات التوريد والترويج</td></tr>
                             <tr><td class="fw-bold">تقادم ذمم العملاء</td><td>الفواتير الآجلة مصنَّفة زمنياً (AR Aging)</td><td>متابعة التحصيل</td></tr>
                             <tr><td class="fw-bold">تقادم ذمم الموردين</td><td>فواتير الشراء غير المسددة (AP Aging)</td><td>إدارة السيولة والمدفوعات</td></tr>
+                            <tr><td class="fw-bold">تنبيهات المخزون</td><td>أصناف دون حد إعادة الطلب + أصناف فوق الحد الأقصى (مع قيمة الزيادة)</td><td>قرارات التوريد ومنع التكدّس</td></tr>
+                            <tr><td class="fw-bold">الأصناف الراكدة</td><td>أصناف لها رصيد دون أي مبيعات خلال مدة قابلة للضبط + رأس المال المعطّل</td><td>تصفية المخزون البطيء</td></tr>
+                            <tr><td class="fw-bold">تغيّر أسعار التكلفة</td><td>سجل تغيّر تكلفة الأصناف عبر الزمن مع الفرق والطريقة</td><td>تتبّع تطور التكلفة (AVCO)</td></tr>
+                            <tr><td class="fw-bold">خصم المصدر</td><td>المستقطع لضريبة الدخل من سندات القبض خلال فترة</td><td>الإقرار الضريبي للمستقطعات</td></tr>
+                            <tr><td class="fw-bold">تقييم المخزون (IAS 2)</td><td>التكلفة مقابل صافي القيمة البيعية (NRV) وهبوط القيمة الواجب لكل صنف</td><td>قياس المخزون وفق IAS 2 (التكلفة أو NRV أيهما أقل)</td></tr>
+                            <tr><td class="fw-bold">تقييم FIFO</td><td>قيمة المخزون المتبقي من أحدث طبقات الشراء مقابل AVCO</td><td>تحليل بديل للتكلفة (IAS 2 §25)</td></tr>
+                            <tr><td class="fw-bold">تكلفة الاستيراد</td><td>حاسبة التكلفة الكلية للوارد (شحن/جمارك/مصاريف) وسعر بيع مقترح</td><td>قرار الاستيراد والتسعير</td></tr>
+                            <tr><td class="fw-bold">الرسوم التحليلية</td><td>اتجاه المبيعات والمشتريات وصافي الفرق آخر ١٢ شهراً</td><td>دعم القرار</td></tr>
                         </tbody>
                     </table>
                 </div>
+                <div class="alert-tip">التقارير الثلاثة الأخيرة مستوحاة من مكتبة تقارير الأصيل، ومتاحة من صفحة التقارير.</div>
             </div>
         </div>
 
@@ -1116,7 +1384,7 @@
                 <div class="table-responsive">
                     <table class="table table-sm term-table small">
                         <tr><td>الحد الأدنى للمخزون الافتراضي</td><td><code>default_min_stock_quantity</code></td><td>القيمة الافتراضية لحقل "الحد الأدنى" عند إضافة منتج جديد</td></tr>
-                        <tr><td>تنبيه انتهاء الصلاحية قبل (أيام)</td><td><code>expiry_alert_days</code></td><td>يُظهر تنبيهاً في لوحة التحكم للمنتجات التي ستنتهي خلال هذه الأيام — الافتراضي: 30</td></tr>
+                        <tr><td>تنبيه انتهاء الصلاحية قبل (أيام)</td><td><code>expiry_alert_days</code></td><td>يُظهر تنبيهات في لوحة التحكم للمنتجات التي ستنتهي خلال هذه الأيام — الافتراضي: 30</td></tr>
                         <tr><td>حد الائتمان الافتراضي للعميل</td><td><code>default_credit_limit</code></td><td>القيمة الافتراضية لحقل "حد الائتمان" عند إضافة عميل جديد. الصفر = بلا حد</td></tr>
                     </table>
                 </div>
@@ -1149,6 +1417,285 @@
                     <strong>تنبيه مهم:</strong> إذا تُرك أي حساب فارغاً (— لم يُحدَّد —) ستفشل العمليات التي تحتاجه في إنشاء القيود المحاسبية.
                     يُنصح بالتأكد من صحة كل الحسابات بعد إنشاء شجرة الحسابات مباشرةً.
                 </div>
+            </div>
+        </div>
+
+        {{-- ══════════════════════════════════════════════════════════ --}}
+        {{-- الوحدات المتعددة للصنف --}}
+        {{-- ══════════════════════════════════════════════════════════ --}}
+        <div class="help-section" id="sec-multi-units">
+            <div class="section-header">
+                <i class="bi bi-boxes fs-5"></i> الوحدات المتعددة للصنف (حبة / كرتون / دستة)
+            </div>
+            <div class="section-body">
+                <p>يمكن تعريف حتى 5 وحدات إضافية لكل صنف، لكل وحدة <strong>معامل تحويل</strong> (كم وحدة رئيسية بداخلها)
+                   وباركود خاص وسعر بيع وتكلفة اختياريان.</p>
+                <div class="workflow-step"><span class="step-num">1</span>
+                    <div><div class="step-title">التعريف</div>
+                    <div class="step-desc">من بطاقة الصنف → قسم "الوحدات الإضافية": أضف وحدة مثل "كرتون" بمعامل 12.</div></div>
+                </div>
+                <div class="workflow-step"><span class="step-num">2</span>
+                    <div><div class="step-title">البيع</div>
+                    <div class="step-desc">امسح باركود الكرتون في نقطة البيع — يُضاف سطر "الصنف — كرتون" بسعر الكرتون، ويُخصم من المخزون 12 وحدة رئيسية.</div></div>
+                </div>
+                <div class="workflow-step"><span class="step-num">3</span>
+                    <div><div class="step-title">الشراء</div>
+                    <div class="step-desc">في فاتورة الشراء اختر الوحدة من عمود "الوحدة" — التكلفة والكمية تُحوَّلان تلقائياً للوحدة الرئيسية.</div></div>
+                </div>
+                <div class="alert-tip">المخزون يُسجَّل دائماً بالوحدة الرئيسية؛ لذلك تبقى تقارير الأرصدة وAVCO صحيحة مهما تنوعت وحدات البيع والشراء.</div>
+            </div>
+        </div>
+
+        {{-- ══════════════════════════════════════════════════════════ --}}
+        {{-- أنواع الأصناف --}}
+        {{-- ══════════════════════════════════════════════════════════ --}}
+        <div class="help-section" id="sec-item-types">
+            <div class="section-header">
+                <i class="bi bi-collection fs-5"></i> أنواع الأصناف: بضاعة / خدمة / تجميعي
+            </div>
+            <div class="section-body">
+                <div class="table-responsive">
+                    <table class="table table-sm term-table small">
+                        <thead class="table-dark"><tr><th>النوع</th><th>المخزون</th><th>الاستخدام</th></tr></thead>
+                        <tbody>
+                            <tr><td>بضاعة</td><td>يُتتبَّع</td><td>الأصناف العادية — حركات مخزنية وتكلفة AVCO</td></tr>
+                            <tr><td>خدمة</td><td>لا كارت مخزن</td><td>توصيل، تغليف، صيانة... تُباع من POS بلا فحص مخزون وبلا تكلفة بضاعة</td></tr>
+                            <tr><td>تجميعي</td><td>يُخصم من مكوناته</td><td>سلة/بوكس مكوَّن من أصناف؛ عند بيعه يُخصم مخزون المكونات وتكون تكلفة المباعي مجموع تكاليفها</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="gl-example">
+                    <table class="w-100">
+                        <tr><td class="gl-debit">مدين: الصندوق / ذمم العميل</td><td>الإجمالي</td></tr>
+                        <tr><td class="gl-credit">دائن: إيراد المبيعات (+ ضريبة إن وجدت)</td><td>الصافي</td></tr>
+                        <tr><td class="gl-debit">مدين: تكلفة البضاعة المباعة (مكونات التجميعي)</td><td>التكلفة</td></tr>
+                        <tr><td class="gl-credit">دائن: المخزون</td><td>التكلفة</td></tr>
+                    </table>
+                </div>
+                <div class="alert-warn">بيع صنف "خدمة" لا يولّد سطر تكلفة بضاعة — إيراده كامل ضمن قائمة الدخل.</div>
+            </div>
+        </div>
+
+        {{-- ══════════════════════════════════════════════════════════ --}}
+        {{-- التصنيع والتجميع --}}
+        {{-- ══════════════════════════════════════════════════════════ --}}
+        <div class="help-section" id="sec-assembly">
+            <div class="section-header">
+                <i class="bi bi-gear-wide-connected fs-5"></i> التصنيع والتجميع (معادلات التصنيع BOM)
+            </div>
+            <div class="section-body">
+                <div class="workflow-step"><span class="step-num">1</span>
+                    <div><div class="step-title">عرّف المعادلة</div>
+                    <div class="step-desc">بطاقة الصنف → "معادلة التصنيع": حدد المكونات وكمية كل مكوّن لإنتاج وحدة واحدة.</div></div>
+                </div>
+                <div class="workflow-step"><span class="step-num">2</span>
+                    <div><div class="step-title">نفّذ أمر التصنيع</div>
+                    <div class="step-desc">المخزون → "التصنيع والتجميع" → أمر تصنيع جديد: اختر الصنف والكمية والمخزن. يعرض النظام المكونات المطلوبة وتكلفتها قبل التنفيذ.</div></div>
+                </div>
+                <div class="workflow-step"><span class="step-num">3</span>
+                    <div><div class="step-title">الأثر</div>
+                    <div class="step-desc">صادر مخزني للمكونات + وارد للصنف المنتَج بتكلفة = مجموع تكلفة المكونات، مع تحديث AVCO للمنتَج وقيد محاسبي مُرحَّل.</div></div>
+                </div>
+                <div class="gl-example">
+                    <table class="w-100">
+                        <tr><td class="gl-debit">مدين: المخزون (الصنف المنتَج)</td><td>إجمالي تكلفة المكونات</td></tr>
+                        <tr><td class="gl-credit">دائن: المخزون (المكونات)</td><td>كل مكوّن بتكلفته</td></tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        {{-- ══════════════════════════════════════════════════════════ --}}
+        {{-- البونص --}}
+        {{-- ══════════════════════════════════════════════════════════ --}}
+        <div class="help-section" id="sec-bonus">
+            <div class="section-header">
+                <i class="bi bi-gift fs-5"></i> الكمية الإضافية (البونص)
+            </div>
+            <div class="section-body">
+                <p>في بطاقة الصنف ثلاثة حقول: <strong>إضافي بعد الكمية</strong> (لا بونص قبل بلوغها)،
+                   <strong>إضافي كل كمية</strong>، و<strong>الكمية المجانية</strong> الممنوحة عن كل شريحة.</p>
+                <p>مثال: بعد 10 / كل 12 / مجاني 1 → بيع 24 قطعة يمنح قطعتين مجانيتين تلقائياً في POS وتظهران على الإيصال.</p>
+                <div class="alert-tip">محاسبياً: الكمية المجانية تخرج من المخزون وتُحمَّل تكلفتها على "تكلفة البضاعة المباعة" دون أي إيراد مقابل — وهي المعالجة القياسية للعينات والبونص الترويجي.</div>
+            </div>
+        </div>
+
+        {{-- ══════════════════════════════════════════════════════════ --}}
+        {{-- ضريبة لكل صنف --}}
+        {{-- ══════════════════════════════════════════════════════════ --}}
+        <div class="help-section" id="sec-item-vat">
+            <div class="section-header">
+                <i class="bi bi-percent fs-5"></i> ضريبة القيمة المضافة لكل صنف
+            </div>
+            <div class="section-body">
+                <p>لكل صنف خياران في بطاقته: <strong>خاضع للضريبة</strong> (نعم/لا) و<strong>نسبة خاصة</strong>
+                   (اتركها فارغة لاستخدام النسبة العامة من الإعدادات).</p>
+                <p>تُحتسب الضريبة في نقطة البيع <strong>سطراً بسطر</strong>: الأصناف المعفاة نسبتها صفر،
+                   وخصم الفاتورة يُوزَّع نسبياً على السطور قبل احتساب الضريبة، وتُخزَّن نسبة وقيمة الضريبة في كل سطر بيع.</p>
+                <div class="alert-warn">إذا كانت الضريبة "شاملة" في الإعدادات فالإجمالي = المبلغ بعد الخصم، وتُستخرج الضريبة من داخله للأصناف الخاضعة فقط.</div>
+            </div>
+        </div>
+
+        {{-- ══════════════════════════════════════════════════════════ --}}
+        {{-- حد إعادة الطلب --}}
+        {{-- ══════════════════════════════════════════════════════════ --}}
+        <div class="help-section" id="sec-reorder">
+            <div class="section-header">
+                <i class="bi bi-arrow-repeat fs-5"></i> الحد الأقصى وحد إعادة الطلب
+            </div>
+            <div class="section-body">
+                <p>إلى جانب الحد الأدنى، صار لكل صنف: <strong>حد إعادة الطلب</strong> (عند بلوغه يظهر الصنف في
+                   تقرير "حد إعادة الطلب" مع كمية مقترحة للشراء) و<strong>الحد الأقصى للمخزون</strong>
+                   (يُكشف الفائض الراكد وقيمته).</p>
+                <p>التقرير من: المخزون → حد إعادة الطلب. الكمية المقترحة = الحد الأقصى − الرصيد الحالي
+                   (أو ضعف حد إعادة الطلب إذا لم يُحدد حد أقصى).</p>
+            </div>
+        </div>
+
+        {{-- ══════════════════════════════════════════════════════════ --}}
+        {{-- قوائم أسعار الشراء --}}
+        {{-- ══════════════════════════════════════════════════════════ --}}
+        <div class="help-section" id="sec-purchase-pricing">
+            <div class="section-header">
+                <i class="bi bi-tags fs-5"></i> قوائم أسعار الشراء (فئات الموردون)
+            </div>
+            <div class="section-body">
+                <div class="workflow-step"><span class="step-num">1</span>
+                    <div><div class="step-title">أنشئ القائمة</div>
+                    <div class="step-desc">الإعدادات → قوائم أسعار الشراء → قائمة جديدة، ثم "الأسعار" لتسعير الأصناف فيها.</div></div>
+                </div>
+                <div class="workflow-step"><span class="step-num">2</span>
+                    <div><div class="step-title">اربط المورد</div>
+                    <div class="step-desc">من بطاقة المورد اختر "قائمة أسعار الشراء" الخاصة به.</div></div>
+                </div>
+                <div class="workflow-step"><span class="step-num">3</span>
+                    <div><div class="step-title">الاستخدام</div>
+                    <div class="step-desc">عند إدخال فاتورة شراء لهذا المورد تُقترح التكلفة من قائمته تلقائياً (يظهر الحقل بإطار أخضر)، مع إمكانية تعديلها يدوياً.</div></div>
+                </div>
+            </div>
+        </div>
+
+        {{-- ══════════════════════════════════════════════════════════ --}}
+        {{-- العملات --}}
+        {{-- ══════════════════════════════════════════════════════════ --}}
+        <div class="help-section" id="sec-currencies">
+            <div class="section-header">
+                <i class="bi bi-currency-exchange fs-5"></i> العملات وأسعار الصرف
+            </div>
+            <div class="section-body">
+                <p>من الإعدادات → العملات: عرّف عملات (دولار، ريال...) مع سعر صرف كل منها مقابل العملة الأساسية.</p>
+                <p>في بطاقة الصنف يمكن اختيار عملة وإدخال سعري الشراء والبيع بها؛ يحوّلهما النظام تلقائياً
+                   للعملة الأساسية عند الحفظ باستخدام سعر الصرف الحالي.</p>
+                <div class="alert-warn">المحاسبة (القيود، التقارير، الفواتير) تتم دائماً بالعملة الأساسية —
+                   تحديث سعر الصرف لا يغيّر أسعار الأصناف المحفوظة إلا عند إعادة حفظ الصنف.</div>
+            </div>
+        </div>
+
+        {{-- ══════════════════════════════════════════════════════════ --}}
+        {{-- السندات المالية: عملة / خصم مصدر / تاريخ ثانٍ / دفعي --}}
+        {{-- ══════════════════════════════════════════════════════════ --}}
+        <div class="help-section" id="sec-voucher-extras">
+            <div class="section-header">
+                <i class="bi bi-receipt-cutoff fs-5"></i> تحسينات السندات المالية (عملة، خصم مصدر، إدخال دفعي)
+            </div>
+            <div class="section-body">
+                <div class="subsection-title">العملة وسعر الصرف على السند</div>
+                <p>في سند القبض/الصرف اختر العملة وأدخل المبلغ بها — يُحوَّل تلقائياً للعملة الأساسية
+                   بسعر الصرف لحظة السند ويُحفظ المبلغ الأجنبي وسعر الصرف على السند للمرجعية.
+                   القيد المحاسبي يُرحَّل دائماً بالعملة الأساسية.</p>
+
+                <div class="subsection-title">خصم المصدر (سند القبض)</div>
+                <p>أدخل نسبة خصم المصدر؛ يحسب النظام مبلغ الخصم تلقائياً:
+                   الخصم = المقبوض × النسبة ÷ (100 − النسبة)، ويُقفل من حساب العميل
+                   إجمالي (المقبوض + الخصم).</p>
+                <div class="gl-example">
+                    <table class="w-100">
+                        <tr><td class="gl-debit">مدين: الصندوق / البنك</td><td>الصافي المقبوض</td></tr>
+                        <tr><td class="gl-debit">مدين: خصم مصدر مدفوع مقدماً (1250)</td><td>مبلغ الخصم</td></tr>
+                        <tr><td class="gl-credit">دائن: حساب العميل</td><td>الإجمالي</td></tr>
+                    </table>
+                </div>
+                <div class="alert-tip">حساب "خصم مصدر مدفوع مقدماً" أصل ضريبي يُسوَّى لاحقاً مع الضريبة المستحقة. مفتاح الإعداد: <code>account_source_discount_code</code> (افتراضي 1250).</div>
+
+                <div class="subsection-title">رصيد الحساب أثناء الإدخال</div>
+                <p>عند اختيار الحساب المقابل في السند يظهر رصيده الحالي فوراً (مدين/دائن) — كما في مفتاح <b>*</b> في الأصيل.</p>
+
+                <div class="subsection-title">تاريخ ثانٍ</div>
+                <p>حقل اختياري على السند لتاريخ مرجعي إضافي (تاريخ الاستحقاق، تاريخ الشيك...).</p>
+
+                <div class="subsection-title">السندات المتعددة (الإدخال الدفعي)</div>
+                <div class="workflow-step"><span class="step-num">1</span>
+                    <div><div class="step-title">افتح الشاشة</div>
+                    <div class="step-desc">الخزينة → "السندات المتعددة (دفعي)" — حدد النوع (قبض/صرف) والتاريخ والطريقة وحساب النقدية مرة واحدة.</div></div>
+                </div>
+                <div class="workflow-step"><span class="step-num">2</span>
+                    <div><div class="step-title">أدخل الأسطر</div>
+                    <div class="step-desc">كل سطر: الاسم، الحساب المقابل، المبلغ. أضف ما تشاء من الأسطر.</div></div>
+                </div>
+                <div class="workflow-step"><span class="step-num">3</span>
+                    <div><div class="step-title">حفظ وترحيل الكل</div>
+                    <div class="step-desc">كل سطر يُنشئ سنداً مستقلاً بقيده. العملية معاملة واحدة: إما أن تنجح كلها أو لا يُحفظ شيء.</div></div>
+                </div>
+
+                <div class="subsection-title">الرقم الضريبي للعميل (مشتغل مرخص)</div>
+                <p>حقل جديد في بطاقة العميل لحفظ رقم المشتغل المرخص/الرقم الضريبي، لاستخدامه في الفواتير الضريبية وخصم المصدر.</p>
+            </div>
+        </div>
+
+        {{-- ══════════════════════════════════════════════════════════ --}}
+        {{-- كشوف الإيرادات والمصروفات --}}
+        {{-- ══════════════════════════════════════════════════════════ --}}
+        <div class="help-section" id="sec-res">
+            <div class="section-header">
+                <i class="bi bi-file-earmark-bar-graph fs-5"></i> كشوف الإيرادات والمصروفات (الإقرار الدوري)
+            </div>
+            <div class="section-body">
+                <p>كشف دوري (شهري عادةً) يجمع كل الفواتير حتى <strong>تاريخ القطع</strong> التي لم تدخل أي كشف سابق —
+                   <strong>كل فاتورة تنتمي لكشف واحد فقط</strong>. يعرض الإيرادات والمصروفات صافية من الضريبة،
+                   و<strong>الضريبة المضافة للدفع</strong> (ضريبة المبيعات − ضريبة المدخلات)، ونسبة أرباح المتاجرة.</p>
+
+                <div class="workflow-step"><span class="step-num">1</span>
+                    <div><div class="step-title">المعاينة</div>
+                    <div class="step-desc">التقارير → كشوف الإيرادات والمصروفات → كشف جديد → حدد تاريخ القطع → "معاينة الفواتير".</div></div>
+                </div>
+                <div class="workflow-step"><span class="step-num">2</span>
+                    <div><div class="step-title">الحجز (F7 في الأصيل)</div>
+                    <div class="step-desc">ألغِ تحديد أي فاتورة لاستثنائها — تبقى بلا كشف وتُلتقط تلقائياً في الكشف التالي.</div></div>
+                </div>
+                <div class="workflow-step"><span class="step-num">3</span>
+                    <div><div class="step-title">التسجيل والمراجعة</div>
+                    <div class="step-desc">"تسجيل الكشف" يعيّن الفواتير المحددة له نهائياً ويحسب الإجماليات. صفحة الكشف تعرض كل بند مع فواتيره (drill-down) وزر طباعة.</div></div>
+                </div>
+
+                <div class="alert-warn">
+                    <strong>تحذير الفواتير المتأخرة:</strong> إذا أُدخلت فاتورة بعد حفظ كشف وتاريخها يقع ضمن مداه،
+                    يظهر تنبيه أصفر في قائمة الكشوف وصفحة الكشف — افتح "تعديل" لإدراجها (تظهر بأسطر صفراء).
+                </div>
+
+                <div class="subsection-title">ضريبة المدخلات (الأساس المحاسبي)</div>
+                <p>أضيف حقل "ضريبة المدخلات" لفواتير الشراء والمصروفات، تُرحَّل لحساب
+                   <strong>1260 — ضريبة قيمة مضافة مدخلات</strong> (أصل) ولا تدخل في تكلفة المخزون (IAS 2):</p>
+                <div class="gl-example">
+                    <table class="w-100">
+                        <tr><td class="gl-debit">مدين: المخزون (صافي بلا ضريبة)</td><td>الصافي</td></tr>
+                        <tr><td class="gl-debit">مدين: ضريبة مدخلات (1260)</td><td>الضريبة</td></tr>
+                        <tr><td class="gl-credit">دائن: الموردون / الصندوق</td><td>الإجمالي</td></tr>
+                    </table>
+                </div>
+                <div class="alert-tip">حذف كشف لا يحذف فواتيره — يحررها فقط لتدخل في كشف لاحق. مفتاح الإعداد: <code>account_tax_input_code</code>.</div>
+
+                <div class="subsection-title">بنود إضافية في الكشف (بمسميات IFRS)</div>
+                <p>وُسِّع الكشف ليطابق شاشة الأصيل الذهبي مع اعتماد المصطلحات المحاسبية الدولية:</p>
+                <table class="term-table">
+                    <tr><th>البند</th><th>الأثر</th></tr>
+                    <tr><td>الأصول الرأسمالية (Capital Assets)</td><td>تُدرج بتكلفتها وضريبة مدخلاتها — ضريبة المدخلات تُخصَم من صافي ض.ق.م المستحقة (لا تدخل هامش الربح).</td></tr>
+                    <tr><td>الإقرارات الجمركية (Import VAT)</td><td>ضريبة القيمة المضافة على الواردات تُخصَم كضريبة مدخلات من صافي ض.ق.م المستحقة.</td></tr>
+                    <tr><td>إيرادات الخدمات (Service Revenue)</td><td>تُعرض كمذكرة ضمن المبيعات (أصناف من نوع "خدمة") دون احتساب مزدوج.</td></tr>
+                    <tr><td>الإشعارات الدائنة (Credit Notes)</td><td>مذكرة ضمن مردودات المبيعات.</td></tr>
+                    <tr><td>الإشعارات المدينة (Debit Notes)</td><td>مذكرة ضمن مردودات المشتريات (طريقة استرداد <code>debit_note</code>).</td></tr>
+                </table>
+                <p><strong>صافي ض.ق.م المستحقة</strong> = ضريبة المبيعات − (ضريبة المشتريات + المصاريف + الأصول + الواردات الجمركية).
+                   و<strong>طباعة PDF</strong> متاحة من صفحة الكشف بزر "طباعة PDF" بتخطيط صناديق الإيرادات/المصروفات/الأصول/الجمارك/الملخص.</p>
             </div>
         </div>
 
@@ -1328,7 +1875,7 @@
                     <li>قيمة الحقل <strong>قبل</strong> التعديل وقيمته <strong>بعد</strong> التعديل</li>
                     <li>نوع العملية: إنشاء / تعديل / حذف</li>
                 </ul>
-                <p><strong>النماذج المراقَبة:</strong> فواتير البيع والشراء، القيود، الدفعات، سندات القبض والصرف، بيانات العملاء والموردين، تعديلات المخزون، الأصول الثابتة.</p>
+                <p><strong>النماذج المراقَبة:</strong> فواتير البيع والشراء، القيود، الدفعات، سندات القبض والصرف، بيانات العملاء والموردون، تعديلات المخزون، الأصول الثابتة.</p>
                 <div class="alert-warn">لا يمكن حذف سجلات التدقيق — هي مخصصة للمراجعة والامتثال القانوني.</div>
             </div>
         </div>
@@ -1528,7 +2075,7 @@
 </div>{{-- end row --}}
 @endsection
 
-@push('scripts')
+@section('scripts')
 <script>
     // Highlight TOC link on scroll
     const sections = document.querySelectorAll('.help-section');
@@ -1546,4 +2093,4 @@
 
     sections.forEach(s => observer.observe(s));
 </script>
-@endpush
+@endsection

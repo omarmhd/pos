@@ -20,28 +20,43 @@ class Sale extends Model
         'is_credit',
         'subtotal',
         'discount',
+        'discount_percent',
         'tax',
+        'tax_inclusive',
         'total_amount',
         'payment_method',
         'paid_amount',
+        'cash_amount',
+        'cheque_amount',
+        'cheque_id',
         'balance_used',
         'change_amount',
+        'setoff_ref',
         'is_posted',
         'is_reversed',
     ];
 
     protected $casts = [
-        'subtotal'     => 'decimal:2',
-        'discount'     => 'decimal:2',
-        'tax'          => 'decimal:2',
-        'total_amount' => 'decimal:2',
-        'paid_amount'  => 'decimal:2',
-        'balance_used' => 'decimal:2',
-        'change_amount'=> 'decimal:2',
-        'is_credit'    => 'boolean',
-        'is_posted'    => 'boolean',
-        'is_reversed'  => 'boolean',
+        'subtotal'        => 'decimal:2',
+        'discount'        => 'decimal:2',
+        'discount_percent'=> 'decimal:2',
+        'tax'             => 'decimal:2',
+        'tax_inclusive'   => 'boolean',
+        'total_amount'    => 'decimal:2',
+        'paid_amount'     => 'decimal:2',
+        'cash_amount'     => 'decimal:2',
+        'cheque_amount'   => 'decimal:2',
+        'balance_used'    => 'decimal:2',
+        'change_amount'   => 'decimal:2',
+        'is_credit'       => 'boolean',
+        'is_posted'       => 'boolean',
+        'is_reversed'     => 'boolean',
     ];
+
+    public function cheque()
+    {
+        return $this->belongsTo(Check::class, 'cheque_id');
+    }
 
     public function user()
     {
@@ -78,6 +93,15 @@ class Sale extends Model
         return $this->belongsTo(CashShift::class);
     }
 
+    public function isMixed(): bool
+    {
+        $count = 0;
+        if ($this->balance_used > 0) $count++;
+        if ($this->cheque_amount > 0) $count++;
+        if ($this->cash_amount > 0) $count++;
+        return $count > 1;
+    }
+
     public function outstandingBalance(): float
     {
         if (!$this->is_credit) {
@@ -93,7 +117,9 @@ class Sale extends Model
             ? (float) $this->saleReturns->where('refund_method', 'credit_note')->sum('total_amount')
             : (float) $this->saleReturns()->where('refund_method', 'credit_note')->sum('total_amount');
 
-        return max(0, (float) $this->total_amount - $paid - $creditNotes);
+        $alreadyCoveredAtBilling = (float) $this->cash_amount + (float) $this->cheque_amount + (float) $this->balance_used;
+
+        return max(0, (float) $this->total_amount - $alreadyCoveredAtBilling - $paid - $creditNotes);
     }
 
     protected static function boot()

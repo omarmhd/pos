@@ -25,3 +25,9 @@ Schedule::command('backup:create --notify')
     ->withoutOverlapping()
     ->runInBackground()
     ->appendOutputTo(storage_path('logs/backup.log'));
+
+// ضابط كاشف يومي لتوازن دفتر الأستاذ (تدقيق C-1) — يسجّل أي قيد غير متوازن
+Schedule::command('accounting:check-balance')
+    ->dailyAt('02:30')
+    ->withoutOverlapping()
+    ->appendOutputTo(storage_path('logs/ledger-balance.log'));

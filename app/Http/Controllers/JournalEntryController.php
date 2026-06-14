@@ -178,6 +178,12 @@ class JournalEntryController extends Controller
             return back()->with('error', 'لا يمكن حذف قيد مولّد تلقائياً. استخدم قيد عكسي إذا لزم التصحيح.');
         }
 
+        try {
+            \App\Services\PeriodLockService::assertOpen($je->entry_date);
+        } catch (\RuntimeException $e) {
+            return back()->with('error', $e->getMessage());
+        }
+
         $je->lines()->delete();
         $je->delete();
 

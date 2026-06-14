@@ -380,9 +380,9 @@
                 {{-- ══════════════════════════════════════════════════════════════════ --}}
                 {{-- 2. المبيعات — Sales Cycle: Quote → Order → Invoice → Return → AR  --}}
                 {{-- ══════════════════════════════════════════════════════════════════ --}}
-                @canany(['quotations.view','sales_orders.view','sales.view','sales.returns.view','customers.view'])
-                @php $ns_sales = request()->routeIs('sales-quotations.*','sales-orders.*','sales.*','sale-returns.*','customers.*','customer-payments.*')
-                              || request()->is('sales-quotations*','sales-orders*','sale-returns*','customers*'); @endphp
+                @canany(['quotations.view','sales_orders.view','sales.view','sales.returns.view','customers.view','services.view'])
+                @php $ns_sales = request()->routeIs('sales-quotations.*','sales-orders.*','sales.*','sale-returns.*','service-invoices.*','customers.*','customer-payments.*')
+                              || request()->is('sales-quotations*','sales-orders*','sale-returns*','service-invoices*','customers*'); @endphp
                 <li class="nav-item">
                     <button class="nav-section-toggle {{ !$ns_sales ? 'collapsed' : '' }}"
                             data-bs-toggle="collapse" data-bs-target="#ns-sales"
@@ -427,6 +427,14 @@
                             </a>
                         </li>
                         @endcan
+                        @can('services.view')
+                        <li class="nav-item">
+                            <a class="nav-link {{ request()->routeIs('service-invoices.*') ? 'active' : '' }}"
+                               href="{{ route('service-invoices.index') }}">
+                                <i class="bi bi-lightning-charge"></i> فواتير إيراد الخدمات
+                            </a>
+                        </li>
+                        @endcan
                         {{-- ذمم العملاء — AR --}}
                         @can('customers.view')
                         <div class="sidebar-sep"></div>
@@ -444,9 +452,9 @@
                 {{-- ══════════════════════════════════════════════════════════════════ --}}
                 {{-- 3. المشتريات — Purchase Cycle: PO → Invoice → Return → AP         --}}
                 {{-- ══════════════════════════════════════════════════════════════════ --}}
-                @canany(['suppliers.view','purchase_orders.view','purchases.view','purchases.returns.view','expenses.view'])
-                @php $ns_purch = request()->routeIs('suppliers.*','purchase-orders.*','purchases.*','purchase-returns.*','expense-invoices.*')
-                              || request()->is('suppliers*','purchase-orders*','purchase-returns*','expense-invoices*'); @endphp
+                @canany(['suppliers.view','purchase_orders.view','purchases.view','purchases.returns.view','expenses.view','customs.view'])
+                @php $ns_purch = request()->routeIs('suppliers.*','purchase-orders.*','purchases.*','purchase-returns.*','expense-invoices.*','customs-declarations.*')
+                              || request()->is('suppliers*','purchase-orders*','purchase-returns*','expense-invoices*','customs-declarations*'); @endphp
                 <li class="nav-item">
                     <button class="nav-section-toggle {{ !$ns_purch ? 'collapsed' : '' }}"
                             data-bs-toggle="collapse" data-bs-target="#ns-purch"
@@ -500,6 +508,15 @@
                             <a class="nav-link {{ request()->routeIs('expense-invoices.*') ? 'active' : '' }}"
                                href="{{ route('expense-invoices.index') }}">
                                 <i class="bi bi-receipt-cutoff"></i> فواتير المصروفات
+                            </a>
+                        </li>
+                        @endcan
+                        {{-- الإقرارات الجمركية --}}
+                        @can('customs.view')
+                        <li class="nav-item">
+                            <a class="nav-link {{ request()->routeIs('customs-declarations.*') ? 'active' : '' }}"
+                               href="{{ route('customs-declarations.index') }}">
+                                <i class="bi bi-box-arrow-in-down"></i> الإقرارات الجمركية
                             </a>
                         </li>
                         @endcan
@@ -567,6 +584,15 @@
                             </a>
                         </li>
                         @endcan
+                        {{-- التصنيع والتجميع --}}
+                        @can('assemblies.view')
+                        <li class="nav-item">
+                            <a class="nav-link {{ request()->routeIs('assemblies.*') ? 'active' : '' }}"
+                               href="{{ route('assemblies.index') }}">
+                                <i class="bi bi-gear-wide-connected"></i> التصنيع والتجميع
+                            </a>
+                        </li>
+                        @endcan
                         {{-- تنبيهات --}}
                         @can('inventory.view')
                         <div class="sidebar-sep"></div>
@@ -574,6 +600,12 @@
                             <a class="nav-link {{ request()->routeIs('products.low-stock','products.expiring') ? 'active' : '' }}"
                                href="{{ route('products.low-stock') }}">
                                 <i class="bi bi-exclamation-triangle text-warning"></i> تنبيهات المخزون
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {{ request()->routeIs('products.reorder') ? 'active' : '' }}"
+                               href="{{ route('products.reorder') }}">
+                                <i class="bi bi-arrow-repeat text-warning"></i> حد إعادة الطلب
                             </a>
                         </li>
                         @endcan
@@ -584,8 +616,8 @@
                 {{-- ══════════════════════════════════════════════════════════════════ --}}
                 {{-- 5. الخزينة — Treasury: Cash In (AR) + Cash Out (AP)               --}}
                 {{-- ══════════════════════════════════════════════════════════════════ --}}
-                @can('vouchers.view')
-                @php $ns_treas = request()->is('vouchers*'); @endphp
+                @canany(['vouchers.view', 'checks.view'])
+                @php $ns_treas = request()->is('vouchers*') || request()->is('checks*'); @endphp
                 <li class="nav-item">
                     <button class="nav-section-toggle {{ !$ns_treas ? 'collapsed' : '' }}"
                             data-bs-toggle="collapse" data-bs-target="#ns-treas"
@@ -597,6 +629,7 @@
                 </li>
                 <div class="collapse {{ $ns_treas ? 'show' : '' }}" id="ns-treas">
                     <ul class="nav flex-column sub-nav">
+                        @can('vouchers.view')
                         <li class="nav-item">
                             <a class="nav-link {{ request()->is('vouchers/receipts*') ? 'active' : '' }}"
                                href="{{ route('vouchers.receipts.index') }}">
@@ -609,9 +642,26 @@
                                 <i class="bi bi-arrow-up-circle-fill text-danger"></i> سندات الصرف (دفعيات)
                             </a>
                         </li>
+                        @endcan
+                        @can('vouchers.create')
+                        <li class="nav-item">
+                            <a class="nav-link {{ request()->is('vouchers/bulk*') ? 'active' : '' }}"
+                               href="{{ route('vouchers.bulk.create') }}">
+                                <i class="bi bi-stack text-primary"></i> السندات المتعددة (دفعي)
+                            </a>
+                        </li>
+                        @endcan
+                        @can('checks.view')
+                        <li class="nav-item">
+                            <a class="nav-link {{ request()->is('checks*') ? 'active' : '' }}"
+                               href="{{ route('checks.index') }}">
+                                <i class="bi bi-bank2 text-primary"></i> الشيكات (واردة / صادرة)
+                            </a>
+                        </li>
+                        @endcan
                     </ul>
                 </div>
-                @endcan
+                @endcanany
 
                 {{-- ══════════════════════════════════════════════════════════════════ --}}
                 {{-- 6. المحاسبة — GL → Reports → Fixed Assets → Closing → Audit       --}}
@@ -891,8 +941,8 @@
                 {{-- ══════════════════════════════════════════════════════════════════ --}}
                 {{-- 8. التقارير — Reports Dashboard                                   --}}
                 {{-- ══════════════════════════════════════════════════════════════════ --}}
-                @can('reports.view')
-                @php $ns_rep = request()->routeIs('reports.*') || request()->is('reports*'); @endphp
+                @canany(['reports.view', 'res.view'])
+                @php $ns_rep = request()->routeIs('reports.*', 'res.*') || request()->is('reports*', 'res*'); @endphp
                 <li class="nav-item">
                     <button class="nav-section-toggle {{ !$ns_rep ? 'collapsed' : '' }}"
                             data-bs-toggle="collapse" data-bs-target="#ns-rep"
@@ -910,6 +960,14 @@
                                 <i class="bi bi-grid-1x2"></i> جميع التقارير
                             </a>
                         </li>
+                        @can('res.view')
+                        <li class="nav-item">
+                            <a class="nav-link {{ request()->routeIs('res.*') ? 'active' : '' }}"
+                               href="{{ route('res.index') }}">
+                                <i class="bi bi-file-earmark-bar-graph"></i> كشوف الإيرادات والمصروفات
+                            </a>
+                        </li>
+                        @endcan
                         <li class="nav-item">
                             <a class="nav-link {{ request()->routeIs('reports.sales') ? 'active' : '' }}"
                                href="{{ route('reports.sales') }}">
@@ -1022,6 +1080,22 @@
                             <a class="nav-link {{ request()->routeIs('price-lists.*') ? 'active' : '' }}"
                                href="{{ route('price-lists.index') }}">
                                 <i class="bi bi-tags-fill"></i> قوائم الأسعار
+                            </a>
+                        </li>
+                        @endcan
+                        @can('purchase_price_lists.view')
+                        <li class="nav-item">
+                            <a class="nav-link {{ request()->routeIs('purchase-price-lists.*') ? 'active' : '' }}"
+                               href="{{ route('purchase-price-lists.index') }}">
+                                <i class="bi bi-tags"></i> قوائم أسعار الشراء
+                            </a>
+                        </li>
+                        @endcan
+                        @can('currencies.view')
+                        <li class="nav-item">
+                            <a class="nav-link {{ request()->routeIs('currencies.*') ? 'active' : '' }}"
+                               href="{{ route('currencies.index') }}">
+                                <i class="bi bi-currency-exchange"></i> العملات
                             </a>
                         </li>
                         @endcan
@@ -1369,13 +1443,13 @@
         var p = window.location.pathname;
         var map = [
             { id: 'ns-sales',  paths: ['/sales', '/sales-quotations', '/sales-orders', '/sale-returns', '/customers', '/pos/shifts'] },
-            { id: 'ns-purch',  paths: ['/purchases', '/purchase-orders', '/purchase-returns', '/suppliers', '/expense-invoices'] },
-            { id: 'ns-inv',    paths: ['/products', '/categories', '/inventory', '/stock-transfers'] },
+            { id: 'ns-purch',  paths: ['/purchases', '/purchase-orders', '/purchase-returns', '/suppliers', '/expense-invoices', '/customs-declarations'] },
+            { id: 'ns-inv',    paths: ['/products', '/categories', '/inventory', '/stock-transfers', '/assemblies'] },
             { id: 'ns-treas',  paths: ['/vouchers'] },
             { id: 'ns-acc',    paths: ['/accounting', '/accounts', '/journal-entries', '/reversals', '/fixed-assets', '/fixed-asset-categories'] },
             { id: 'ns-hr',     paths: ['/hr'] },
-            { id: 'ns-rep',    paths: ['/reports'] },
-            { id: 'ns-set',    paths: ['/users', '/roles', '/permissions', '/settings', '/branches', '/warehouses', '/pos-terminals', '/price-lists', '/audit-logs'] },
+            { id: 'ns-rep',    paths: ['/reports', '/res'] },
+            { id: 'ns-set',    paths: ['/users', '/roles', '/permissions', '/settings', '/branches', '/warehouses', '/pos-terminals', '/price-lists', '/purchase-price-lists', '/currencies', '/audit-logs'] },
         ];
 
         for (var i = 0; i < map.length; i++) {

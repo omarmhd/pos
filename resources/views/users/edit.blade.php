@@ -56,11 +56,12 @@
                             @php
                                 $selected = in_array($role->name, old('roles', $userRoles));
                                 $badgeClass = match($role->name) {
-                                    'admin'      => 'bg-danger',
-                                    'manager'    => 'bg-primary',
-                                    'accountant' => 'bg-info',
-                                    'cashier'    => 'bg-success',
-                                    default      => 'bg-secondary',
+                                    'admin'          => 'bg-danger',
+                                    'manager'        => 'bg-primary',
+                                    'branch_manager' => 'bg-primary',
+                                    'accountant'     => 'bg-info',
+                                    'cashier'        => 'bg-success',
+                                    default          => 'bg-secondary',
                                 };
                             @endphp
                             <div class="col-6">

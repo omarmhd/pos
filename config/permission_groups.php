@@ -118,6 +118,14 @@ return [
             'inventory.count'  => 'إنشاء جلسات الجرد الدوري واعتمادها',
         ],
     ],
+    'assemblies' => [
+        'label' => 'التصنيع والتجميع',
+        'icon'  => 'bi-gear-wide-connected',
+        'permissions' => [
+            'assemblies.view'   => 'عرض مستندات التصنيع',
+            'assemblies.create' => 'تنفيذ أمر تصنيع (استهلاك مكونات وإنتاج)',
+        ],
+    ],
     'vouchers' => [
         'label' => 'سندات القبض والصرف',
         'icon'  => 'bi-receipt-cutoff',
@@ -125,6 +133,32 @@ return [
             'vouchers.view'   => 'عرض سندات القبض والصرف',
             'vouchers.create' => 'إنشاء سند قبض أو صرف',
             'vouchers.delete' => 'حذف السندات (غير المُرحَّلة)',
+        ],
+    ],
+    'customs' => [
+        'label' => 'الإقرارات الجمركية',
+        'icon'  => 'bi-box-arrow-in-down',
+        'permissions' => [
+            'customs.view'   => 'عرض الإقرارات الجمركية',
+            'customs.manage' => 'تسجيل وحذف الإقرارات الجمركية',
+        ],
+    ],
+    'services' => [
+        'label' => 'فواتير إيراد الخدمات',
+        'icon'  => 'bi-lightning-charge',
+        'permissions' => [
+            'services.view'   => 'عرض فواتير إيراد الخدمات',
+            'services.manage' => 'إنشاء فواتير إيراد الخدمات وترحيلها',
+        ],
+    ],
+    'checks' => [
+        'label' => 'الشيكات',
+        'icon'  => 'bi-bank2',
+        'permissions' => [
+            'checks.view'       => 'عرض الشيكات',
+            'checks.create'     => 'تسجيل شيك جديد',
+            'checks.transition' => 'تغيير حالة الشيك (إيداع / مقاصة / ارتداد)',
+            'checks.delete'     => 'حذف الشيكات (في مرحلة الاستلام فقط)',
         ],
     ],
     'accounts' => [
@@ -142,8 +176,9 @@ return [
         'label' => 'القيود اليومية',
         'icon'  => 'bi-journal-text',
         'permissions' => [
-            'journal_entries.view'   => 'عرض القيود اليومية',
-            'journal_entries.create' => 'إنشاء قيد يومي',
+            'journal_entries.view'    => 'عرض القيود اليومية',
+            'journal_entries.create'  => 'إنشاء قيد يومي (مُنشئ)',
+            'journal_entries.approve' => 'اعتماد/ترحيل القيد اليومي (معتمِد — فصل المهام)',
         ],
     ],
     'ledger' => [
@@ -183,6 +218,14 @@ return [
         'icon'  => 'bi-graph-up',
         'permissions' => [
             'reports.view' => 'عرض جميع التقارير',
+        ],
+    ],
+    'res' => [
+        'label' => 'كشوف الإيرادات والمصروفات',
+        'icon'  => 'bi-file-earmark-bar-graph',
+        'permissions' => [
+            'res.view'   => 'عرض كشوف الإيرادات والمصروفات',
+            'res.manage' => 'إنشاء وتعديل وحذف الكشوف',
         ],
     ],
     'hr' => [
@@ -257,6 +300,16 @@ return [
         'permissions' => [
             'price_lists.view'   => 'عرض قوائم الأسعار',
             'price_lists.manage' => 'إدارة قوائم الأسعار وتسعير الأصناف',
+            'purchase_price_lists.view'   => 'عرض قوائم أسعار الشراء',
+            'purchase_price_lists.manage' => 'إدارة قوائم أسعار الشراء وربط الموردين',
+        ],
+    ],
+    'currencies' => [
+        'label' => 'العملات',
+        'icon'  => 'bi-currency-exchange',
+        'permissions' => [
+            'currencies.view'   => 'عرض العملات وأسعار الصرف',
+            'currencies.manage' => 'إدارة العملات وتحديث أسعار الصرف',
         ],
     ],
     'settings' => [

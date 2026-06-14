@@ -8,6 +8,7 @@ use App\Models\JournalEntryLine;
 use App\Models\CustomerDeposit;
 use App\Models\EmployeeLoan;
 use App\Models\PaymentVoucher;
+use App\Models\PayrollRun;
 use App\Models\Purchase;
 use App\Models\AssetDepreciationEntry;
 use App\Models\ExpenseInvoice;
@@ -111,6 +112,15 @@ class LedgerPostingService
      * @param  array<string, mixed>                                                       $header
      * @param  list<array{account_id:int,debit:float,credit:float,line_description:string}> $lines
      */
+    /**
+     * Public wrapper — allows external services (e.g. CheckPostingService)
+     * to post entries through the same period-lock and balance checks.
+     */
+    public function buildEntryPublic(array $header, array $lines): JournalEntry
+    {
+        return $this->buildEntry($header, $lines);
+    }
+
     private function buildEntry(array $header, array $lines): JournalEntry
     {
         // ── 1. Period lock check ─────────────────────────────────────────────
@@ -165,8 +175,9 @@ class LedgerPostingService
         $subtotal = round((float) $sale->subtotal,     2);
         $discount = round((float) $sale->discount,     2);
         $tax      = round((float) $sale->tax,          2);
+        // التكلفة تشمل الكمية المجانية (البونص) — تخرج من المخزون وتُحمَّل على تكلفة المبيعات
         $cogs     = round(
-            $sale->items->sum(fn($i) => $i->quantity * (float) $i->cost_price),
+            $sale->items->sum(fn($i) => ((float) $i->quantity + (float) ($i->bonus_qty ?? 0)) * (float) $i->cost_price),
             2
         );
 
@@ -184,26 +195,43 @@ class LedgerPostingService
 
         $lines = [];
 
-        // ── Debit: Cash/Bank (per-branch), AR, or Customer Deposits ──
-        if ($sale->is_credit) {
+        // ── Mixed tender (الدفع المختلط): جزء الشيكات يُرحَّل لحساب شيكات تحت التحصيل ──
+        // additive: cheque_amount = 0 ⇒ سلوك مطابق تماماً للقديم
+        $chequeAmt = round((float) ($sale->cheque_amount ?? 0), 2);
+        if ($chequeAmt > 0) {
+            $chkRecvCode = Setting::get('account_checks_receivable_code', '1120');
             $lines[] = [
-                'account_id'       => $this->account($arCode)->id,
-                'debit'            => $total,
+                'account_id'       => $this->account($chkRecvCode)->id,
+                'debit'            => $chequeAmt,
                 'credit'           => 0,
-                'line_description' => 'ذمم عميل – ' . ($sale->customer?->name ?? 'عميل'),
+                'line_description' => 'شيكات تحت التحصيل – ' . ($sale->customer?->name ?? 'عميل'),
             ];
-        } else {
-            // Part paid from deposit balance
-            if ($balanceUsed > 0) {
+        }
+
+        // ── Part paid from deposit balance ──
+        if ($balanceUsed > 0) {
+            $lines[] = [
+                'account_id'       => $this->account($depositsCode)->id,
+                'debit'            => $balanceUsed,
+                'credit'           => 0,
+                'line_description' => 'خصم رصيد إيداع – ' . ($sale->customer?->name ?? 'عميل'),
+            ];
+        }
+
+        // ── Debit: Cash/Bank (per-branch), or AR ──
+        if ($sale->is_credit) {
+            $arPortion = round($total - $chequeAmt - $balanceUsed, 2);
+            if ($arPortion > 0) {
                 $lines[] = [
-                    'account_id'       => $this->account($depositsCode)->id,
-                    'debit'            => $balanceUsed,
+                    'account_id'       => $this->account($arCode)->id,
+                    'debit'            => $arPortion,
                     'credit'           => 0,
-                    'line_description' => 'خصم رصيد إيداع – ' . ($sale->customer?->name ?? 'عميل'),
+                    'line_description' => 'ذمم عميل – ' . ($sale->customer?->name ?? 'عميل'),
                 ];
             }
-            // Remaining paid in cash/card (nothing if fully from deposit)
-            $cashPaid = round($total - $balanceUsed, 2);
+        } else {
+            // Remaining paid in cash/card (after deposit + cheque portion)
+            $cashPaid = round($total - $balanceUsed - $chequeAmt, 2);
             if ($cashPaid > 0 && $sale->payment_method !== 'deposit_balance') {
                 $drAccountId = $this->cashOrBankId($sale->payment_method, $saleBranchId);
                 $label  = match ($sale->payment_method) {
@@ -437,6 +465,7 @@ class LedgerPostingService
         $purchase->loadMissing('supplier');
 
         $total  = round((float) $purchase->total_amount, 2);
+        $tax    = round((float) ($purchase->tax_amount ?? 0), 2);   // ضريبة مدخلات
         $paid   = round((float) $purchase->paid_amount,  2);
         $unpaid = round($total - $paid, 2);
 
@@ -447,13 +476,24 @@ class LedgerPostingService
         $supplierName = $purchase->supplier?->name ?? 'مورد';
         $lines = [];
 
-        // ── Debit: Inventory (full invoice amount) ──
+        // ── Debit: Inventory (net of recoverable input VAT — IAS 2) ──
         $lines[] = [
             'account_id'       => $this->account($inventoryCode)->id,
-            'debit'            => $total,
+            'debit'            => round($total - $tax, 2),
             'credit'           => 0,
             'line_description' => 'مشتريات بضاعة – ' . $purchase->invoice_number,
         ];
+
+        // ── Debit: ضريبة المدخلات (أصل قابل للاسترداد) ──
+        if ($tax > 0) {
+            $taxInputCode = Setting::get('account_tax_input_code', '1260');
+            $lines[] = [
+                'account_id'       => $this->account($taxInputCode)->id,
+                'debit'            => $tax,
+                'credit'           => 0,
+                'line_description' => 'ضريبة مدخلات – ' . $purchase->invoice_number,
+            ];
+        }
 
         // ── Credit: AP for unpaid portion ──
         if ($unpaid > 0) {
@@ -665,10 +705,40 @@ class LedgerPostingService
     }
 
     /**
+     * مسير رواتب — Payroll Run
+     * Lines are pre-built by PayrollController::approve()
+     * (DR Salaries Expense / CR Cash + Salaries Payable + Employee Loans).
+     *
+     * Routes through buildEntry() so period-lock and balance checks
+     * apply the same way as every other posting method.
+     *
+     * @param  array<array{account_id:int,debit:float,credit:float,line_description:string}> $lines
+     */
+    public function postPayrollRun(PayrollRun $payrollRun, array $lines): JournalEntry
+    {
+        if ($payrollRun->status !== 'draft') {
+            throw new RuntimeException("مسير الرواتب [{$payrollRun->reference}] مُرحَّل مسبقاً في دفتر الأستاذ");
+        }
+
+        return $this->buildEntry([
+            'entry_date'  => Carbon::parse($payrollRun->pay_date),
+            'reference'   => $payrollRun->reference,
+            'source_type' => PayrollRun::class,
+            'source_id'   => $payrollRun->id,
+            'branch_id'   => $payrollRun->branch_id ?? $this->resolveBranchId(),
+            'description' => 'مسير رواتب ' . $payrollRun->periodLabel(),
+        ], $lines);
+    }
+
+    /**
      * سند قبض — Receipt Voucher
      *
-     * DR cash_account (صندوق/بنك) = amount
-     * CR account      (الحساب المقابل) = amount
+     * DR cash_account (صندوق/بنك)            = amount (الصافي المقبوض)
+     * DR خصم مصدر مدفوع مقدماً (1250)        = source_discount_amount (إن وجد)
+     * CR account (الحساب المقابل)            = amount + source_discount_amount
+     *
+     * العملة الأجنبية: amount دائماً بالعملة الأساسية (محوَّل وقت الإدخال)،
+     * وتُحفظ amount_fc/exchange_rate للمرجعية على السند فقط.
      */
     public function postReceiptVoucher(ReceiptVoucher $voucher): JournalEntry
     {
@@ -688,7 +758,8 @@ class LedgerPostingService
             }
         }
 
-        $amount = round((float) $voucher->amount, 2);
+        $amount         = round((float) $voucher->amount, 2);
+        $sourceDiscount = round((float) ($voucher->source_discount_amount ?? 0), 2);
 
         $lines = [
             [
@@ -697,12 +768,24 @@ class LedgerPostingService
                 'credit'           => 0,
                 'line_description' => 'تحصيل من ' . $voucher->received_from,
             ],
-            [
-                'account_id'       => $voucher->account_id,
-                'debit'            => 0,
-                'credit'           => $amount,
-                'line_description' => 'سند قبض – ' . $voucher->voucher_number,
-            ],
+        ];
+
+        // خصم المصدر: أصل ضريبي مدين (يُخصم لاحقاً من الضريبة المستحقة)
+        if ($sourceDiscount > 0) {
+            $sdCode = Setting::get('account_source_discount_code', '1250');
+            $lines[] = [
+                'account_id'       => $this->account($sdCode)->id,
+                'debit'            => $sourceDiscount,
+                'credit'           => 0,
+                'line_description' => 'خصم مصدر ' . rtrim(rtrim(number_format((float) $voucher->source_discount_rate, 2), '0'), '.') . '% – ' . $voucher->voucher_number,
+            ];
+        }
+
+        $lines[] = [
+            'account_id'       => $voucher->account_id,
+            'debit'            => 0,
+            'credit'           => round($amount + $sourceDiscount, 2),
+            'line_description' => 'سند قبض – ' . $voucher->voucher_number,
         ];
 
         $entry = $this->buildEntry([
@@ -793,24 +876,36 @@ class LedgerPostingService
         $invoice->loadMissing('expenseAccount');
 
         $amount       = round((float) $invoice->total_amount, 2);
+        $tax          = round((float) ($invoice->tax_amount ?? 0), 2);   // ضريبة مدخلات
         $apCode       = Setting::get('account_ap_code', '2000');
         $vendorName   = $invoice->vendor_name;
 
         $lines = [
             [
                 'account_id'       => $invoice->expense_account_id,
-                'debit'            => $amount,
+                'debit'            => round($amount - $tax, 2),
                 'credit'           => 0,
                 'line_description' => ($invoice->expenseAccount->name ?? 'مصروف')
                                       . ' — ' . $vendorName,
             ],
-            [
-                'account_id'       => $this->account($apCode)->id,
-                'debit'            => 0,
-                'credit'           => $amount,
-                'line_description' => 'فاتورة مصروف مستلمة — ' . $vendorName
-                                      . ' / ' . $invoice->invoice_number,
-            ],
+        ];
+
+        if ($tax > 0) {
+            $taxInputCode = Setting::get('account_tax_input_code', '1260');
+            $lines[] = [
+                'account_id'       => $this->account($taxInputCode)->id,
+                'debit'            => $tax,
+                'credit'           => 0,
+                'line_description' => 'ضريبة مدخلات — ' . $invoice->invoice_number,
+            ];
+        }
+
+        $lines[] = [
+            'account_id'       => $this->account($apCode)->id,
+            'debit'            => 0,
+            'credit'           => $amount,
+            'line_description' => 'فاتورة مصروف مستلمة — ' . $vendorName
+                                  . ' / ' . $invoice->invoice_number,
         ];
 
         return $this->buildEntry([
@@ -822,6 +917,70 @@ class LedgerPostingService
             'description' => 'فاتورة مصروفات — ' . $invoice->invoice_number
                              . ' / ' . $vendorName,
         ], $lines);
+    }
+
+    /**
+     * فاتورة إيراد الخدمات — Service Revenue Invoice (IFRS 15)
+     *
+     *   DR Cash/Bank (نقدي) أو AR (آجل) = الإجمالي
+     *   CR إيرادات الخدمات              = الصافي (بلا ضريبة)
+     *   CR ضريبة قيمة مضافة مستحقة      = الضريبة (مخرجات)
+     */
+    public function postServiceInvoice(\App\Models\ServiceInvoice $invoice): JournalEntry
+    {
+        if ($invoice->is_posted) {
+            throw new RuntimeException("فاتورة الخدمات [{$invoice->invoice_number}] مُرحَّلة مسبقاً");
+        }
+
+        $invoice->loadMissing('serviceAccount', 'customer');
+
+        $total = round((float) $invoice->total_amount, 2);
+        $tax   = round((float) ($invoice->tax_amount ?? 0), 2);
+        $net   = round($total - $tax, 2);
+
+        $arCode      = Setting::get('account_ar_code',              '1200');
+        $cashCode    = Setting::get('account_cash_code',           '1000');
+        $taxCode     = Setting::get('account_tax_payable_code',    '2200');
+        $serviceCode = Setting::get('account_service_revenue_code', '4200');
+        $serviceAcctId = $invoice->service_account_id ?? $this->account($serviceCode)->id;
+
+        $lines = [];
+
+        $lines[] = [
+            'account_id'       => $invoice->is_credit ? $this->account($arCode)->id : $this->account($cashCode)->id,
+            'debit'            => $total,
+            'credit'           => 0,
+            'line_description' => ($invoice->is_credit ? 'ذمم عميل – ' : 'تحصيل نقدي – ') . $invoice->partyName(),
+        ];
+
+        $lines[] = [
+            'account_id'       => $serviceAcctId,
+            'debit'            => 0,
+            'credit'           => $net,
+            'line_description' => 'إيراد خدمات – ' . $invoice->invoice_number,
+        ];
+
+        if ($tax > 0) {
+            $lines[] = [
+                'account_id'       => $this->account($taxCode)->id,
+                'debit'            => 0,
+                'credit'           => $tax,
+                'line_description' => 'ضريبة قيمة مضافة مستحقة – ' . $invoice->invoice_number,
+            ];
+        }
+
+        $entry = $this->buildEntry([
+            'entry_date'  => $invoice->invoice_date->toDateString(),
+            'reference'   => $invoice->invoice_number,
+            'source_type' => \App\Models\ServiceInvoice::class,
+            'source_id'   => $invoice->id,
+            'branch_id'   => $invoice->branch_id ?? $this->resolveBranchId(),
+            'description' => 'فاتورة إيراد خدمات – ' . $invoice->invoice_number,
+        ], $lines);
+
+        $invoice->update(['is_posted' => true, 'journal_entry_id' => $entry->id]);
+
+        return $entry;
     }
 
     /**
@@ -1053,11 +1212,11 @@ class LedgerPostingService
      *
      * Only posts if |variance| ≥ 0.01 (skip zero-variance shifts).
      *
-     * Short cash (variance < 0):  DR عجز نقدي (6520)  = |variance|
-     *                              CR صندوق (1000.XX)  = |variance|
+     * Short cash (variance < 0):  DR عجز نقدي - ورديات (6530)  = |variance|
+     *                              CR صندوق (1000.XX)            = |variance|
      *
-     * Over cash  (variance > 0):  DR صندوق (1000.XX)  = variance
-     *                              CR فائض نقدي (4150) = variance
+     * Over cash  (variance > 0):  DR صندوق (1000.XX)            = variance
+     *                              CR فائض نقدي - ورديات (4160) = variance
      */
     public function postShiftClose(\App\Models\CashShift $shift): ?JournalEntry
     {
@@ -1070,8 +1229,8 @@ class LedgerPostingService
         $branchId   = $shift->branch_id;
         $cashAccId  = $this->cashId($branchId);
 
-        $shortageCode = Setting::get('account_pos_cash_shortage_code', '6520');
-        $overageCode  = Setting::get('account_pos_cash_overage_code',  '4150');
+        $shortageCode = Setting::get('account_pos_cash_shortage_code', '6530');
+        $overageCode  = Setting::get('account_pos_cash_overage_code',  '4160');
 
         if ($variance < 0) {
             // Short: cashier handed in less than expected
@@ -1240,6 +1399,69 @@ class LedgerPostingService
         ]);
 
         return ['from' => $fromEntry, 'to' => $toEntry];
+    }
+
+    /**
+     * تصنيع/تجميع — Assembly Posting
+     *
+     * الإنتاج يُقيَّم بتكلفة المكونات المستهلكة (IAS 2 — تكلفة التحويل المباشرة):
+     *   DR مخزون (الصنف المنتَج)  = إجمالي تكلفة المكونات
+     *   CR مخزون (كل مكوّن)       = كمية المكوّن × تكلفته
+     *
+     * تُستخدم حسابات المخزون الخاصة بكل صنف إن وُجدت، وإلا الحساب العام (1300).
+     */
+    public function postAssembly(\App\Models\Assembly $assembly): JournalEntry
+    {
+        if ($assembly->is_posted) {
+            throw new RuntimeException("مستند التصنيع [{$assembly->number}] مُرحَّل مسبقاً");
+        }
+
+        $assembly->loadMissing('items.component', 'product');
+
+        $inventoryCode = Setting::get('account_inventory_code', '1300');
+        $defaultInvId  = $this->account($inventoryCode)->id;
+
+        $finishedInvId = $assembly->product->inventory_account_id ?: $defaultInvId;
+        $totalCost     = round((float) $assembly->total_cost, 2);
+
+        $lines = [[
+            'account_id'       => $finishedInvId,
+            'debit'            => $totalCost,
+            'credit'           => 0,
+            'line_description' => 'إنتاج ' . $assembly->product->name
+                                  . ' × ' . rtrim(rtrim(number_format($assembly->quantity, 3), '0'), '.'),
+        ]];
+
+        // اعتمادات المكونات — مع تسوية فروق التقريب على آخر سطر
+        $creditSum = 0.0;
+        $itemCount = $assembly->items->count();
+        foreach ($assembly->items as $idx => $item) {
+            $credit = ($idx === $itemCount - 1)
+                ? round($totalCost - $creditSum, 2)              // آخر سطر يمتص فرق التقريب
+                : round((float) $item->total_cost, 2);
+            $creditSum += $credit;
+
+            $lines[] = [
+                'account_id'       => $item->component->inventory_account_id ?: $defaultInvId,
+                'debit'            => 0,
+                'credit'           => $credit,
+                'line_description' => 'استهلاك ' . $item->component->name
+                                      . ' × ' . rtrim(rtrim(number_format($item->quantity, 4), '0'), '.'),
+            ];
+        }
+
+        $entry = $this->buildEntry([
+            'entry_date'  => $assembly->assembly_date->toDateString(),
+            'reference'   => $assembly->number,
+            'source_type' => \App\Models\Assembly::class,
+            'source_id'   => $assembly->id,
+            'branch_id'   => $assembly->warehouse?->branch_id,
+            'description' => 'قيد تصنيع — ' . $assembly->number . ' (' . $assembly->product->name . ')',
+        ], $lines);
+
+        $assembly->update(['is_posted' => true]);
+
+        return $entry;
     }
 
     private function varianceDirection(float $v): string

@@ -81,6 +81,17 @@ class SaleReturnController extends Controller
             $productIds = collect($request->items)->pluck('product_id')->unique()->values()->all();
             $products = Product::whereIn('id', $productIds)->lockForUpdate()->get()->keyBy('id');
 
+            // Snapshot cost prices from the original sale (if linked), so COGS
+            // reversal uses the cost recorded AT THE TIME OF SALE rather than
+            // the product's current AVCO cost (which may have moved since).
+            $originalCostByProduct = $request->sale_id
+                ? \App\Models\SaleItem::where('sale_id', $request->sale_id)
+                    ->whereIn('product_id', $productIds)
+                    ->get()
+                    ->keyBy('product_id')
+                    ->map(fn($i) => $i->cost_price)
+                : collect();
+
             $totalAmount = 0;
             foreach ($request->items as $item) {
                 $totalAmount += $item['quantity'] * $item['unit_price'];
@@ -104,7 +115,10 @@ class SaleReturnController extends Controller
                     'product_id'     => $item['product_id'],
                     'quantity'       => $item['quantity'],
                     'unit_price'     => $item['unit_price'],
-                    'cost_price'     => $product->cost_price,
+                    // Use the cost recorded on the original sale line when available
+                    // (AVCO may have moved since the sale), otherwise fall back to
+                    // the product's current cost price.
+                    'cost_price'     => $originalCostByProduct->get($item['product_id'], $product->cost_price),
                     'total_price'    => round($item['quantity'] * $item['unit_price'], 2),
                 ]);
                 // SaleReturnItem::boot() increments products.quantity

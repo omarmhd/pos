@@ -98,6 +98,15 @@
                     @error('total_amount')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
                 <div class="col-md-3">
+                    <label class="form-label">منها ضريبة مدخلات</label>
+                    <div class="input-group">
+                        <input type="number" name="tax_amount" class="form-control"
+                               value="{{ old('tax_amount', 0) }}" step="0.01" min="0">
+                        <span class="input-group-text">{{ $currency }}</span>
+                    </div>
+                    <div class="form-text">تُرحَّل لحساب 1260 وتدخل في صافي الضريبة</div>
+                </div>
+                <div class="col-md-3">
                     <label class="form-label">ملاحظات</label>
                     <textarea name="notes" class="form-control" rows="1"
                               placeholder="وصف المصروف أو أي ملاحظات">{{ old('notes') }}</textarea>

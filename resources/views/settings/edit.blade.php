@@ -106,11 +106,13 @@ $sections = [
         'icon'  => 'bi-bank',
         'type'  => 'accounts',
         'items' => [
-            ['key' => 'account_cash_code',      'label' => 'حساب الصندوق (نقد)'],
-            ['key' => 'account_bank_code',      'label' => 'حساب البنك'],
-            ['key' => 'account_ar_code',        'label' => 'حساب العملاء (ذمم مدينة)'],
-            ['key' => 'account_inventory_code', 'label' => 'حساب المخزون'],
-            ['key' => 'account_input_vat_code', 'label' => 'حساب ضريبة القيمة المضافة المدخلات'],
+            ['key' => 'account_cash_code',                'label' => 'حساب الصندوق (نقد)'],
+            ['key' => 'account_bank_code',                'label' => 'حساب البنك'],
+            ['key' => 'account_ar_code',                  'label' => 'حساب العملاء (ذمم مدينة)'],
+            ['key' => 'account_inventory_code',           'label' => 'حساب المخزون'],
+            ['key' => 'account_input_vat_code',           'label' => 'حساب ضريبة القيمة المضافة المدخلات'],
+            ['key' => 'account_checks_receivable_code',   'label' => 'حساب شيكات تحت التحصيل (افتراضي: 1120)'],
+            ['key' => 'account_checks_payable_code',      'label' => 'حساب شيكات مستحقة الدفع (افتراضي: 2030)'],
         ],
     ],
     'liabilities' => [

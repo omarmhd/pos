@@ -68,23 +68,46 @@ class PurchaseController extends Controller
 
     public function searchProducts(Request $request)
     {
-        $q = trim($request->get('q', ''));
+        $q          = trim($request->get('q', ''));
+        $supplierId = (int) $request->get('supplier_id', 0);
 
-        $products = Product::when($q, fn($query) =>
-                $query->where('name', 'like', "%{$q}%")
-                      ->orWhere('barcode', 'like', "%{$q}%")
+        // قائمة أسعار الشراء الخاصة بالمورد (إن وُجدت) — الأصيل: فئات أسعار الموردين
+        $supplierList = null;
+        if ($supplierId) {
+            $supplierList = Supplier::find($supplierId)?->purchasePriceList;
+            if ($supplierList && !$supplierList->is_active) {
+                $supplierList = null;
+            }
+        }
+
+        $products = Product::with('units')
+            ->when($q, fn($query) =>
+                $query->where(fn($qq) => $qq
+                    ->where('name', 'like', "%{$q}%")
+                    ->orWhere('barcode', 'like', "%{$q}%"))
             )
             ->orderBy('name')
             ->limit(30)
-            ->get(['id', 'name', 'barcode', 'cost_price']);
+            ->get(['id', 'name', 'barcode', 'cost_price', 'selling_price']);
 
-        return response()->json($products->map(fn($p) => [
-            'id'            => $p->id,
-            'text'          => $p->name . ($p->barcode ? ' — ' . $p->barcode : ''),
-            'name'          => $p->name,
-            'cost_price'    => (float) $p->cost_price,
-            'selling_price' => (float) $p->selling_price,
-        ]));
+        return response()->json($products->map(function ($p) use ($supplierList) {
+            $listCost = $supplierList?->costFor($p->id);
+            return [
+                'id'             => $p->id,
+                'text'           => $p->name . ($p->barcode ? ' — ' . $p->barcode : ''),
+                'name'           => $p->name,
+                // تكلفة قائمة المورد لها الأولوية، وإلا آخر تكلفة (AVCO)
+                'cost_price'     => $listCost !== null ? $listCost : (float) $p->cost_price,
+                'from_list'      => $listCost !== null,
+                'selling_price'  => (float) $p->selling_price,
+                'units'          => $p->units->where('is_active', true)->map(fn($u) => [
+                    'id'     => $u->id,
+                    'name'   => $u->name,
+                    'factor' => (float) $u->factor,
+                    'cost'   => $u->effectiveCostPrice(),
+                ])->values(),
+            ];
+        }));
     }
 
     public function quickCreateProduct(Request $request)
@@ -123,9 +146,11 @@ class PurchaseController extends Controller
             'warehouse_id'             => 'nullable|exists:warehouses,id',
             'payment_status'           => 'required|in:paid,partial,unpaid',
             'paid_amount'              => 'required|numeric|min:0',
+            'tax_amount'               => 'nullable|numeric|min:0',
             'notes'                    => 'nullable|string',
             'items'                    => 'required|array|min:1',
             'items.*.product_id'       => 'required|exists:products,id',
+            'items.*.product_unit_id'  => 'nullable|exists:product_units,id',
             'items.*.quantity'         => 'required|numeric|min:0.001',
             'items.*.unit_price'       => 'required|numeric|min:0',
             'items.*.lot_number'       => 'nullable|string|max:100',
@@ -140,10 +165,42 @@ class PurchaseController extends Controller
             $productIds = collect($request->items)->pluck('product_id')->unique()->values()->all();
             Product::whereIn('id', $productIds)->lockForUpdate()->get();
 
-            $totalAmount = 0;
+            // ── تحويل سطور الوحدات الإضافية (كرتون...) إلى الوحدة الرئيسية ──
+            // الكمية والسعر يُسجَّلان دائماً بالوحدة الرئيسية (سلامة AVCO والمخزون)
+            $items = [];
             foreach ($request->items as $item) {
-                $totalAmount += $item['quantity'] * $item['unit_price'];
+                $factor = 1.0;
+                $unit   = null;
+                if (!empty($item['product_unit_id'])) {
+                    $unit = \App\Models\ProductUnit::where('id', $item['product_unit_id'])
+                        ->where('product_id', $item['product_id'])
+                        ->first();
+                    if (!$unit) {
+                        DB::rollBack();
+                        return back()->withInput()->with('error', 'وحدة غير صحيحة لأحد الأصناف');
+                    }
+                    $factor = (float) $unit->factor;
+                }
+
+                $baseQty   = round((float) $item['quantity'] * $factor, 4);
+                $basePrice = $factor > 0 ? round((float) $item['unit_price'] / $factor, 4) : (float) $item['unit_price'];
+
+                $items[] = array_merge($item, [
+                    'base_qty'   => $baseQty,
+                    'base_price' => $basePrice,
+                    'unit'       => $unit,
+                    'factor'     => $factor,
+                ]);
             }
+
+            $subtotal = 0;
+            foreach ($items as $item) {
+                $subtotal += $item['base_qty'] * $item['base_price'];
+            }
+            $subtotal    = round($subtotal, 2);
+            // ضريبة المدخلات: تُضاف على الإجمالي وتُرحَّل لحساب 1260 (لا تدخل في تكلفة المخزون)
+            $taxAmount   = round((float) ($request->tax_amount ?? 0), 2);
+            $totalAmount = round($subtotal + $taxAmount, 2);
 
             /** @var Purchase $purchase */
             $purchase = Purchase::create([
@@ -152,23 +209,27 @@ class PurchaseController extends Controller
                 'user_id'                 => auth()->id(),
                 'warehouse_id'            => $warehouseId,
                 'total_amount'            => $totalAmount,
+                'tax_amount'              => $taxAmount,
                 'payment_status'          => $request->payment_status,
                 'paid_amount'             => $request->paid_amount,
                 'notes'                   => $request->notes,
             ]);
 
-            foreach ($request->items as $item) {
+            foreach ($items as $item) {
                 PurchaseItem::create([
-                    'purchase_id' => $purchase->id,
-                    'product_id'  => $item['product_id'],
-                    'quantity'    => $item['quantity'],
-                    'unit_price'  => $item['unit_price'],
-                    'total_price' => $item['quantity'] * $item['unit_price'],
-                    'lot_number'  => $item['lot_number']  ?? null,
-                    'expiry_date' => $item['expiry_date'] ?? null,
+                    'purchase_id'     => $purchase->id,
+                    'product_id'      => $item['product_id'],
+                    'quantity'        => $item['base_qty'],      // بالوحدة الرئيسية
+                    'unit_price'      => $item['base_price'],    // سعر الوحدة الرئيسية (لصحة AVCO)
+                    'total_price'     => round($item['base_qty'] * $item['base_price'], 2),
+                    'lot_number'      => $item['lot_number']  ?? null,
+                    'expiry_date'     => $item['expiry_date'] ?? null,
+                    'product_unit_id' => $item['unit']?->id,
+                    'unit_factor'     => $item['factor'],
+                    'unit_label'      => $item['unit']?->name,
                 ]);
                 // Update per-warehouse stock level (products.quantity handled by model boot)
-                WarehouseService::in($warehouseId, $item['product_id'], $item['quantity']);
+                WarehouseService::in($warehouseId, $item['product_id'], $item['base_qty']);
             }
 
             // Post to GL — inside the transaction so it rolls back on failure
@@ -209,10 +270,13 @@ class PurchaseController extends Controller
 
         DB::beginTransaction();
         try {
-            // PurchaseItem::deleting() fires on cascade:
-            //   → creates reversal StockMovement
-            //   → calls WarehouseService::out() → updates stock_levels + products.quantity
-            // No manual quantity update needed here.
+            // Explicitly delete items to fire PurchaseItem::deleting() hook
+            // This is required because Laravel $purchase->delete() does not
+            // cascade events automatically.
+            foreach ($purchase->items as $item) {
+                $item->delete();
+            }
+
             $purchase->delete();
 
             \App\Models\AuditLog::create([

@@ -114,6 +114,8 @@ class ReversalController extends Controller
         }
 
         DB::transaction(function () use ($original, $originalType, $originalId, $data) {
+            \App\Services\PeriodLockService::assertOpen(now()->toDateString());
+
             // ── Find the original GL entry ────────────────────────────────────
             $je = JournalEntry::where('source_type', $originalType)
                               ->where('source_id', $originalId)

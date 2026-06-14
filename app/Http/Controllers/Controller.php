@@ -16,10 +16,15 @@ class Controller extends BaseController
      * Roles that always have global data access regardless of branch assignment.
      *
      * Mirrors the "Authorization Profile" concept in SAP/Oracle:
-     *   - Admin & Manager:   Company-level authority → see everything
+     *   - Admin:             Full system authority → see everything
+     *   - Manager:           Company-level (HQ) authority → see everything.
+     *                        Reserved for a single company-wide general manager.
      *   - Reversal Manager:  Needs cross-branch visibility for reversal decisions
      *
      * Roles NOT listed here use context-based scoping:
+     *   - branch_manager WITH branch → branch-locked (per-branch manager;
+     *     same operational permissions as "manager" but scoped to one branch —
+     *     use this role for any user managing a specific branch)
      *   - accountant WITH branch → branch-locked (branch accountant)
      *   - accountant WITHOUT branch → global (general accountant)
      *   - cashier WITH branch → branch-locked (always)

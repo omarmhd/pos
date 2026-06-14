@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>تقرير مقارنة: برنامج الأصيل مقابل برنامجنا</title>
+<style>
+  body { font-family: 'Segoe UI', Tahoma, Arial, sans-serif; margin: 0; padding: 24px; background: #f5f7fa; color: #1a1a2e; font-size: 15px; direction: rtl; }
+  h1 { text-align: center; color: #1a3a6b; border-bottom: 4px solid #1a3a6b; padding-bottom: 16px; margin-bottom: 8px; font-size: 26px; }
+  .subtitle { text-align: center; color: #666; margin-bottom: 32px; font-size: 13px; }
+  h2 { color: #1a3a6b; border-right: 5px solid #1a3a6b; padding-right: 12px; margin-top: 40px; font-size: 19px; }
+  h3 { color: #2c5f9e; font-size: 15px; margin-top: 20px; }
+  .card { background: white; border-radius: 10px; padding: 20px 24px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.07); }
+  .summary-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 16px; margin-bottom: 32px; }
+  .stat { background: white; border-radius: 10px; padding: 18px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.07); }
+  .stat-num { font-size: 36px; font-weight: 700; }
+  .stat-label { font-size: 13px; color: #666; margin-top: 4px; }
+  .green { color: #16a34a; }
+  .red { color: #dc2626; }
+  .orange { color: #d97706; }
+  .blue { color: #2563eb; }
+  table { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 14px; }
+  th { background: #1a3a6b; color: white; padding: 11px 14px; text-align: right; font-weight: 600; }
+  td { padding: 10px 14px; border-bottom: 1px solid #e5e7eb; vertical-align: top; }
+  tr:hover td { background: #f0f4ff; }
+  tr:nth-child(even) td { background: #f8faff; }
+  tr:nth-child(even):hover td { background: #e8eeff; }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+  .badge-yes { background: #dcfce7; color: #15803d; }
+  .badge-no { background: #fee2e2; color: #b91c1c; }
+  .badge-partial { background: #fef9c3; color: #92400e; }
+  .badge-easy { background: #dbeafe; color: #1e40af; }
+  .badge-medium { background: #fde68a; color: #92400e; }
+  .badge-hard { background: #fecaca; color: #991b1b; }
+  .badge-nofit { background: #f3f4f6; color: #374151; }
+  .priority-high { border-right: 4px solid #dc2626; }
+  .priority-med { border-right: 4px solid #d97706; }
+  .priority-low { border-right: 4px solid #6b7280; }
+  .info-box { border-radius: 8px; padding: 14px 18px; margin: 16px 0; font-size: 14px; }
+  .info-green { background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; }
+  .info-blue { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; }
+  .info-orange { background: #fffbeb; border: 1px solid #fed7aa; color: #92400e; }
+  .info-red { background: #fff1f2; border: 1px solid #fecdd3; color: #9f1239; }
+  ul { padding-right: 20px; margin: 8px 0; }
+  li { margin-bottom: 5px; line-height: 1.6; }
+  .section-intro { color: #555; margin-bottom: 16px; line-height: 1.7; }
+  .feature-row-missing { background: #fff8f8 !important; }
+  .feature-row-missing:hover { background: #ffe8e8 !important; }
+  @media print { body { padding: 12px; } .summary-grid { grid-template-columns: repeat(4,1fr); } }
+  .doc-info { background: #1a3a6b; color: white; border-radius: 10px; padding: 16px 22px; margin-bottom: 28px; font-size: 14px; }
+  .doc-info span { opacity: 0.8; font-size: 12px; margin-right: 6px; }
+</style>
+</head>
+<body>
+
+<h1>🔍 تقرير مقارنة شامل</h1>
+<p class="subtitle">برنامج الأصيل المحاسبي &nbsp;|&nbsp; مقابل &nbsp;|&nbsp; برنامج Supermarket POS</p>
+
+<div class="doc-info">
+  <strong>الملف المحلل:</strong> المحاسبة.DOC &nbsp;—&nbsp;
+  <span>درس رقم 2 من الدورة التدريبية لبرنامج</span> <strong>الأصيل</strong>
+  <span>بقلم: Adham Khaled Shurrab &nbsp;|&nbsp; 2002</span>
+  <br>
+  <small style="opacity:0.7">يغطي: المجموعة المحاسبية، نسخ البيانات، الحسابات، قيود المحاسبة، الفواتير والسندات</small>
+</div>
+
+<!-- إحصائيات سريعة -->
+<div class="summary-grid">
+  <div class="stat">
+    <div class="stat-num green">35+</div>
+    <div class="stat-label">ميزة موجودة في برنامجنا</div>
+  </div>
+  <div class="stat">
+    <div class="stat-num red">7</div>
+    <div class="stat-label">ميزة غائبة يجب إضافتها</div>
+  </div>
+  <div class="stat">
+    <div class="stat-num orange">2</div>
+    <div class="stat-label">ميزة موجودة جزئياً</div>
+  </div>
+  <div class="stat">
+    <div class="stat-num blue">3+</div>
+    <div class="stat-label">ميزة في برنامجنا ولا توجد في الأصيل 2002</div>
+  </div>
+</div>
+
+<!-- ====== 1. نقاط القوة ====== -->
+<h2>✅ ما يمتلكه برنامجنا ويوازي الأصيل أو يتفوق عليه</h2>
+<p class="section-intro">
+  المقارنة تُظهر أن برنامجنا يغطي الجزء الأكبر من وظائف الأصيل، وفي عدة مجالات يتفوق عليه نظراً لأنه مبني بتقنيات حديثة.
+</p>
+
+<div class="card">
+<table>
+  <thead><tr><th>الوحدة / الميزة</th><th>الأصيل</th><th>برنامجنا</th><th>ملاحظة</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><strong>دليل الحسابات (شجرة الحسابات)</strong></td>
+      <td><span class="badge badge-yes">✓ موجود</span></td>
+      <td><span class="badge badge-yes">✓ موجود</span></td>
+      <td>استيراد/تصدير CSV مضاف لدينا</td>
+    </tr>
+    <tr>
+      <td><strong>قيود اليومية اليدوية</strong></td>
+      <td><span class="badge badge-yes">✓ موجود</span></td>
+      <td><span class="badge badge-yes">✓ موجود</span></td>
+      <td>مع PDF وعكس القيود</td>
+    </tr>
+    <tr>
+      <td><strong>ميزان المراجعة</strong></td>
+      <td><span class="badge badge-yes">✓ موجود</span></td>
+      <td><span class="badge badge-yes">✓ موجود</span></td>
+      <td></td>
+    </tr>
+    <tr>
+      <td><strong>قائمة الدخل (الأرباح والخسائر)</strong></td>
+      <td><span class="badge badge-yes">✓ موجود</span></td>
+      <td><span class="badge badge-yes">✓ موجود</span></td>
+      <td>مع تقرير مجمّع للفروع</td>
+    </tr>
+    <tr>
+      <td><strong>الميزانية العمومية</strong></td>
+      <td><span class="badge badge-yes">✓ موجود</span></td>
+      <td><span class="badge badge-yes">✓ موجود</span></td>
+      <td></td>
+    </tr>
+    <tr>
+      <td><strong>قائمة التدفقات النقدية</strong></td>
+      <td><span class="badge badge-yes">✓ موجود</span></td>
+      <td><span class="badge badge-yes">✓ موجود</span></td>
+      <td>وفق IAS 7 الطريقة غير المباشرة</td>
+    </tr>
+    <tr>
+      <td><strong>كشف حساب العميل / المورد</strong></td>
+      <td><span class="badge badge-yes">✓ موجود</span></td>
+      <td><span class="badge badge-yes">✓ موجود</span></td>
+      <td>مع تحليل الأعمار (Aging)</td>
+    </tr>
+    <tr>
+      <td><strong>سندات القبض والصرف</strong></td>
+      <td><span class="badge badge-yes">✓ موجود</span></td>
+      <td><span class="badge badge-yes">✓ موجود</span></td>
+      <td>مع PDF</td>
+    </tr>
+    <tr>
+      <td><strong>فواتير المبيعات</strong></td>
+      <td><span class="badge badge-yes">✓ موجود</span></td>
+      <td><span class="badge badge-yes">✓ موجود</span></td>
+      <td>مع عروض أسعار وأوامر بيع</td>
+    </tr>
+    <tr>
+      <td><strong>فواتير المشتريات</strong></td>
+      <td><span class="badge badge-yes">✓ موجود</span></td>
+      <td><span class="badge badge-yes">✓ موجود</span></td>
+      <td>مع أوامر شراء</td>
+    </tr>
+    <tr>
+      <td><strong>مردودات المبيعات والمشتريات</strong></td>
+      <td><span class="badge badge-yes">✓ موجود</span></td>
+      <td><span class="badge badge-yes">✓ موجود</span></td>
+      <td></td>
+    </tr>
+    <tr>
+      <td><strong>إدارة المخزون (الأصناف)</strong></td>
+      <td><span class="badge badge-yes">✓ موجود</span></td>
+      <td><span class="badge badge-yes">✓ موجود</span></td>
+      <td>مع باركود واستيراد Excel</td>
+    </tr>
+    <tr>
+      <td><strong>متعدد المخازن / الفروع</strong></td>
+      <td><span class="badge badge-yes">✓ موجود</span></td>
+      <td><span class="badge badge-yes">✓ موجود</span></td>
+      <td>مع تحويلات داخلية وبينية</td>
+    </tr>
+    <tr>
+      <td><strong>نقطة البيع (POS)</strong></td>
+      <td><span class="badge badge-yes">✓ موجود</span></td>
+      <td><span class="badge badge-yes">✓ موجود</span></td>
+      <td>مع وردية الكاشير وكميات كسرية</td>
+    </tr>
+    <tr>
+      <td><strong>الأصول الثابتة والإهلاك</strong></td>
+      <td><span class="badge badge-yes">✓ موجود</span></td>
+      <td><span class="badge badge-yes">✓ موجود</span></td>
+      <td>مع الاستبعاد</td>
+    </tr>
+    <tr>
+      <td><strong>مراكز التكلفة</strong></td>
+      <td><span class="badge badge-yes">✓ موجود</span></td>
+      <td><span class="badge badge-yes">✓ موجود</span></td>
+      <td>مع تقرير التوزيع</td>
+    </tr>
+    <tr>
+      <td><strong>الرواتب وشؤون الموظفين</strong></td>
+      <td><span class="badge badge-yes">✓ موجود</span></td>
+      <td><span class="badge badge-yes">✓ موجود</span></td>
+      <td>سلف، إجازات، EOSB</td>
+    </tr>
+    <tr>
+      <td><strong>قوائم الأسعار (تجزئة/جملة)</strong></td>
+      <td><span class="badge badge-yes">✓ موجود</span></td>
+      <td><span class="badge badge-yes">✓ موجود</span></td>
+      <td></td>
+    </tr>
+    <tr>
+      <td><strong>الموازنات التقديرية</strong></td>
+      <td><span class="badge badge-yes">✓ موجود</span></td>
+      <td><span class="badge badge-yes">✓ موجود</span></td>
+      <td>مع تقرير الانحرافات</td>
+    </tr>
+    <tr>
+      <td><strong>إغلاق السنة المالية</strong></td>
+      <td><span class="badge badge-yes">✓ موجود</span></td>
+      <td><span class="badge badge-yes">✓ موجود</span></td>
+      <td>مع قفل الفترات المحاسبية</td>
+    </tr>
+    <tr>
+      <td><strong>صلاحيات المستخدمين (RBAC)</strong></td>
+      <td><span class="badge badge-yes">✓ موجود</span></td>
+      <td><span class="badge badge-yes">✓ موجود</span></td>
+      <td>أدوار ومجموعات صلاحيات</td>
+    </tr>
+    <tr>
+      <td><strong>النسخ الاحتياطي</strong></td>
+      <td><span class="badge badge-yes">✓ موجود</span></td>
+      <td><span class="badge badge-yes">✓ موجود</span></td>
+      <td>تنزيل وحذف من الواجهة</td>
+    </tr>
+    <tr>
+      <td><strong>حد الائتمان للعملاء</strong></td>
+      <td><span class="badge badge-yes">✓ موجود</span></td>
+      <td><span class="badge badge-yes">✓ موجود</span></td>
+      <td>مع رصيد إيداع العملاء</td>
+    </tr>
+    <tr>
+      <td><strong>فواتير المصاريف</strong></td>
+      <td><span class="badge badge-yes">✓ موجود</span></td>
+      <td><span class="badge badge-yes">✓ موجود</span></td>
+      <td></td>
+    </tr>
+    <tr>
+      <td><strong>جرد المخزون الدوري</strong></td>
+      <td><span class="badge badge-yes">✓ موجود</span></td>
+      <td><span class="badge badge-yes">✓ موجود</span></td>
+      <td>جلسات جرد مع مسح باركود</td>
+    </tr>
+    <tr>
+      <td><strong>تتبع تواريخ الانتهاء / الباتشات</strong></td>
+      <td><span class="badge badge-partial">جزئي</span></td>
+      <td><span class="badge badge-yes">✓ موجود</span></td>
+      <td><strong>أفضل من الأصيل</strong></td>
+    </tr>
+    <tr>
+      <td><strong>تكامل بصمة الوقت (ZKTeco)</strong></td>
+      <td><span class="badge badge-no">✗ غير موجود</span></td>
+      <td><span class="badge badge-yes">✓ موجود</span></td>
+      <td><strong>ميزة حصرية لدينا</strong></td>
+    </tr>
+    <tr>
+      <td><strong>سجل المراجعة (Audit Log)</strong></td>
+      <td><span class="badge badge-no">✗ ضعيف</span></td>
+      <td><span class="badge badge-yes">✓ موجود</span></td>
+      <td><strong>ميزة حصرية لدينا</strong></td>
+    </tr>
+    <tr>
+      <td><strong>تقارير مجمّعة للفروع</strong></td>
+      <td><span class="badge badge-no">✗ غير موجود</span></td>
+      <td><span class="badge badge-yes">✓ موجود</span></td>
+      <td><strong>ميزة حصرية لدينا</strong></td>
+    </tr>
+    <tr>
+      <td><strong>عروض الأسعار والتحويل لأوامر</strong></td>
+      <td><span class="badge badge-partial">جزئي</span></td>
+      <td><span class="badge badge-yes">✓ موجود</span></td>
+      <td>كامل: عرض → أمر → فاتورة</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<!-- ====== 2. ما ينقص ====== -->
+<h2>❌ ما ينقص برنامجنا مقارنةً بالأصيل</h2>
+<p class="section-intro">
+  هذه الميزات موجودة في الأصيل وغائبة عن برنامجنا. رتّبناها حسب الأولوية والأثر التجاري.
+</p>
+
+<div class="card">
+<table>
+  <thead>
+    <tr>
+      <th>الميزة الغائبة</th>
+      <th>الأثر التجاري</th>
+      <th>صعوبة الإضافة</th>
+      <th>يمكن إضافتها؟</th>
+    </tr>
+  </thead>
+  <tbody>
+    <!-- HIGH PRIORITY -->
+    <tr class="feature-row-missing priority-high">
+      <td>
+        <strong>🏦 إدارة الشيكات</strong><br>
+        <small>شيكات واردة وصادرة مع متابعة الحالة (تحت التحصيل، مودَع، مُقاصّ، مرتجع)</small>
+      </td>
+      <td>
+        <span style="color:#dc2626;font-weight:600;">عالٍ جداً</span><br>
+        <small>معظم العملاء يتعاملون بالشيكات</small>
+      </td>
+      <td><span class="badge badge-easy">سهلة نسبياً</span></td>
+      <td><span class="badge badge-yes">✓ قابل للإضافة</span></td>
+    </tr>
+    <tr class="feature-row-missing priority-high">
+      <td>
+        <strong>💱 متعدد العملات</strong><br>
+        <small>تحديد عملة لكل معاملة مع أسعار الصرف وتسوية فروق العملة</small>
+      </td>
+      <td>
+        <span style="color:#dc2626;font-weight:600;">عالٍ</span><br>
+        <small>ضروري لأي عمل به مدفوعات أجنبية</small>
+      </td>
+      <td><span class="badge badge-medium">متوسطة</span></td>
+      <td><span class="badge badge-yes">✓ قابل للإضافة</span></td>
+    </tr>
+    <tr class="feature-row-missing priority-high">
+      <td>
+        <strong>🏛️ تسوية البنوك (Bank Reconciliation)</strong><br>
+        <small>مطابقة كشف الحساب البنكي مع السجلات المحاسبية، تحديد العناصر المعلقة</small>
+      </td>
+      <td>
+        <span style="color:#dc2626;font-weight:600;">عالٍ</span><br>
+        <small>من أساسيات المحاسبة اليومية</small>
+      </td>
+      <td><span class="badge badge-easy">سهلة نسبياً</span></td>
+      <td><span class="badge badge-yes">✓ قابل للإضافة</span></td>
+    </tr>
+    <tr class="feature-row-missing priority-med">
+      <td>
+        <strong>👤 مندوبو المبيعات والعمولات</strong><br>
+        <small>ربط كل فاتورة بمندوب، احتساب العمولة تلقائياً (نسبة أو مبلغ ثابت)</small>
+      </td>
+      <td>
+        <span style="color:#d97706;font-weight:600;">متوسط</span><br>
+        <small>مهم لشركات لديها فريق مبيعات خارجي</small>
+      </td>
+      <td><span class="badge badge-easy">سهلة نسبياً</span></td>
+      <td><span class="badge badge-yes">✓ قابل للإضافة</span></td>
+    </tr>
+    <tr class="feature-row-missing priority-med">
+      <td>
+        <strong>🔄 القيود النموذجية / المتكررة</strong><br>
+        <small>حفظ قيود كـ"قوالب" لإعادة استخدامها (إيجار، رواتب ثابتة، أقساط...)</small>
+      </td>
+      <td>
+        <span style="color:#d97706;font-weight:600;">متوسط</span><br>
+        <small>يوفر وقتاً كبيراً للمحاسب</small>
+      </td>
+      <td><span class="badge badge-easy">سهلة</span></td>
+      <td><span class="badge badge-yes">✓ قابل للإضافة</span></td>
+    </tr>
+    <tr class="feature-row-missing priority-med">
+      <td>
+        <strong>🏢 متعدد الشركات (Multi-Company)</strong><br>
+        <small>قاعدة بيانات منفصلة لكل شركة مع تبديل سريع بين الشركات</small>
+        <br><small><em>(الأصيل يسميها "مجموعات محاسبية")</em></small>
+      </td>
+      <td>
+        <span style="color:#d97706;font-weight:600;">متوسط</span><br>
+        <small>مطلوب لمكاتب المحاسبة والمجموعات</small>
+      </td>
+      <td><span class="badge badge-hard">معقدة</span></td>
+      <td><span class="badge badge-partial">قابل لكن يحتاج إعادة هيكلة</span></td>
+    </tr>
+    <tr class="feature-row-missing priority-low">
+      <td>
+        <strong>📋 خطابات الضمان والاعتمادات المستندية</strong><br>
+        <small>متابعة خطابات الضمان البنكية وتواريخ انتهائها</small>
+      </td>
+      <td>
+        <span style="color:#6b7280;font-weight:600;">منخفض</span><br>
+        <small>مطلوب في شركات المقاولات والاستيراد</small>
+      </td>
+      <td><span class="badge badge-medium">متوسطة</span></td>
+      <td><span class="badge badge-yes">✓ قابل للإضافة</span></td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<!-- ====== 3. تفصيل كل ميزة ناقصة ====== -->
+<h2>🛠️ تفصيل الميزات الغائبة وكيفية إضافتها</h2>
+
+<!-- الشيكات -->
+<div class="card priority-high" style="border-right: 5px solid #dc2626;">
+  <h3>🏦 1. إدارة الشيكات — الأعلى أولوية</h3>
+  <div class="info-red">
+    <strong>لماذا مهمة:</strong> الشيكات أداة دفع رئيسية في بيئات العمل العربية. برنامجنا حالياً يسجّل المدفوعات لكن لا يتتبع الشيكات كأدوات منفصلة بمراحلها المختلفة.
+  </div>
+  <p><strong>ما يقدمه الأصيل:</strong></p>
+  <ul>
+    <li>شيكات واردة من العملاء: تحت التحصيل → مودَع في البنك → مُقاصّ / مرتجع</li>
+    <li>شيكات صادرة للموردين: بانتظار الصرف → صُرف / أُعيد</li>
+    <li>تقرير بالشيكات المستحقة خلال فترة زمنية</li>
+    <li>تأثير محاسبي تلقائي عند كل تحوّل في حالة الشيك</li>
+  </ul>
+  <p><strong>طريقة الإضافة لبرنامجنا:</strong></p>
+  <ul>
+    <li>إنشاء جدول <code>checks</code> (النوع، رقم الشيك، التاريخ، المبلغ، العميل/المورد، البنك، الحالة)</li>
+    <li>سير عمل الحالات مع ترحيل محاسبي تلقائي عند كل تحوّل</li>
+    <li>ربطه بسندات القبض/الصرف الموجودة</li>
+    <li>تقرير الشيكات المستحقة (upcoming checks)</li>
+  </ul>
+  <div class="info-green"><strong>الجهد التقديري:</strong> 4–6 أيام عمل &nbsp;|&nbsp; لا تحتاج تعديل البنية التحتية الحالية</div>
+</div>
+
+<!-- متعدد العملات -->
+<div class="card priority-high" style="border-right: 5px solid #dc2626;">
+  <h3>💱 2. متعدد العملات</h3>
+  <div class="info-orange">
+    <strong>لماذا مهمة:</strong> أي عمل به مشتريات أو مبيعات بعملة أجنبية يحتاج هذه الميزة. حالياً يعمل البرنامج بعملة واحدة فقط.
+  </div>
+  <p><strong>ما يقدمه الأصيل:</strong></p>
+  <ul>
+    <li>تحديد عملة لكل فاتورة/معاملة</li>
+    <li>جدول أسعار الصرف اليومية</li>
+    <li>احتساب فروق أسعار العملة تلقائياً وترحيلها محاسبياً</li>
+    <li>التقارير بالعملة الأصلية أو عملة التقرير</li>
+  </ul>
+  <p><strong>طريقة الإضافة لبرنامجنا:</strong></p>
+  <ul>
+    <li>جدول <code>currencies</code> وجدول <code>exchange_rates</code></li>
+    <li>إضافة حقل <code>currency_id</code> و<code>exchange_rate</code> لجداول الفواتير والقيود</li>
+    <li>تعديل LedgerPostingService لتحويل المبالغ</li>
+    <li>حساب مخصص لفروق أسعار الصرف (حساب محاسبي منفصل)</li>
+  </ul>
+  <div class="info-orange"><strong>الجهد التقديري:</strong> 8–12 يوم عمل &nbsp;|&nbsp; تتطلب تعديل جميع موديلات الفواتير</div>
+</div>
+
+<!-- تسوية البنوك -->
+<div class="card priority-high" style="border-right: 5px solid #dc2626;">
+  <h3>🏛️ 3. تسوية البنوك</h3>
+  <div class="info-blue">
+    <strong>لماذا مهمة:</strong> التسوية البنكية ضرورة محاسبية أساسية — التحقق من تطابق السجلات مع كشف الحساب البنكي.
+  </div>
+  <p><strong>ما يقدمه الأصيل:</strong></p>
+  <ul>
+    <li>ربط الحركات المحاسبية بحسابات بنكية محددة</li>
+    <li>إدخال كشف الحساب البنكي ومطابقة البنود</li>
+    <li>تقرير البنود غير المطابقة (outstanding items)</li>
+  </ul>
+  <p><strong>طريقة الإضافة لبرنامجنا:</strong></p>
+  <ul>
+    <li>وسم الحسابات الرئيسية كـ"حسابات بنكية" في دليل الحسابات</li>
+    <li>شاشة تسوية: استيراد بنود كشف البنك → مطابقة مع حركات الأستاذ → تقرير الفروق</li>
+    <li>لا تحتاج لتغيير البنية التحتية — تبنى فوق الـ Ledger الموجود</li>
+  </ul>
+  <div class="info-green"><strong>الجهد التقديري:</strong> 3–5 أيام عمل</div>
+</div>
+
+<!-- مندوبو المبيعات -->
+<div class="card priority-med" style="border-right: 5px solid #d97706;">
+  <h3>👤 4. مندوبو المبيعات والعمولات</h3>
+  <p><strong>طريقة الإضافة:</strong></p>
+  <ul>
+    <li>نموذج <code>SalesRep</code> (الاسم، نسبة العمولة أو مبلغ ثابت، تاريخ الانطلاق)</li>
+    <li>حقل <code>sales_rep_id</code> على فواتير المبيعات (اختياري)</li>
+    <li>تقرير عمولات شهري/سنوي لكل مندوب</li>
+    <li>ربط اختياري بنموذج الموظفين الموجود (Employee)</li>
+  </ul>
+  <div class="info-green"><strong>الجهد التقديري:</strong> 2–3 أيام عمل &nbsp;|&nbsp; الأبسط للإضافة</div>
+</div>
+
+<!-- القيود النموذجية -->
+<div class="card priority-med" style="border-right: 5px solid #d97706;">
+  <h3>🔄 5. القيود النموذجية / المتكررة</h3>
+  <p><strong>طريقة الإضافة:</strong></p>
+  <ul>
+    <li>جدول <code>journal_entry_templates</code> مع سطور محددة مسبقاً</li>
+    <li>زر "استخدام كقالب" في شاشة القيود</li>
+    <li>اختيارياً: جدولة تلقائية (ربط مع Scheduled Tasks)</li>
+  </ul>
+  <div class="info-green"><strong>الجهد التقديري:</strong> 1–2 يوم عمل &nbsp;|&nbsp; الأبسط مطلقاً</div>
+</div>
+
+<!-- متعدد الشركات -->
+<div class="card priority-med" style="border-right: 5px solid #d97706;">
+  <h3>🏢 6. متعدد الشركات</h3>
+  <div class="info-orange">
+    <strong>تحذير هام:</strong> هذه الميزة معقدة هيكلياً. برنامجنا الحالي يدعم متعدد الفروع تحت شركة واحدة، لكن متعدد الشركات يعني قواعد بيانات/سياقات منفصلة لكل شركة.
+  </div>
+  <p><strong>خيار A — Tenant per Database (الأفضل):</strong></p>
+  <ul>
+    <li>استخدام حزمة مثل <code>spatie/laravel-multitenancy</code></li>
+    <li>كل شركة = schema أو database منفصل</li>
+    <li>شاشة اختيار الشركة عند تسجيل الدخول</li>
+    <li>الجهد: 15–25 يوم عمل + تعديل شامل</li>
+  </ul>
+  <p><strong>خيار B — Company flag (الأسرع):</strong></p>
+  <ul>
+    <li>إضافة حقل <code>company_id</code> لجميع الجداول</li>
+    <li>Global Scope لتصفية البيانات تلقائياً</li>
+    <li>الجهد: 8–12 يوم عمل — لكن أقل أماناً</li>
+  </ul>
+  <div class="info-red"><strong>التوصية:</strong> لا تفعلها الآن إلا إذا كان لديك عملاء يطلبونها فعلاً</div>
+</div>
+
+<!-- ====== 4. ملخص ====== -->
+<h2>📊 ملخص القرارات المقترحة</h2>
+<div class="card">
+<table>
+  <thead><tr><th>#</th><th>الميزة</th><th>الأولوية</th><th>صعوبة التنفيذ</th><th>التوصية</th></tr></thead>
+  <tbody>
+    <tr>
+      <td>1</td>
+      <td><strong>إدارة الشيكات</strong></td>
+      <td><span style="color:#dc2626;font-weight:700;">عالية جداً</span></td>
+      <td>3–4 أسابيع</td>
+      <td><span class="badge badge-easy">ابدأ بها أولاً</span></td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td><strong>تسوية البنوك</strong></td>
+      <td><span style="color:#dc2626;font-weight:700;">عالية</span></td>
+      <td>أسبوع</td>
+      <td><span class="badge badge-easy">بعد الشيكات مباشرة</span></td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td><strong>القيود النموذجية</strong></td>
+      <td><span style="color:#d97706;font-weight:700;">متوسطة</span></td>
+      <td>2 أيام</td>
+      <td><span class="badge badge-easy">سريعة — افعلها الآن</span></td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td><strong>مندوبو المبيعات</strong></td>
+      <td><span style="color:#d97706;font-weight:700;">متوسطة</span></td>
+      <td>أسبوع</td>
+      <td><span class="badge badge-easy">أسبوع واحد فقط</span></td>
+    </tr>
+    <tr>
+      <td>5</td>
+      <td><strong>متعدد العملات</strong></td>
+      <td><span style="color:#d97706;font-weight:700;">متوسطة</span></td>
+      <td>2–3 أسابيع</td>
+      <td><span class="badge badge-medium">خطط لها جيداً</span></td>
+    </tr>
+    <tr>
+      <td>6</td>
+      <td><strong>خطابات الضمان</strong></td>
+      <td><span style="color:#6b7280;font-weight:700;">منخفضة</span></td>
+      <td>أسبوع</td>
+      <td><span class="badge badge-nofit">عند الطلب</span></td>
+    </tr>
+    <tr>
+      <td>7</td>
+      <td><strong>متعدد الشركات</strong></td>
+      <td><span style="color:#6b7280;font-weight:700;">منخفضة حالياً</span></td>
+      <td>شهر أو أكثر</td>
+      <td><span class="badge badge-hard">أرجئها</span></td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<!-- ====== 5. خلاصة ====== -->
+<h2>🎯 الخلاصة</h2>
+<div class="card">
+  <div class="info-green" style="margin-bottom:12px;">
+    <strong>✅ برنامجنا يوازي الأصيل في ~85% من وظائفه الجوهرية</strong> — بل يتفوق عليه في عدة مجالات مثل تكامل البصمة، سجل المراجعة، الجرد الدوري، وجدولة المهام.
+  </div>
+  <div class="info-blue" style="margin-bottom:12px;">
+    <strong>💡 الفجوة الأبرز</strong> هي <strong>إدارة الشيكات</strong> + <strong>تسوية البنوك</strong> — وهما أداتان محاسبيتان يومية يفتقدهما أي محاسب يعمل على برنامجنا.
+  </div>
+  <div class="info-orange">
+    <strong>⚡ الأسرع أثراً:</strong> ابدأ بـ <em>القيود النموذجية</em> (يومين) ثم <em>مندوبو المبيعات</em> (أسبوع) ثم <em>إدارة الشيكات</em> — ستغطي 95% من احتياجات العملاء مقارنةً بالأصيل.
+  </div>
+</div>
+
+<p style="text-align:center;color:#999;font-size:12px;margin-top:32px;">
+  تقرير أُعدّ بتاريخ 12 يونيو 2026 &nbsp;|&nbsp; استناداً إلى تحليل الملف المرفوع ومراجعة كود البرنامج الحالي
+</p>
+
+</body>
+</html>

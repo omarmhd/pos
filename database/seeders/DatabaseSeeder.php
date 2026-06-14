@@ -67,6 +67,9 @@ class DatabaseSeeder extends Seeder
             ['code' => '6500', 'name' => 'مصروفات متنوعة',                'type' => 'expense', 'sub_type' => null,                  'is_header' => false],
             // Inventory adjustment accounts
             ['code' => '6510', 'name' => 'مصروف عجز وخسائر المخزون',       'type' => 'expense', 'sub_type' => null,                  'is_header' => false],
+            // Cash shift variance accounts (separate from fixed-asset disposal gain/loss 4150/6520)
+            ['code' => '4160', 'name' => 'فائض نقدي - ورديات',             'type' => 'revenue', 'sub_type' => null,                  'is_header' => false],
+            ['code' => '6530', 'name' => 'عجز نقدي - ورديات',              'type' => 'expense', 'sub_type' => null,                  'is_header' => false],
         ];
 
         foreach ($accounts as $account) {
@@ -117,9 +120,9 @@ class DatabaseSeeder extends Seeder
             // Inventory adjustment GL accounts
             'account_inventory_shortage_code' => '6510',  // DR on negative adjustment
             'account_inventory_surplus_code'  => '4100',  // CR on positive adjustment
-            // Cash shift variance GL accounts
-            'account_pos_cash_shortage_code'  => '6520',  // DR on cash short
-            'account_pos_cash_overage_code'   => '4150',  // CR on cash over
+            // Cash shift variance GL accounts (distinct from 4150/6520 asset disposal gain/loss)
+            'account_pos_cash_shortage_code'  => '6530',  // DR on cash short
+            'account_pos_cash_overage_code'   => '4160',  // CR on cash over
             // EOSB provision GL accounts
             'account_eosb_expense_code'       => '6300',  // DR monthly accrual
             'account_eosb_provision_code'     => '2200',  // CR liability

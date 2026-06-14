@@ -313,6 +313,8 @@ class InventorySessionController extends Controller
             // ── 3. Single consolidated GL journal entry ──
             $journalEntry = null;
             if ($totalShortage > 0 || $totalSurplus > 0) {
+                \App\Services\PeriodLockService::assertOpen($now->toDateString());
+
                 $journalEntry = JournalEntry::create([
                     'entry_date'  => $now->toDateString(),
                     'description' => "اعتماد جلسة الجرد {$session->reference}",

@@ -28,13 +28,23 @@
             <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#importModal">
                 <i class="bi bi-upload"></i> استيراد CSV
             </button>
-            <a href="{{ route('products.create') }}" class="btn btn-primary btn-sm">
-                <i class="bi bi-plus-circle"></i> إضافة منتج
+            <a href="{{ route('products.create', ['mode'=>'item']) }}" class="btn btn-success btn-sm">
+                <i class="bi bi-box"></i> إضافة صنف
+            </a>
+            <a href="{{ route('products.create', ['mode'=>'product']) }}" class="btn btn-primary btn-sm">
+                <i class="bi bi-diagram-3"></i> إضافة منتج مصنّع
             </a>
             @endcan
         </div>
     </div>
     <div class="card-body">
+        {{-- فصل الأصناف عن المنتجات المصنّعة (IAS 2) --}}
+        @php $c = $class ?? null; @endphp
+        <ul class="nav nav-pills mb-3 small">
+            <li class="nav-item"><a class="nav-link {{ !$c ? 'active' : '' }}" href="{{ route('products.index') }}">الكل</a></li>
+            <li class="nav-item"><a class="nav-link {{ $c==='items' ? 'active' : '' }}" href="{{ route('products.index', ['class'=>'items']) }}"><i class="bi bi-box"></i> الأصناف (بضاعة/مواد خام)</a></li>
+            <li class="nav-item"><a class="nav-link {{ $c==='manufactured' ? 'active' : '' }}" href="{{ route('products.index', ['class'=>'manufactured']) }}"><i class="bi bi-diagram-3"></i> المنتجات المصنّعة</a></li>
+        </ul>
         <div class="table-responsive">
             <table id="products-table" class="table table-hover align-middle w-100">
                 <thead class="table-light">
@@ -100,7 +110,10 @@ $(function () {
     $('#products-table').DataTable($.extend(true, {}, window.dtDefaults, {
         processing: true,
         serverSide: true,
-        ajax: { url: '{{ route('products.index') }}' },
+        ajax: {
+            url: '{{ route('products.index') }}',
+            data: function (d) { d.class = '{{ $class ?? '' }}'; }
+        },
         order: [[0, 'asc']],
         columns: [
             { data: 'image_html',    name: 'image',         orderable: false, searchable: false },

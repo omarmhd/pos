@@ -18,6 +18,7 @@ class Purchase extends Model
         'branch_id',
         'purchase_order_id',
         'total_amount',
+        'tax_amount',
         'payment_status',
         'paid_amount',
         'notes',
@@ -27,6 +28,7 @@ class Purchase extends Model
 
     protected $casts = [
         'total_amount' => 'decimal:2',
+        'tax_amount'   => 'decimal:2',
         'paid_amount'  => 'decimal:2',
         'is_posted'    => 'boolean',
         'is_reversed'  => 'boolean',
@@ -52,9 +54,15 @@ class Purchase extends Model
         return $this->hasMany(PurchaseItem::class);
     }
 
+    public function returns()
+    {
+        return $this->hasMany(PurchaseReturn::class);
+    }
+
     public function remainingAmount()
     {
-        return $this->total_amount - $this->paid_amount;
+        $returned = (float) $this->returns()->where('refund_method', 'ap_deduction')->sum('total_amount');
+        return max(0, $this->total_amount - $this->paid_amount - $returned);
     }
 
     protected static function boot()

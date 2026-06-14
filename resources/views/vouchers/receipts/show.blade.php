@@ -36,6 +36,29 @@
                         {{ number_format($receipt->amount, 2) }} {{ $currency }}
                     </dd>
 
+                    @if($receipt->currency_id && $receipt->currency)
+                    <dt class="col-5 text-muted">المبلغ بالعملة</dt>
+                    <dd class="col-7">
+                        {{ number_format($receipt->amount_fc, 2) }} {{ $receipt->currency->code }}
+                        <small class="text-muted">(سعر الصرف: {{ rtrim(rtrim(number_format($receipt->exchange_rate, 6), '0'), '.') }})</small>
+                    </dd>
+                    @endif
+
+                    @if(($receipt->source_discount_amount ?? 0) > 0)
+                    <dt class="col-5 text-muted">خصم المصدر</dt>
+                    <dd class="col-7">
+                        {{ number_format($receipt->source_discount_amount, 2) }} {{ $currency }}
+                        ({{ rtrim(rtrim(number_format($receipt->source_discount_rate, 2), '0'), '.') }}%)
+                        — إجمالي إقفال الحساب:
+                        <strong>{{ number_format($receipt->amount + $receipt->source_discount_amount, 2) }} {{ $currency }}</strong>
+                    </dd>
+                    @endif
+
+                    @if($receipt->second_date)
+                    <dt class="col-5 text-muted">تاريخ ثانٍ</dt>
+                    <dd class="col-7">{{ $receipt->second_date->format('Y-m-d') }}</dd>
+                    @endif
+
                     <dt class="col-5 text-muted">طريقة الاستلام</dt>
                     <dd class="col-7">{{ $receipt->paymentMethodLabel() }}</dd>
 

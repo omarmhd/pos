@@ -22,6 +22,14 @@
         @error('email')<div class="invalid-feedback">{{ $message }}</div>@enderror
     </div>
 
+    <div class="col-md-6">
+        <label class="form-label">الرقم الضريبي / مشتغل مرخص</label>
+        <input type="text" name="tax_number" class="form-control @error('tax_number') is-invalid @enderror"
+               value="{{ old('tax_number', $customer?->tax_number) }}" maxlength="50"
+               placeholder="رقم المشتغل المرخص للعميل">
+        @error('tax_number')<div class="invalid-feedback">{{ $message }}</div>@enderror
+    </div>
+
     <div class="col-md-3">
         <label class="form-label">حد الائتمان (0 = بلا حد)</label>
         <input type="number" name="credit_limit" class="form-control @error('credit_limit') is-invalid @enderror"

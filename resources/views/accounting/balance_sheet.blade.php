@@ -15,6 +15,18 @@
                            value="{{ $asOf->toDateString() }}">
                 </div>
                 @include('components.branch-filter')
+                @if(isset($currencies) && $currencies->count() > 1)
+                <div class="col-md-2">
+                    <label class="form-label fw-bold small mb-1">عملة العرض</label>
+                    <select name="display_currency_id" class="form-select form-select-sm">
+                        @foreach($currencies as $cu)
+                        <option value="{{ $cu->id }}" {{ (string)($displayCurrencyId ?? '') === (string)$cu->id || ($displayCurrency && $displayCurrency->id === $cu->id) ? 'selected' : '' }}>
+                            {{ $cu->code }}{{ $cu->is_base ? ' (أساسية)' : '' }}
+                        </option>
+                        @endforeach
+                    </select>
+                </div>
+                @endif
                 <div class="col-auto">
                     <button type="submit" class="btn btn-primary btn-sm">
                         <i class="bi bi-funnel"></i> عرض
@@ -38,6 +50,15 @@
             </form>
         </div>
     </div>
+
+    {{-- تنبيه عملة العرض (تحويل عرضي فقط) --}}
+    @if(isset($displayCurrency) && $displayCurrency && !$displayCurrency->is_base)
+    <div class="alert alert-info py-2 small no-print">
+        <i class="bi bi-currency-exchange"></i>
+        المبالغ معروضة بعملة <strong>{{ $displayCurrency->code }}</strong> عبر <strong>تحويل عرضي بسعر الصرف</strong> فقط —
+        وليست ترجمة رسمية وفق IAS 21 (لا تُعتمد للقوائم المالية النظامية). القوائم الرسمية بالعملة الأساسية.
+    </div>
+    @endif
 
     {{-- Balance alert --}}
     @if($isBalanced)

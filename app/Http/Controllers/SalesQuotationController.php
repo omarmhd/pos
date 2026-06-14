@@ -30,6 +30,13 @@ class SalesQuotationController extends Controller
 
     public function index(Request $request)
     {
+        // الانتهاء التلقائي: عروض مُرسَلة تجاوزت تاريخ الصلاحية → "منتهي"
+        // (مطابق لحقلَي "فعال حتى تاريخ / فعال" في الأصيل)
+        SalesQuotation::where('status', 'sent')
+            ->whereNotNull('valid_until')
+            ->whereDate('valid_until', '<', now()->toDateString())
+            ->update(['status' => 'expired']);
+
         if ($request->ajax()) {
             $branchId = $this->effectiveBranchId($request);
             $query = SalesQuotation::with('customer', 'user')

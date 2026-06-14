@@ -19,7 +19,7 @@ class ReceiptVoucherController extends Controller
     public function __construct()
     {
         $this->middleware('can:vouchers.view')->only(['index', 'data', 'show', 'pdf']);
-        $this->middleware('can:vouchers.create')->only(['create', 'store']);
+        $this->middleware('can:vouchers.create')->only(['create', 'store', 'accountBalance']);
         $this->middleware('can:vouchers.delete')->only(['destroy']);
     }
 
@@ -129,25 +129,44 @@ class ReceiptVoucherController extends Controller
 
         $branchId     = $this->effectiveBranchId(request());
         $branchLocked = $this->isBranchLocked();
+        $currencies   = \App\Models\Currency::where('is_active', true)->orderByDesc('is_base')->get();
 
         return view('vouchers.receipts.create', compact(
             'accounts', 'customers', 'currency', 'defaultCashAccount',
-            'cashCode', 'bankCode', 'branches', 'branchId', 'branchLocked'
+            'cashCode', 'bankCode', 'branches', 'branchId', 'branchLocked', 'currencies'
         ));
+    }
+
+    /**
+     * AJAX: رصيد حساب أثناء إدخال السند (كما في الأصيل — المفتاح *).
+     */
+    public function accountBalance(Account $account)
+    {
+        $balance = $account->currentBalance();
+
+        return response()->json([
+            'balance'     => $balance,
+            'balance_fmt' => number_format(abs($balance), 2),
+            'side'        => $balance >= 0 ? 'مدين' : 'دائن',
+        ]);
     }
 
     public function store(Request $request)
     {
         $request->validate([
-            'voucher_date'    => 'required|date',
-            'received_from'   => 'required|string|max:255',
-            'customer_id'     => 'nullable|exists:customers,id',
-            'account_id'      => 'required|exists:accounts,id',
-            'cash_account_id' => 'required|exists:accounts,id',
-            'amount'          => 'required|numeric|min:0.01',
-            'payment_method'  => 'required|in:cash,bank,mobile_wallet',
-            'reference'       => 'nullable|string|max:255',
-            'notes'           => 'nullable|string',
+            'voucher_date'         => 'required|date',
+            'second_date'          => 'nullable|date',
+            'received_from'        => 'required|string|max:255',
+            'customer_id'          => 'nullable|exists:customers,id',
+            'account_id'           => 'required|exists:accounts,id',
+            'cash_account_id'      => 'required|exists:accounts,id',
+            'amount'               => 'required_without:amount_fc|nullable|numeric|min:0.01',
+            'currency_id'          => 'nullable|exists:currencies,id',
+            'amount_fc'            => 'nullable|numeric|min:0.01',
+            'source_discount_rate' => 'nullable|numeric|min:0|max:99.99',
+            'payment_method'       => 'required|in:cash,bank,mobile_wallet',
+            'reference'            => 'nullable|string|max:255',
+            'notes'                => 'nullable|string',
         ]);
 
         $account     = Account::findOrFail($request->account_id);
@@ -160,6 +179,33 @@ class ReceiptVoucherController extends Controller
             return back()->withErrors(['account_id' => 'الحساب المدين والدائن لا يمكن أن يكونا نفس الحساب'])->withInput();
         }
 
+        // ── العملة: المبلغ بالعملة الأجنبية يُحوَّل للأساسية بسعر صرف لحظة السند ──
+        $currencyId   = null;
+        $exchangeRate = 1.0;
+        $amountFc     = null;
+        $amount       = round((float) $request->amount, 2);
+
+        if ($request->currency_id) {
+            $cur = \App\Models\Currency::find($request->currency_id);
+            if ($cur && !$cur->is_base) {
+                if (!$request->filled('amount_fc')) {
+                    return back()->withErrors(['amount_fc' => 'أدخل المبلغ بالعملة المختارة'])->withInput();
+                }
+                $currencyId   = $cur->id;
+                $exchangeRate = (float) $cur->exchange_rate;
+                $amountFc     = round((float) $request->amount_fc, 4);
+                $amount       = round($amountFc * $exchangeRate, 2);   // المعتمد محاسبياً
+            }
+        }
+        if ($amount < 0.01) {
+            return back()->withErrors(['amount' => 'المبلغ غير صحيح'])->withInput();
+        }
+
+        // ── خصم المصدر: الصافي المقبوض = الإجمالي × (1 − النسبة) ─────────────
+        // sd = amount × rate ÷ (100 − rate) بحيث: المقبوض + الخصم = إجمالي ما يُقفل من الحساب
+        $sdRate   = round((float) ($request->source_discount_rate ?? 0), 2);
+        $sdAmount = $sdRate > 0 ? round($amount * $sdRate / (100 - $sdRate), 2) : 0.0;
+
         DB::beginTransaction();
         try {
             // Branch resolution (SAP: Company Code selection):
@@ -170,17 +216,23 @@ class ReceiptVoucherController extends Controller
                 : ($request->input('branch_id') ?: auth()->user()?->branch_id ?: \App\Models\Setting::get('default_branch_id'));
 
             $voucher = ReceiptVoucher::create([
-                'voucher_date'    => $request->voucher_date,
-                'received_from'   => $request->received_from,
-                'customer_id'     => $request->customer_id ?: null,
-                'account_id'      => $request->account_id,
-                'cash_account_id' => $request->cash_account_id,
-                'amount'          => $request->amount,
-                'payment_method'  => $request->payment_method,
-                'reference'       => $request->reference,
-                'notes'           => $request->notes,
-                'user_id'         => auth()->id(),
-                'branch_id'       => $resolvedBranch,
+                'voucher_date'           => $request->voucher_date,
+                'second_date'            => $request->second_date ?: null,
+                'received_from'          => $request->received_from,
+                'customer_id'            => $request->customer_id ?: null,
+                'account_id'             => $request->account_id,
+                'cash_account_id'        => $request->cash_account_id,
+                'amount'                 => $amount,
+                'currency_id'            => $currencyId,
+                'exchange_rate'          => $exchangeRate,
+                'amount_fc'              => $amountFc,
+                'source_discount_rate'   => $sdRate,
+                'source_discount_amount' => $sdAmount,
+                'payment_method'         => $request->payment_method,
+                'reference'              => $request->reference,
+                'notes'                  => $request->notes,
+                'user_id'                => auth()->id(),
+                'branch_id'              => $resolvedBranch,
             ]);
 
             (new LedgerPostingService())->postReceiptVoucher($voucher);

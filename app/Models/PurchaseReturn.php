@@ -39,6 +39,7 @@ class PurchaseReturn extends Model
             'ap_deduction' => 'خصم من ذمة المورد',
             'cash'         => 'استرداد نقدي',
             'bank'         => 'استرداد بنكي',
+            'debit_note'   => 'إشعار مدين (Debit Note)',
             default        => $this->refund_method,
         };
     }

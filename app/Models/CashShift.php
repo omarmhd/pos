@@ -51,9 +51,8 @@ class CashShift extends Model
     public function recalculate(): static
     {
         $cashSales = $this->sales()
-            ->where('payment_method', 'cash')
             ->where('is_posted', true)
-            ->sum('total_amount');
+            ->sum('cash_amount');
 
         // TODO: deduct cash sale returns when SaleReturn has shift_id
         $cashReturns = 0;
