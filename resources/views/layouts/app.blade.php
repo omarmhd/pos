@@ -73,6 +73,17 @@
         }
         .sidebar .nav-link.active i { opacity: 1; }
 
+        /* Compact sidebar (icon-only) */
+        nav.sidebar.compact {
+            width: 72px !important;
+        }
+        nav.sidebar.compact .sidebar-brand h5 { font-size: .92rem; overflow: hidden; }
+        nav.sidebar.compact .sidebar-brand small { display:none; }
+        nav.sidebar.compact .nav-link { font-size: 0; padding: 8px 6px; text-align:center; }
+        nav.sidebar.compact .nav-link i { font-size: 1.05rem; margin-left: 0; opacity: 1; }
+        nav.sidebar.compact .sub-nav { display: none; }
+        nav.sidebar.compact .sidebar-close-btn { display: none; }
+
         /* Section toggle buttons */
         .nav-section-toggle {
             display: flex;
@@ -335,6 +346,7 @@
                     @auth
                         <small>{{ auth()->user()->name }}</small>
                     @endauth
+                    <button id="sidebarCompactToggle" class="btn btn-sm btn-light mt-2" style="font-size:.78rem">وضع مضغوط</button>
                 </div>
 
                 <ul class="nav flex-column pb-3" id="sidebarNav">
@@ -1246,6 +1258,61 @@
     window.addEventListener('resize', function() {
         if (window.innerWidth >= 768) closeSidebar();
     });
+
+    // Sidebar compact toggle & persist state
+    (function(){
+        var compactKey = 'sidebarCompact';
+        var sidebar = document.querySelector('nav.sidebar');
+        var btn = document.getElementById('sidebarCompactToggle');
+        function applyCompactState(saved) {
+            if (saved === '1') {
+                sidebar.classList.add('compact');
+                if (btn) btn.textContent = 'الوضع العادي';
+            } else {
+                sidebar.classList.remove('compact');
+                if (btn) btn.textContent = 'وضع مضغوط';
+            }
+        }
+        try { var saved = localStorage.getItem(compactKey); } catch(e) { saved = null; }
+        applyCompactState(saved);
+        if (btn) btn.addEventListener('click', function(){
+            var now = sidebar.classList.contains('compact') ? '0' : '1';
+            try { localStorage.setItem(compactKey, now); } catch(e) {}
+            applyCompactState(now);
+        });
+
+        // Persist collapse state of sections
+        document.querySelectorAll('.nav-section-toggle').forEach(function(toggle){
+            var target = toggle.dataset.bsTarget;
+            if (!target) return;
+            var id = target.replace('#','');
+            var key = 'sidebarCollapse_' + id;
+            // apply saved state
+            try { var st = localStorage.getItem(key); } catch(e){ st = null; }
+            var collapseEl = document.querySelector(target);
+            if (collapseEl && st === 'show') {
+                var bs = bootstrap.Collapse.getOrCreateInstance(collapseEl, {toggle:false});
+                bs.show();
+            } else if (collapseEl && st === 'hide') {
+                var bs2 = bootstrap.Collapse.getOrCreateInstance(collapseEl, {toggle:false});
+                bs2.hide();
+            }
+            // listen to events
+            if (collapseEl) {
+                collapseEl.addEventListener('show.bs.collapse', function(){ try{ localStorage.setItem(key,'show'); }catch(e){} });
+                collapseEl.addEventListener('hide.bs.collapse', function(){ try{ localStorage.setItem(key,'hide'); }catch(e){} });
+            }
+        });
+
+        // add title/tooltips to nav-links when compact
+        function refreshTooltips(){
+            document.querySelectorAll('nav.sidebar .nav-link').forEach(function(a){
+                var text = a.textContent.trim();
+                if (text) a.setAttribute('title', text);
+            });
+        }
+        refreshTooltips();
+    })();
 
     // ── Alerts: stay until user closes them manually ──────────
     // Alerts do NOT auto-dismiss — user must click ✕ to close
