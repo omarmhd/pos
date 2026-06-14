@@ -76,8 +76,11 @@
         /* Compact sidebar (icon-only) */
         nav.sidebar.compact {
             width: 72px !important;
+            flex: 0 0 72px !important;
+            max-width: 72px !important;
+            min-width: 72px !important;
+            transition: all 0.22s ease;
         }
-        nav.sidebar.compact { flex: 0 0 72px !important; max-width:72px !important; }
         nav.sidebar.compact .sidebar-brand h5 { font-size: .92rem; overflow: hidden; }
         nav.sidebar.compact .sidebar-brand small { display:none; }
         /* hide only the textual part, keep icons visible and spacing */
@@ -89,13 +92,15 @@
         nav.sidebar.compact .collapse.show > .sub-nav { display: block; }
         nav.sidebar.compact .sidebar-close-btn { display: none; }
 
-        /* When sidebar is compact, let main content expand to fill remaining space */
-        nav.sidebar.compact + main,
-        nav.sidebar.compact ~ main {
-            margin-right: 72px !important; /* RTL: right side is the sidebar */
-            flex: 1 0 calc(100% - 72px) !important;
-            width: calc(100% - 72px) !important;
-            max-width: calc(100% - 72px) !important;
+        /* Normal state - sidebar full width */
+        nav.sidebar {
+            transition: all 0.22s ease;
+        }
+
+        /* Ensure main adjusts with sidebar width */
+        main {
+            transition: all 0.22s ease;
+            flex: 1 1 auto !important;
         }
         /* Favorites / shortcuts */
         #sidebarFavorites .fav-item { background: rgba(255,255,255,0.06); color: #fff; padding:4px 8px; border-radius:6px; font-size:.78rem; display:flex; gap:6px; align-items:center }
@@ -347,6 +352,18 @@
 
     @vite(['resources/css/theme.css', 'resources/css/app.css', 'resources/js/app.js'])
     @stack('styles')
+
+    <!-- Apply compact state immediately from localStorage (before page renders) -->
+    <script>
+    (function(){
+        try {
+            var state = localStorage.getItem('sidebarCompact');
+            if (state === '1') {
+                document.documentElement.setAttribute('data-sidebar-compact', '1');
+            }
+        } catch(e) {}
+    })();
+    </script>
 </head>
 <body>
 <!-- Mobile sidebar overlay -->
@@ -1300,17 +1317,22 @@
         function applyCompactState(saved) {
             if (saved === '1') {
                 sidebar.classList.add('compact');
+                document.documentElement.setAttribute('data-sidebar-compact', '1');
                 if (btn) btn.innerHTML = '<i class="bi bi-chevron-right"></i>';
                 if (btn) btn.setAttribute('aria-pressed', 'true');
             } else {
                 sidebar.classList.remove('compact');
+                document.documentElement.removeAttribute('data-sidebar-compact');
                 if (btn) btn.innerHTML = '<i class="bi bi-chevron-left"></i>';
                 if (btn) btn.setAttribute('aria-pressed', 'false');
             }
         }
+        // Try to restore saved state (should already be set by head script, but do it again)
         try { var saved = localStorage.getItem(compactKey); } catch(e) { saved = null; }
         applyCompactState(saved);
-        if (btn) btn.addEventListener('click', function(){
+        
+        if (btn) btn.addEventListener('click', function(e){
+            e.preventDefault();
             var now = sidebar.classList.contains('compact') ? '0' : '1';
             try { localStorage.setItem(compactKey, now); } catch(e) {}
             applyCompactState(now);
