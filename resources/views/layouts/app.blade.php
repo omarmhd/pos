@@ -83,6 +83,13 @@
         nav.sidebar.compact .nav-link i { font-size: 1.05rem; margin-left: 0; opacity: 1; }
         nav.sidebar.compact .sub-nav { display: none; }
         nav.sidebar.compact .sidebar-close-btn { display: none; }
+        /* Favorites / shortcuts */
+        #sidebarFavorites .fav-item { background: rgba(255,255,255,0.06); color: #fff; padding:4px 8px; border-radius:6px; font-size:.78rem; display:flex; gap:6px; align-items:center }
+        .fav-toggle { margin-left:6px; font-size:.85rem; opacity:0.8; cursor:pointer }
+        .nav-link .fav-toggle { margin-left:6px; font-size:.78rem; opacity:0.0; transition:opacity .15s }
+        .nav-link:hover .fav-toggle { opacity:1 }
+        /* Search input small style */
+        #sidebarSearch { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.03); color: #fff }
 
         /* Section toggle buttons */
         .nav-section-toggle {
@@ -346,6 +353,15 @@
                     @auth
                         <small>{{ auth()->user()->name }}</small>
                     @endauth
+
+                    <div class="mt-2">
+                        <input id="sidebarSearch" class="form-control form-control-sm" placeholder="ابحث عن صفحة..." type="search" style="width:100%; font-size:.82rem">
+                    </div>
+
+                    <div id="sidebarFavorites" class="d-flex gap-1 flex-wrap mt-2" style="max-width:100%;">
+                        {{-- favorites will be injected here --}}
+                    </div>
+
                     <button id="sidebarCompactToggle" class="btn btn-sm btn-light mt-2" style="font-size:.78rem">وضع مضغوط</button>
                 </div>
 
@@ -1312,6 +1328,92 @@
             });
         }
         refreshTooltips();
+    })();
+
+    // Sidebar search, favorites and wrapping nav text
+    (function(){
+        // wrap nav-link text into span.nav-text for reliable hiding in compact mode
+        document.querySelectorAll('nav.sidebar .nav-link').forEach(function(a){
+            // avoid wrapping if already wrapped
+            if (a.querySelector('.nav-text')) return;
+            // collect text nodes
+            var text = '';
+            var nodes = [];
+            a.childNodes.forEach(function(n){
+                if (n.nodeType === Node.TEXT_NODE && n.textContent.trim()) { nodes.push(n); }
+            });
+            if (nodes.length) {
+                var span = document.createElement('span');
+                span.className = 'nav-text';
+                nodes.forEach(function(n){ span.appendChild(n); });
+                a.appendChild(span);
+            }
+        });
+
+        // favorites management
+        var favKey = 'sidebarFavorites';
+        function getFavs(){ try { return JSON.parse(localStorage.getItem(favKey) || '[]'); } catch(e){ return []; } }
+        function setFavs(arr){ try { localStorage.setItem(favKey, JSON.stringify(arr)); } catch(e){} }
+        function isFav(href){ return getFavs().indexOf(href) !== -1 }
+        function toggleFav(href, title, iconHtml){ var arr = getFavs(); var i = arr.indexOf(href); if (i===-1) { arr.push(href); } else { arr.splice(i,1); } setFavs(arr); renderFavs(); }
+
+        function renderFavs(){
+            var container = document.getElementById('sidebarFavorites');
+            if (!container) return;
+            container.innerHTML = '';
+            var favs = getFavs();
+            favs.forEach(function(h){
+                var a = document.querySelector('nav.sidebar a.nav-link[href="'+h+'"]');
+                if (!a) return; // skip if link not present
+                var item = document.createElement('a');
+                item.className = 'fav-item text-decoration-none';
+                item.href = h;
+                var icon = a.querySelector('i') ? a.querySelector('i').outerHTML : '';
+                var txt = a.querySelector('.nav-text') ? a.querySelector('.nav-text').textContent.trim() : a.textContent.trim();
+                item.innerHTML = icon + '<span>' + txt + '</span>';
+                container.appendChild(item);
+            });
+        }
+
+        // inject fav toggle buttons into each nav link
+        document.querySelectorAll('nav.sidebar a.nav-link').forEach(function(a){
+            var href = a.getAttribute('href') || '';
+            if (!href || href === '#' || href.startsWith('javascript')) return;
+            var span = document.createElement('span');
+            span.className = 'fav-toggle text-warning';
+            span.innerHTML = isFav(href) ? '<i class="bi bi-star-fill"></i>' : '<i class="bi bi-star"></i>';
+            span.addEventListener('click', function(e){ e.preventDefault(); e.stopPropagation(); toggleFav(href); span.innerHTML = isFav(href) ? '<i class="bi bi-star-fill"></i>' : '<i class="bi bi-star"></i>'; });
+            a.appendChild(span);
+        });
+
+        renderFavs();
+
+        // search behavior
+        var search = document.getElementById('sidebarSearch');
+        if (search) {
+            var timeout = null;
+            search.addEventListener('input', function(){
+                clearTimeout(timeout);
+                timeout = setTimeout(function(){
+                    var q = search.value.trim().toLowerCase();
+                    document.querySelectorAll('nav.sidebar .nav-link').forEach(function(a){
+                        var txt = (a.querySelector('.nav-text') ? a.querySelector('.nav-text').textContent : a.textContent).trim().toLowerCase();
+                        var show = q === '' || txt.indexOf(q) !== -1;
+                        // show/hide the parent li
+                        var li = a.closest('li.nav-item');
+                        if (li) li.style.display = show ? '' : 'none';
+                        // if show, ensure parent collapse is open
+                        if (show) {
+                            var parentCollapse = a.closest('.collapse');
+                            if (parentCollapse) {
+                                var bs = bootstrap.Collapse.getOrCreateInstance(parentCollapse, {toggle:false});
+                                bs.show();
+                            }
+                        }
+                    });
+                }, 120);
+            });
+        }
     })();
 
     // ── Alerts: stay until user closes them manually ──────────
