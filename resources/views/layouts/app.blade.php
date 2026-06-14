@@ -79,9 +79,13 @@
         }
         nav.sidebar.compact .sidebar-brand h5 { font-size: .92rem; overflow: hidden; }
         nav.sidebar.compact .sidebar-brand small { display:none; }
-        nav.sidebar.compact .nav-link { font-size: 0; padding: 8px 6px; text-align:center; }
-        nav.sidebar.compact .nav-link i { font-size: 1.05rem; margin-left: 0; opacity: 1; }
+        /* hide only the textual part, keep icons visible and spacing */
+        nav.sidebar.compact .nav-link { padding: 8px 6px; text-align:center; }
+        nav.sidebar.compact .nav-link i { font-size: 1.05rem; margin-left: 0; opacity: 1; display:inline-block; }
+        nav.sidebar.compact .nav-link .nav-text { display: none; }
+        /* hide collapsed sub-navs visually but allow shown ones to appear */
         nav.sidebar.compact .sub-nav { display: none; }
+        nav.sidebar.compact .collapse.show > .sub-nav { display: block; }
         nav.sidebar.compact .sidebar-close-btn { display: none; }
         /* Favorites / shortcuts */
         #sidebarFavorites .fav-item { background: rgba(255,255,255,0.06); color: #fff; padding:4px 8px; border-radius:6px; font-size:.78rem; display:flex; gap:6px; align-items:center }
