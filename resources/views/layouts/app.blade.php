@@ -94,6 +94,7 @@
         .nav-link:hover .fav-toggle { opacity:1 }
         /* Search input small style */
         #sidebarSearch { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.03); color: #fff }
+        .sidebar-compact-btn { border: none; background: rgba(255,255,255,0.03); color: #fff; padding:6px 8px; }
 
         /* Section toggle buttons */
         .nav-section-toggle {
@@ -366,7 +367,9 @@
                         {{-- favorites will be injected here --}}
                     </div>
 
-                    <button id="sidebarCompactToggle" class="btn btn-sm btn-light mt-2" style="font-size:.78rem">وضع مضغوط</button>
+                    <button id="sidebarCompactToggle" class="btn btn-sm btn-light mt-2 sidebar-compact-btn" aria-label="تبديل وضع الشريط" title="تبديل وضع الشريط">
+                        <i class="bi bi-chevron-left"></i>
+                    </button>
                 </div>
 
                 <ul class="nav flex-column pb-3" id="sidebarNav">
@@ -1287,10 +1290,12 @@
         function applyCompactState(saved) {
             if (saved === '1') {
                 sidebar.classList.add('compact');
-                if (btn) btn.textContent = 'الوضع العادي';
+                if (btn) btn.innerHTML = '<i class="bi bi-chevron-right"></i>';
+                if (btn) btn.setAttribute('aria-pressed', 'true');
             } else {
                 sidebar.classList.remove('compact');
-                if (btn) btn.textContent = 'وضع مضغوط';
+                if (btn) btn.innerHTML = '<i class="bi bi-chevron-left"></i>';
+                if (btn) btn.setAttribute('aria-pressed', 'false');
             }
         }
         try { var saved = localStorage.getItem(compactKey); } catch(e) { saved = null; }
