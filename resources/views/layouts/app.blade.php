@@ -97,19 +97,6 @@
             transition: all 0.22s ease;
         }
 
-        /* Ensure main adjusts with sidebar width */
-        main {
-            transition: all 0.22s ease;
-            flex: 1 1 auto !important;
-            width: auto !important;
-            min-width: 0 !important;
-        }
-        
-        /* When sidebar is compact, ensure main takes all remaining space */
-        .row main {
-            max-width: 100% !important;
-            width: auto !important;
-        }
         /* Favorites / shortcuts */
         #sidebarFavorites .fav-item { background: rgba(255,255,255,0.06); color: #fff; padding:4px 8px; border-radius:6px; font-size:.78rem; display:flex; gap:6px; align-items:center }
         .fav-toggle { margin-left:6px; font-size:.85rem; opacity:0.8; cursor:pointer }
