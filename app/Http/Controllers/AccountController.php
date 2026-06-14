@@ -4,12 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Models\Account;
 use Illuminate\Http\Request;
+use Yajra\DataTables\Facades\DataTables;
+use Illuminate\Support\Facades\DB;
 
 class AccountController extends Controller
 {
     public function __construct()
     {
-        $this->middleware('can:accounts.view')->only(['index', 'exportCsv']);
+        $this->middleware('can:accounts.view')->only(['index', 'exportCsv', 'transactions']);
         $this->middleware('can:accounts.create')->only(['create', 'store']);
         $this->middleware('can:accounts.edit')->only(['edit', 'update']);
         $this->middleware('can:accounts.delete')->only(['destroy']);
@@ -162,5 +164,30 @@ class AccountController extends Controller
             'ip_address' => request()->ip() ?? null,
         ]);
         return redirect()->route('accounts.index')->with('success', 'Account deleted');
+    }
+
+    /**
+     * Return server-side DataTables JSON for journal lines of an account.
+     */
+    public function transactions(Request $request, Account $account)
+    {
+        $query = DB::table('journal_entry_lines as jel')
+            ->join('journal_entries as je', 'je.id', '=', 'jel.journal_entry_id')
+            ->where('jel.account_id', $account->id)
+            ->select([
+                'je.entry_date',
+                'je.entry_number',
+                'je.reference',
+                'jel.line_description',
+                'jel.debit',
+                'jel.credit',
+                'je.id as journal_entry_id',
+            ]);
+
+        return DataTables::of($query)
+            ->editColumn('entry_date', function ($row) {
+                return optional(\Carbon\Carbon::parse($row->entry_date))->toDateString();
+            })
+            ->make(true);
     }
 }

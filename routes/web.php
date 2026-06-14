@@ -347,6 +347,7 @@ Route::middleware(['auth'])->group(function () {
 
     // ── Chart of Accounts ─────────────────────────────────────────────────────
     Route::resource('accounts', App\Http\Controllers\AccountController::class);
+    Route::get('accounts/{account}/transactions', [App\Http\Controllers\AccountController::class, 'transactions'])->name('accounts.transactions');
     Route::get('accounts-import',
         [App\Http\Controllers\AccountController::class, 'importForm'])->name('accounts.import.form');
     Route::post('accounts-import',

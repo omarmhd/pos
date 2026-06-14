@@ -122,7 +122,7 @@ $typeColor= ['asset'=>'primary','liability'=>'warning','equity'=>'info','revenue
                             <table class="table table-sm table-hover mb-0">
                                 <tbody>
                                 @foreach($account->children->sortBy('code') as $child)
-                                <tr>
+                                <tr class="account-row" data-account-id="{{ $child->id }}" data-account-name="{{ $child->name }}">
                                     <td style="width:110px; padding-right:2rem">
                                         <i class="bi bi-dash text-muted"></i>
                                         <code>{{ $child->code }}</code>
@@ -168,7 +168,7 @@ $typeColor= ['asset'=>'primary','liability'=>'warning','equity'=>'info','revenue
 
                 @else
                 {{-- ── Regular leaf account (no parent) ── --}}
-                <tr>
+                <tr class="account-row" data-account-id="{{ $account->id }}" data-account-name="{{ $account->name }}">
                     <td><code>{{ $account->code }}</code></td>
                     <td>{{ $account->name }}</td>
                     <td>
@@ -212,6 +212,35 @@ $typeColor= ['asset'=>'primary','liability'=>'warning','equity'=>'info','revenue
 
 @endsection
 
+{{-- Modal for account transactions --}}
+<div class="modal fade" id="accountTransactionsModal" tabindex="-1" aria-labelledby="accountTransactionsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="accountTransactionsModalLabel">حركات الحساب</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="table-responsive">
+                    <table class="table table-sm table-striped" id="account-transactions-table" style="width:100%">
+                        <thead>
+                            <tr>
+                                <th>التاريخ</th>
+                                <th>الرقم</th>
+                                <th>المرجع</th>
+                                <th>الوصف</th>
+                                <th class="text-end">مدين</th>
+                                <th class="text-end">دائن</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 @section('scripts')
 <script>
 // Flip chevron icon when section collapses/expands
@@ -226,6 +255,52 @@ document.querySelectorAll('[data-bs-toggle="collapse"]').forEach(function(toggle
         var icon = toggle.querySelector('.section-chevron');
         if (icon) { icon.classList.remove('bi-chevron-up'); icon.classList.add('bi-chevron-down'); }
     });
+});
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Open transactions modal when clicking an account row (but not on action buttons)
+    document.querySelectorAll('tr.account-row').forEach(function(row) {
+        row.addEventListener('click', function(e) {
+            // ignore clicks on buttons/links/forms inside the row
+            if (e.target.closest('a,button,form')) return;
+            var accountId = this.dataset.accountId;
+            var accountName = this.dataset.accountName || ('#' + accountId);
+            openAccountTransactions(accountId, accountName);
+        });
+    });
+
+    function openAccountTransactions(accountId, accountName) {
+        var modalLabel = document.getElementById('accountTransactionsModalLabel');
+        if (modalLabel) modalLabel.textContent = 'حركات الحساب — ' + accountName;
+
+        // Initialize or reload DataTable
+        if ($.fn.dataTable.isDataTable('#account-transactions-table')) {
+            var table = $('#account-transactions-table').DataTable();
+            table.ajax.url('/accounts/' + accountId + '/transactions').load();
+        } else {
+            $('#account-transactions-table').DataTable({
+                processing: true,
+                serverSide: true,
+                ajax: '/accounts/' + accountId + '/transactions',
+                columns: [
+                    { data: 'entry_date' },
+                    { data: 'entry_number' },
+                    { data: 'reference' },
+                    { data: 'line_description' },
+                    { data: 'debit', className: 'text-end' , render: $.fn.dataTable.render.number(',', '.', 2, '') },
+                    { data: 'credit', className: 'text-end' , render: $.fn.dataTable.render.number(',', '.', 2, '') },
+                ],
+                order: [[0, 'desc']],
+                pageLength: 25,
+            });
+        }
+
+        var modalEl = document.getElementById('accountTransactionsModal');
+        var modal = new bootstrap.Modal(modalEl);
+        modal.show();
+    }
 });
 </script>
 @endsection
