@@ -172,6 +172,8 @@ Route::middleware(['auth'])->group(function () {
     // ── Purchase Orders (أوامر الشراء) ───────────────────────────────────────
     Route::resource('purchase-orders', PurchaseOrderController::class)
         ->only(['index', 'create', 'store', 'show']);
+    Route::get('purchase-orders/{purchaseOrder}/pdf',
+        [PurchaseOrderController::class, 'pdf'])->name('purchase-orders.pdf');
     Route::post('purchase-orders/{purchaseOrder}/send',
         [PurchaseOrderController::class, 'send'])->name('purchase-orders.send');
     Route::post('purchase-orders/{purchaseOrder}/cancel',

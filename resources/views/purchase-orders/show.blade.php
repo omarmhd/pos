@@ -44,6 +44,15 @@
                 @endcan
                 @endif
 
+                <a href="{{ route('purchase-orders.pdf', $purchaseOrder) }}" target="_blank"
+                   class="btn btn-outline-primary btn-sm">
+                    <i class="bi bi-printer me-1"></i> طباعة / عرض
+                </a>
+                <a href="{{ route('purchase-orders.pdf', ['purchaseOrder' => $purchaseOrder, 'download' => 1]) }}"
+                   class="btn btn-outline-danger btn-sm">
+                    <i class="bi bi-file-earmark-pdf me-1"></i> تنزيل PDF
+                </a>
+
                 <a href="{{ route('purchase-orders.index') }}" class="btn btn-secondary btn-sm">
                     <i class="bi bi-arrow-right"></i> رجوع
                 </a>

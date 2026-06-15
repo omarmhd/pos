@@ -18,7 +18,7 @@ class PurchaseOrderController extends Controller
 {
     public function __construct()
     {
-        $this->middleware('can:purchase_orders.view')->only(['index', 'show']);
+        $this->middleware('can:purchase_orders.view')->only(['index', 'show', 'pdf']);
         $this->middleware('can:purchase_orders.create')->only(['create', 'store']);
         $this->middleware('can:purchase_orders.send')->only(['send']);
         $this->middleware('can:purchase_orders.cancel')->only(['cancel']);
@@ -129,6 +129,24 @@ class PurchaseOrderController extends Controller
         $purchaseOrder->load('supplier', 'user', 'branch', 'warehouse', 'items.product', 'invoices');
         $currency = Setting::get('currency_symbol', 'ج.م');
         return view('purchase-orders.show', compact('purchaseOrder', 'currency'));
+    }
+
+    /**
+     * Generate a PDF for the purchase order.
+     * Streams inline by default (for browser preview / printing);
+     * pass ?download=1 to force a file download.
+     */
+    public function pdf(Request $request, PurchaseOrder $purchaseOrder): \Illuminate\Http\Response
+    {
+        $purchaseOrder->load('supplier', 'user', 'branch', 'warehouse', 'items.product');
+        $currency = Setting::get('currency_symbol', 'ج.م');
+
+        $pdf      = \App\Services\PdfService::arabic('pdf.purchase_order', compact('purchaseOrder', 'currency'));
+        $filename = 'purchase-order-' . $purchaseOrder->po_number . '.pdf';
+
+        return $request->boolean('download')
+            ? $pdf->download($filename)
+            : $pdf->stream($filename);
     }
 
     /** Mark PO as sent to supplier */
@@ -258,6 +276,7 @@ class PurchaseOrderController extends Controller
         /** @var \App\Models\User|null $u */
         $u    = auth()->user();
         $show = '<a href="' . route('purchase-orders.show', $po) . '" class="btn btn-sm btn-info btn-action" title="عرض"><i class="bi bi-eye"></i></a>';
+        $pdf  = '<a href="' . route('purchase-orders.pdf', $po) . '" target="_blank" class="btn btn-sm btn-outline-danger btn-action" title="طباعة / PDF"><i class="bi bi-file-earmark-pdf"></i></a>';
         $conv = '';
         $send = '';
 
@@ -272,6 +291,6 @@ class PurchaseOrderController extends Controller
             $conv = '<a href="' . route('purchase-orders.convert-form', $po) . '" class="btn btn-sm btn-success btn-action" title="تحويل لفاتورة شراء"><i class="bi bi-arrow-right-circle"></i></a>';
         }
 
-        return '<div class="d-flex gap-1 flex-nowrap">' . $show . $send . $conv . '</div>';
+        return '<div class="d-flex gap-1 flex-nowrap">' . $show . $pdf . $send . $conv . '</div>';
     }
 }
