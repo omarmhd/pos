@@ -37,7 +37,7 @@ class ServiceInvoiceController extends Controller
         $customers       = Customer::orderBy('name')->get(['id', 'name']);
         $revenueAccounts = Account::where('type', 'revenue')->orderBy('code')->get(['id', 'code', 'name']);
         $currency        = Setting::get('currency_symbol', 'ج.م');
-        $defaultService  = Setting::get('account_service_revenue_code', '4200');
+        $defaultService  = Setting::get('account_service_revenue_code', '4400');
 
         return view('services.create', compact('customers', 'revenueAccounts', 'currency', 'defaultService'));
     }

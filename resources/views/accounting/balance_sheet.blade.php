@@ -85,7 +85,10 @@
 
     @php
         // Separate contra-assets (negative balance assets like accumulated depreciation)
+        // NB: negative-balance CURRENT assets must also be shown — otherwise the visible
+        // line items would not reconcile with $totalCurrentAssets / $totalAssets.
         $normalCurrentAssets  = collect($currentAssets)->where('amount', '>', 0)->values();
+        $contraCurrentAssets  = collect($currentAssets)->where('amount', '<', 0)->values();
         $normalFixedAssets    = collect($fixedAssets)->where('amount', '>', 0)->values();
         $contraAssets         = collect($fixedAssets)->where('amount', '<', 0)->values();
         $netFixedAssets       = $totalFixedAssets;   // already net (positive + negative)
@@ -125,6 +128,19 @@
                     @empty
                     <tr><td colspan="2" class="ps-4 text-muted fst-italic small">—</td></tr>
                     @endforelse
+
+                    {{-- Contra / negative-balance current assets (shown as deductions so lines reconcile to the subtotal) --}}
+                    @foreach($contraCurrentAssets as $row)
+                    <tr class="bs-row">
+                        <td class="ps-4 text-danger">
+                            <span class="code-badge">{{ $row['account']->code }}</span>
+                            {{ $row['account']->name }}
+                            <small class="text-muted">(خصم)</small>
+                        </td>
+                        <td class="text-end pe-3 text-danger">({{ number_format(abs($row['amount']), 2) }})</td>
+                    </tr>
+                    @endforeach
+
                     <tr class="bs-subtotal border-top">
                         <td class="ps-3 fw-bold">إجمالي الأصول المتداولة</td>
                         <td class="text-end pe-3 fw-bold text-primary">{{ number_format($totalCurrentAssets, 2) }}</td>

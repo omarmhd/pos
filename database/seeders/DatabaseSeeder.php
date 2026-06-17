@@ -55,6 +55,7 @@ class DatabaseSeeder extends Seeder
             ['code' => '4100', 'name' => 'إيرادات أخرى',                  'type' => 'revenue', 'sub_type' => null,                  'is_header' => false],
             ['code' => '4200', 'name' => 'مردودات المبيعات',              'type' => 'revenue', 'sub_type' => null,                  'is_header' => false],
             ['code' => '4300', 'name' => 'خصم المبيعات الممنوح',          'type' => 'revenue', 'sub_type' => null,                  'is_header' => false],
+            ['code' => '4400', 'name' => 'إيرادات الخدمات',               'type' => 'revenue', 'sub_type' => null,                  'is_header' => false],
             // ── Expenses ─────────────────────────────────────────────────────
             // Cost of Sales
             ['code' => '5000', 'name' => 'تكلفة البضاعة المباعة',         'type' => 'expense', 'sub_type' => null,                  'is_header' => false],
@@ -117,6 +118,8 @@ class DatabaseSeeder extends Seeder
             'account_retained_earnings_code'  => '3100',
             'account_salaries_payable_code'   => '2100',
             'account_input_vat_code'          => '1150',
+            'account_tax_input_code'          => '1150',  // موحّد مع 1150 (لا 1260 المكرّر)
+            'account_service_revenue_code'    => '4400',  // إيراد خدمات مستقل (لا 4200 مردودات)
             // Inventory adjustment GL accounts
             'account_inventory_shortage_code' => '6510',  // DR on negative adjustment
             'account_inventory_surplus_code'  => '4100',  // CR on positive adjustment

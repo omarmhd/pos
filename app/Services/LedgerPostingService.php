@@ -485,8 +485,9 @@ class LedgerPostingService
         ];
 
         // ── Debit: ضريبة المدخلات (أصل قابل للاسترداد) ──
+        // الحساب المعتمد 1150 (نفس مفتاح شاشة الإعدادات) — وليس 1260 المكرّر.
         if ($tax > 0) {
-            $taxInputCode = Setting::get('account_tax_input_code', '1260');
+            $taxInputCode = Setting::get('account_input_vat_code', '1150');
             $lines[] = [
                 'account_id'       => $this->account($taxInputCode)->id,
                 'debit'            => $tax,
@@ -891,7 +892,7 @@ class LedgerPostingService
         ];
 
         if ($tax > 0) {
-            $taxInputCode = Setting::get('account_tax_input_code', '1260');
+            $taxInputCode = Setting::get('account_input_vat_code', '1150');
             $lines[] = [
                 'account_id'       => $this->account($taxInputCode)->id,
                 'debit'            => $tax,
@@ -938,16 +939,22 @@ class LedgerPostingService
         $tax   = round((float) ($invoice->tax_amount ?? 0), 2);
         $net   = round($total - $tax, 2);
 
+        $svcBranchId = $invoice->branch_id ?? $this->resolveBranchId($invoice);
         $arCode      = Setting::get('account_ar_code',              '1200');
-        $cashCode    = Setting::get('account_cash_code',           '1000');
         $taxCode     = Setting::get('account_tax_payable_code',    '2200');
-        $serviceCode = Setting::get('account_service_revenue_code', '4200');
+        // حساب إيراد خدمات مستقل (4400) — لا 4200 «مردودات المبيعات».
+        $serviceCode = Setting::get('account_service_revenue_code', '4400');
         $serviceAcctId = $invoice->service_account_id ?? $this->account($serviceCode)->id;
 
         $lines = [];
 
+        // المدين: ذمم عميل (آجل) أو صندوق الفرع (نقدي) — صندوق الفرع لا الحساب الأب 1000.
+        $debitAccountId = $invoice->is_credit
+            ? $this->account($arCode)->id
+            : $this->cashId($svcBranchId);
+
         $lines[] = [
-            'account_id'       => $invoice->is_credit ? $this->account($arCode)->id : $this->account($cashCode)->id,
+            'account_id'       => $debitAccountId,
             'debit'            => $total,
             'credit'           => 0,
             'line_description' => ($invoice->is_credit ? 'ذمم عميل – ' : 'تحصيل نقدي – ') . $invoice->partyName(),

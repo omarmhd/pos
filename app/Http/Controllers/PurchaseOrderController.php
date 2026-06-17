@@ -39,6 +39,7 @@ class PurchaseOrderController extends Controller
                 ->addColumn('total_fmt',     fn($p) => number_format($p->total_amount, 2))
                 ->addColumn('status_badge',  fn($p) => $this->statusBadge($p))
                 ->addColumn('date',          fn($p) => $p->order_date->format('Y-m-d'))
+                ->editColumn('expected_delivery_date', fn($p) => $p->expected_delivery_date?->format('Y-m-d') ?? '—')
                 ->addColumn('action',        fn($p) => $this->actionButtons($p))
                 ->rawColumns(['status_badge', 'action'])
                 ->make(true);

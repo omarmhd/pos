@@ -17,8 +17,8 @@ return [
     'account_checks_receivable_code'   => ['label' => 'شيكات تحت التحصيل',       'default' => '1120'],
     'account_ar_code'                  => ['label' => 'ذمم العملاء',             'default' => '1200'],
     'account_source_discount_code'     => ['label' => 'خصم مصدر مدفوع مقدماً',   'default' => '1250'],
-    'account_tax_input_code'           => ['label' => 'ض.ق.م مدخلات',            'default' => '1260'],
-    'account_input_vat_code'           => ['label' => 'ض.ق.م مدخلات (مرادف)',    'default' => '1260'],
+    'account_tax_input_code'           => ['label' => 'ض.ق.م مدخلات',            'default' => '1150'],
+    'account_input_vat_code'           => ['label' => 'ض.ق.م مدخلات (مرادف)',    'default' => '1150'],
     'account_inventory_code'           => ['label' => 'مخزون بضاعة تجارية',      'default' => '1300'],
     'account_inventory_raw_code'       => ['label' => 'مخزون مواد خام',          'default' => '1310'],
     'account_inventory_finished_code'  => ['label' => 'مخزون منتجات تامة الصنع',  'default' => '1320'],
@@ -39,7 +39,7 @@ return [
     'account_sales_code'               => ['label' => 'إيراد المبيعات',          'default' => '4000'],
     'account_purchase_returns_code'    => ['label' => 'مردودات المشتريات',       'default' => '4050'],
     'account_sales_returns_code'       => ['label' => 'مردودات المبيعات',        'default' => '4100'],
-    'account_service_revenue_code'     => ['label' => 'إيرادات الخدمات',         'default' => '4200'],
+    'account_service_revenue_code'     => ['label' => 'إيرادات الخدمات',         'default' => '4400'],
     'account_discount_code'            => ['label' => 'خصم المبيعات',            'default' => '4300'],
 
     // ── المصروفات/التكلفة ────────────────────────────────────────────────────
