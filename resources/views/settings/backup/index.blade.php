@@ -18,35 +18,23 @@
                         </label>
                     </div>
                     <button type="submit" class="btn btn-primary w-100"
-                            onclick="return confirm('إنشاء نسخة احتياطية الآن؟ قد يستغرق ذلق دقيقة.')">
+                            onclick="return confirm('إنشاء نسخة احتياطية الآن؟ قد يستغرق ذلك دقيقة.')">
                         <i class="bi bi-play-fill me-1"></i> تشغيل النسخ الآن
                     </button>
                 </form>
                 <hr>
                 <div class="small text-muted">
-                    <i class="bi bi-clock me-1"></i>
-                    النسخ التلقائي: كل يوم الساعة 02:00 صباحاً
+                    <i class="bi bi-database me-1"></i>
+                    نسخة احتياطية لقاعدة البيانات فقط
                     <div class="mt-1">
-                        <i class="bi bi-folder me-1"></i>
-                        الحفظ في: <code>storage/app/backups/</code>
+                        <i class="bi bi-clock me-1"></i>
+                        النسخ التلقائي: كل يوم الساعة 02:00 صباحاً
                     </div>
                     <div class="mt-1">
                         <i class="bi bi-trash me-1"></i>
                         يحتفظ بآخر 14 نسخة
                     </div>
                 </div>
-            </div>
-        </div>
-
-        {{-- Scheduler setup --}}
-        <div class="card mt-3">
-            <div class="card-header"><strong><i class="bi bi-gear me-1"></i>إعداد المجدول (Windows)</strong></div>
-            <div class="card-body small">
-                <p class="text-muted mb-2">أضف مهمة في Windows Task Scheduler:</p>
-                <code class="d-block bg-light p-2 rounded small" style="word-break:break-all">
-                    php.exe {{ base_path('artisan') }} schedule:run
-                </code>
-                <div class="mt-2 text-muted">التكرار: كل دقيقة — بدون توقف</div>
             </div>
         </div>
     </div>

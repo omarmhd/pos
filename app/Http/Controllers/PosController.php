@@ -517,9 +517,15 @@ class PosController extends Controller
                 ],
             ]);
 
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             DB::rollBack();
-            return response()->json(['error' => $e->getMessage()], 500);
+            // رفض الفترة المحاسبية المقفلة هو قاعدة عمل (422) وليس خطأ خادم (500)،
+            // حتى تظهر الرسالة العربية الواضحة للكاشير بدل "خطأ في الاتصال بالخادم".
+            $isBusinessRule = str_contains($e->getMessage(), 'مقفلة');
+            return response()->json(
+                ['error' => $e->getMessage()],
+                $isBusinessRule ? 422 : 500
+            );
         }
     }
 

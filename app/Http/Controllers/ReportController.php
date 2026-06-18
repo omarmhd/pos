@@ -188,13 +188,17 @@ class ReportController extends Controller
             ->whereBetween('sales.created_at', [$dateFrom, $dateTo])
             ->when($branchId, fn($q) => $q->where('sales.branch_id', $branchId))
             ->select(
-                'products.*',
+                'products.id',
+                'products.name',
+                'products.category_id',
                 DB::raw('SUM(sale_items.quantity) as total_quantity'),
                 DB::raw('SUM(sale_items.total_price) as total_revenue'),
                 DB::raw('COUNT(DISTINCT sales.id) as times_sold')
             )
-            ->groupBy('products.id')
+            // كل الأعمدة غير المجمَّعة مذكورة في GROUP BY لتوافق ONLY_FULL_GROUP_BY
+            ->groupBy('products.id', 'products.name', 'products.category_id')
             ->orderBy('total_revenue', 'desc')
+            ->with('category:id,name') // تحميل مسبق لتفادي N+1
             ->take(20)
             ->get();
 

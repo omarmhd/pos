@@ -65,15 +65,40 @@ class BackupCreate extends Command
 
     private function dumpDatabase(string $out): void
     {
-        $db   = config('database.connections.mysql');
-        $pass = $db['password'] ? '-p' . $db['password'] : '';
-        $cmd  = sprintf(
-            'mysqldump -h%s -P%s -u%s %s --single-transaction %s > %s 2>&1',
-            $db['host'], $db['port'], $db['username'], $pass, $db['database'], $out
+        $db      = config('database.connections.mysql');
+        // يسمح بضبط مسار mysqldump الكامل على الاستضافات التي لا تضعه في PATH
+        $binary  = env('MYSQLDUMP_PATH', 'mysqldump');
+        $errFile = $out . '.err';
+
+        // --no-tablespaces : يتجنّب اشتراط صلاحية PROCESS على الاستضافة المشتركة (cPanel)
+        // --skip-lock-tables : لا يتطلّب صلاحية LOCK TABLES
+        // --single-transaction : لقطة متّسقة لجداول InnoDB دون قفل (أداء + اتساق محاسبي)
+        // stderr يُفصل في ملف منفصل حتى يظهر نص الخطأ الحقيقي بدل ابتلاعه
+        $cmd = sprintf(
+            '%s --no-tablespaces --single-transaction --skip-lock-tables '
+            . '--default-character-set=utf8mb4 --host=%s --port=%s --user=%s %s > %s 2> %s',
+            escapeshellcmd($binary),
+            escapeshellarg((string) $db['host']),
+            escapeshellarg((string) $db['port']),
+            escapeshellarg((string) $db['username']),
+            escapeshellarg((string) $db['database']),
+            escapeshellarg($out),
+            escapeshellarg($errFile)
         );
-        exec($cmd, $out2, $code);
+
+        // تمرير كلمة المرور عبر MYSQL_PWD: يمنع تسريبها في قائمة العمليات ويتفادى مشاكل الـ escaping
+        putenv('MYSQL_PWD=' . (string) ($db['password'] ?? ''));
+        exec($cmd, $ignored, $code);
+        putenv('MYSQL_PWD'); // إلغاء المتغيّر بعد الانتهاء
+
+        $err = is_file($errFile) ? trim((string) file_get_contents($errFile)) : '';
+        @unlink($errFile);
+
         if ($code !== 0 || !file_exists($out) || filesize($out) < 100) {
-            throw new \RuntimeException('mysqldump failed (exit ' . $code . '): ' . implode(' ', $out2));
+            throw new \RuntimeException(
+                'mysqldump failed (exit ' . $code . '): '
+                . ($err !== '' ? $err : 'لا يوجد ناتج خطأ — تأكّد من توفّر mysqldump في PATH أو اضبط MYSQLDUMP_PATH')
+            );
         }
     }
 
