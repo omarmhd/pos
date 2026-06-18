@@ -343,6 +343,90 @@
         }
         @media (max-width: 767.98px) { .sidebar-toggle-btn { display: inline-flex; align-items: center; } }
 
+        /* ── Command Palette ── */
+        #cmdPalette {
+            position: fixed; inset: 0; z-index: 9999;
+            background: rgba(0,0,0,0.55);
+            display: none; align-items: flex-start; justify-content: center;
+            padding-top: 80px;
+            backdrop-filter: blur(3px);
+        }
+        #cmdPalette.open { display: flex; }
+        #cmdBox {
+            background: #1e2b3c;
+            border-radius: 14px;
+            width: 100%; max-width: 560px;
+            overflow: hidden;
+            box-shadow: 0 24px 60px rgba(0,0,0,0.5);
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+        #cmdInputRow {
+            display: flex; align-items: center; gap: 10px;
+            padding: 14px 18px;
+            border-bottom: 1px solid rgba(255,255,255,0.07);
+        }
+        #cmdInputRow i { color: rgba(255,255,255,0.4); font-size: 1.1rem; }
+        #cmdInput {
+            background: transparent; border: none; outline: none;
+            color: #fff; font-size: 1rem; flex: 1;
+            font-family: 'Cairo', sans-serif; direction: rtl;
+        }
+        #cmdInput::placeholder { color: rgba(255,255,255,0.28); }
+        .cmd-esc {
+            font-size: 11px; background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 5px; padding: 2px 7px; color: rgba(255,255,255,0.4);
+        }
+        #cmdResults { max-height: 380px; overflow-y: auto; padding: 6px 0; }
+        .cmd-group-label {
+            font-size: 10px; font-weight: 700; letter-spacing: .6px;
+            color: rgba(255,255,255,0.25); padding: 8px 18px 4px;
+            text-transform: uppercase;
+        }
+        .cmd-item {
+            display: flex; align-items: center; gap: 12px;
+            padding: 9px 18px; cursor: pointer; transition: background .1s;
+            color: rgba(255,255,255,0.8); font-size: 0.88rem;
+        }
+        .cmd-item:hover, .cmd-item.cmd-sel {
+            background: rgba(52,152,219,0.25);
+            color: #fff;
+        }
+        .cmd-item i { font-size: 1rem; opacity: 0.7; width: 20px; flex-shrink: 0; }
+        .cmd-item.cmd-sel i { opacity: 1; }
+        .cmd-item-name { flex: 1; }
+        .cmd-item-section {
+            font-size: 11px; color: rgba(255,255,255,0.3);
+            background: rgba(255,255,255,0.06);
+            padding: 2px 8px; border-radius: 4px;
+        }
+        .cmd-item.cmd-sel .cmd-item-section { color: rgba(255,255,255,0.5); background: rgba(255,255,255,0.1); }
+        .cmd-footer {
+            border-top: 1px solid rgba(255,255,255,0.07);
+            padding: 8px 18px;
+            display: flex; gap: 16px; align-items: center;
+        }
+        .cmd-hint { display: flex; align-items: center; gap: 5px; font-size: 11px; color: rgba(255,255,255,0.28); }
+        .cmd-hint kbd {
+            background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 4px; padding: 1px 5px; font-size: 11px; color: rgba(255,255,255,0.4);
+        }
+        /* Ctrl+K trigger button in top navbar */
+        .cmd-trigger {
+            display: flex; align-items: center; gap: 6px;
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 8px; padding: 4px 10px;
+            color: rgba(255,255,255,0.55); font-size: 12px;
+            cursor: pointer; transition: all .15s; white-space: nowrap;
+        }
+        .cmd-trigger:hover { background: rgba(255,255,255,0.14); color: #fff; }
+        .cmd-trigger kbd {
+            font-size: 10px; background: rgba(255,255,255,0.1);
+            border-radius: 3px; padding: 1px 5px;
+        }
+        @media (max-width: 575px) { .cmd-trigger span { display: none; } }
+
         /* ── Print ── */
         @media print {
             nav.sidebar, nav.navbar, .no-print,
@@ -1258,7 +1342,12 @@
                     <span class="navbar-brand fw-semibold mb-0 me-auto">@yield('page-title', 'لوحة التحكم')</span>
                     <div class="d-flex align-items-center gap-2">
                         @auth
-                            <span class="badge bg-primary">{{ auth()->user()->getRoleNames()->first() ?? auth()->user()->role }}</span>
+                        <button class="cmd-trigger" onclick="openCmd()" title="بحث سريع (Ctrl+K)">
+                            <i class="bi bi-search"></i>
+                            <span>بحث سريع...</span>
+                            <kbd>Ctrl K</kbd>
+                        </button>
+                        <span class="badge bg-primary">{{ auth()->user()->getRoleNames()->first() ?? auth()->user()->role }}</span>
                         @endauth
                         <span class="text-muted small topbar-clock"><i class="bi bi-clock"></i> {{ now()->format('Y-m-d H:i') }}</span>
                     </div>
@@ -1300,6 +1389,25 @@
         </main>
     </div>
 </div>
+
+{{-- ══ Command Palette Overlay ══ --}}
+@auth
+<div id="cmdPalette" onclick="if(event.target===this)closeCmd()">
+    <div id="cmdBox" role="dialog" aria-modal="true" aria-label="بحث سريع">
+        <div id="cmdInputRow">
+            <i class="bi bi-search"></i>
+            <input id="cmdInput" type="text" placeholder="ابحث عن صفحة أو إجراء..." autocomplete="off" dir="rtl">
+            <span class="cmd-esc">Esc</span>
+        </div>
+        <div id="cmdResults"></div>
+        <div class="cmd-footer">
+            <span class="cmd-hint"><kbd>↑↓</kbd> للتنقل</span>
+            <span class="cmd-hint"><kbd>Enter</kbd> للفتح</span>
+            <span class="cmd-hint"><kbd>Esc</kbd> إغلاق</span>
+        </div>
+    </div>
+</div>
+@endauth
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
@@ -1603,6 +1711,190 @@
             }
         });
     };
+
+    // ══════════════════════════════════════════════════════════════════
+    // Command Palette — Ctrl+K  (بحث سريع بين جميع الصفحات)
+    // ══════════════════════════════════════════════════════════════════
+    var CMD_PAGES = [
+        // POS
+        { name:'الكاشير (POS)', section:'نقطة البيع', icon:'bi-cart-check-fill', url:'{{ route("pos.index") }}' },
+        { name:'الورديات النقدية', section:'نقطة البيع', icon:'bi-cash-register', url:'{{ route("pos.shifts.index") }}' },
+        @can('pos_terminals.view')
+        { name:'أجهزة البيع (Terminals)', section:'نقطة البيع', icon:'bi-display', url:'{{ route("pos-terminals.index") }}' },
+        @endcan
+        @can('price_lists.view')
+        { name:'قوائم أسعار البيع', section:'نقطة البيع', icon:'bi-tags-fill', url:'{{ route("price-lists.index") }}' },
+        @endcan
+        // Sales
+        @can('quotations.view')
+        { name:'عروض الأسعار', section:'المبيعات', icon:'bi-file-earmark-richtext', url:'{{ route("sales-quotations.index") }}' },
+        @endcan
+        @can('sales_orders.view')
+        { name:'أوامر البيع', section:'المبيعات', icon:'bi-bag-check', url:'{{ route("sales-orders.index") }}' },
+        @endcan
+        @can('sales.view')
+        { name:'فواتير البيع', section:'المبيعات', icon:'bi-receipt', url:'{{ route("sales.index") }}' },
+        @endcan
+        @can('sales.returns.view')
+        { name:'مرتجعات المبيعات', section:'المبيعات', icon:'bi-arrow-return-left', url:'{{ route("sale-returns.index") }}' },
+        @endcan
+        @can('customers.view')
+        { name:'العملاء والذمم المدينة', section:'المبيعات', icon:'bi-person-lines-fill', url:'{{ route("customers.index") }}' },
+        @endcan
+        // Purchases
+        @can('suppliers.view')
+        { name:'الموردون والذمم الدائنة', section:'المشتريات', icon:'bi-building-fill', url:'{{ route("suppliers.index") }}' },
+        @endcan
+        @can('purchase_orders.view')
+        { name:'أوامر الشراء', section:'المشتريات', icon:'bi-file-earmark-text', url:'{{ route("purchase-orders.index") }}' },
+        @endcan
+        @can('purchases.view')
+        { name:'فواتير الشراء', section:'المشتريات', icon:'bi-bag-plus', url:'{{ route("purchases.index") }}' },
+        @endcan
+        @can('expenses.view')
+        { name:'فواتير المصروفات', section:'المشتريات', icon:'bi-receipt-cutoff', url:'{{ route("expense-invoices.index") }}' },
+        @endcan
+        // Inventory
+        @can('products.view')
+        { name:'الأصناف والمنتجات', section:'المخزون', icon:'bi-box-seam', url:'{{ route("products.index") }}' },
+        @endcan
+        @can('branches.view')
+        { name:'المخازن والمعارض', section:'المخزون', icon:'bi-archive-fill', url:'{{ route("warehouses.index") }}' },
+        @endcan
+        @can('inventory.count')
+        { name:'الجرد الدوري', section:'المخزون', icon:'bi-clipboard2-check', url:'{{ route("inventory.sessions.index") }}' },
+        @endcan
+        // Treasury
+        @can('vouchers.view')
+        { name:'سندات القبض', section:'الخزينة', icon:'bi-arrow-down-circle-fill', url:'{{ route("vouchers.receipts.index") }}' },
+        { name:'سندات الصرف', section:'الخزينة', icon:'bi-arrow-up-circle-fill', url:'{{ route("vouchers.payments.index") }}' },
+        @endcan
+        @can('checks.view')
+        { name:'الشيكات', section:'الخزينة', icon:'bi-bank2', url:'{{ route("checks.index") }}' },
+        @endcan
+        // Accounting
+        @can('accounts.view')
+        { name:'لوحة المحاسبة', section:'المحاسبة', icon:'bi-speedometer2', url:'{{ route("accounting.index") }}' },
+        { name:'شجرة الحسابات', section:'المحاسبة', icon:'bi-list-columns-reverse', url:'{{ route("accounts.index") }}' },
+        { name:'مراكز التكلفة', section:'المحاسبة', icon:'bi-diagram-2', url:'{{ route("cost-centers.index") }}' },
+        @endcan
+        @can('journal_entries.view')
+        { name:'القيود اليومية', section:'المحاسبة', icon:'bi-journal-text', url:'{{ route("journal_entries.index") }}' },
+        @endcan
+        @can('ledger.view')
+        { name:'دفتر الأستاذ العام', section:'المحاسبة', icon:'bi-journal-bookmark-fill', url:'{{ route("accounting.ledger.index") }}' },
+        @endcan
+        @can('trial_balance.view')
+        { name:'ميزان المراجعة', section:'المحاسبة', icon:'bi-check2-square', url:'{{ route("accounting.trial-balance") }}' },
+        @endcan
+        @can('financial_statements.view')
+        { name:'قائمة الدخل', section:'المحاسبة · القوائم المالية', icon:'bi-bar-chart-line-fill', url:'{{ route("accounting.income-statement") }}' },
+        { name:'الميزانية العمومية', section:'المحاسبة · القوائم المالية', icon:'bi-layout-split', url:'{{ route("accounting.balance-sheet") }}' },
+        { name:'التدفقات النقدية', section:'المحاسبة · القوائم المالية', icon:'bi-cash-coin', url:'{{ route("accounting.cash-flow") }}' },
+        { name:'الموازنات التقديرية', section:'المحاسبة · الأصول والأطر', icon:'bi-calculator', url:'{{ route("budgets.index") }}' },
+        @endcan
+        @can('fixed_assets.view')
+        { name:'الأصول الثابتة', section:'المحاسبة · الأصول والأطر', icon:'bi-building-gear', url:'{{ route("fixed-assets.index") }}' },
+        @endcan
+        @can('accounting.periods.view')
+        { name:'إغلاق الفترات', section:'المحاسبة · الإعداد والإقفال', icon:'bi-calendar-lock', url:'{{ route("accounting.periods.index") }}' },
+        @endcan
+        @can('accounting.year_end_close')
+        { name:'إقفال نهاية السنة', section:'المحاسبة · الإعداد والإقفال', icon:'bi-calendar-check-fill', url:'{{ route("accounting.year-end-closing") }}' },
+        @endcan
+        @can('reversals.view')
+        { name:'قيود التصحيح', section:'المحاسبة', icon:'bi-arrow-counterclockwise', url:'{{ route("reversals.index") }}' },
+        @endcan
+        @can('branches.manage')
+        { name:'التحويلات البينية', section:'المحاسبة · الإعداد والإقفال', icon:'bi-arrow-left-right', url:'{{ route("inter-branch.index") }}' },
+        @endcan
+        // HR
+        @can('hr.view_employees')
+        { name:'الموظفون', section:'الموارد البشرية', icon:'bi-people-fill', url:'{{ route("hr.employees.index") }}' },
+        @endcan
+        @can('hr.view_payroll')
+        { name:'مسير الرواتب', section:'الموارد البشرية', icon:'bi-cash-stack', url:'{{ route("hr.payroll.index") }}' },
+        @endcan
+        @can('hr.view_attendance')
+        { name:'الحضور اليومي', section:'الموارد البشرية', icon:'bi-calendar-check', url:'{{ route("hr.attendance.daily") }}' },
+        { name:'مزامنة جهاز البصمة', section:'الموارد البشرية', icon:'bi-fingerprint', url:'{{ route("hr.attendance.sync") }}' },
+        @endcan
+        @can('hr.manage_loans')
+        { name:'سلف الموظفين', section:'الموارد البشرية', icon:'bi-coin', url:'{{ route("hr.loans.index") }}' },
+        @endcan
+        // Reports
+        { name:'جميع التقارير', section:'التقارير', icon:'bi-grid-1x2', url:'{{ route("reports.index") }}' },
+        { name:'تقرير المبيعات', section:'التقارير', icon:'bi-graph-up-arrow', url:'{{ route("reports.sales") }}' },
+        { name:'تقرير المشتريات', section:'التقارير', icon:'bi-graph-down-arrow', url:'{{ route("reports.purchases") }}' },
+        { name:'تقرير الأرباح', section:'التقارير', icon:'bi-cash-coin', url:'{{ route("reports.profit") }}' },
+        { name:'تقرير المخزون', section:'التقارير', icon:'bi-boxes', url:'{{ route("reports.inventory") }}' },
+        // Settings
+        @can('users.view')
+        { name:'المستخدمون', section:'الإعدادات', icon:'bi-person-gear', url:'{{ route("users.index") }}' },
+        @endcan
+        @can('settings.view')
+        { name:'إعدادات النظام', section:'الإعدادات', icon:'bi-sliders', url:'{{ route("settings.edit") }}' },
+        @endcan
+        @can('audit_logs.view')
+        { name:'سجل التدقيق', section:'الإعدادات', icon:'bi-shield-check', url:'{{ route("audit.logs.index") }}' },
+        @endcan
+    ];
+
+    var cmdOpen = false, cmdSelIdx = 0, cmdFiltered = [];
+
+    function openCmd() {
+        document.getElementById('cmdPalette').classList.add('open');
+        document.getElementById('cmdInput').value = '';
+        cmdOpen = true;
+        renderCmd('');
+        setTimeout(function(){ document.getElementById('cmdInput').focus(); }, 50);
+    }
+    function closeCmd() {
+        document.getElementById('cmdPalette').classList.remove('open');
+        cmdOpen = false;
+    }
+    function renderCmd(q) {
+        q = q.trim();
+        cmdFiltered = q
+            ? CMD_PAGES.filter(p => p.name.includes(q) || p.section.includes(q))
+            : CMD_PAGES.slice(0, 12);
+        cmdSelIdx = 0;
+        var html = '';
+        if (!cmdFiltered.length) {
+            html = '<div style="padding:24px;text-align:center;color:rgba(255,255,255,0.3);font-size:13px">لا توجد نتائج لـ «' + q + '»</div>';
+        } else {
+            var label = q ? 'نتائج البحث' : 'الأكثر استخداماً';
+            html += '<div class="cmd-group-label">' + label + '</div>';
+            cmdFiltered.forEach(function(p, i) {
+                html += '<div class="cmd-item' + (i===0?' cmd-sel':'') + '" data-url="' + p.url + '" onclick="cmdGo(\'' + p.url + '\')">'
+                    + '<i class="bi ' + p.icon + '"></i>'
+                    + '<span class="cmd-item-name">' + p.name + '</span>'
+                    + '<span class="cmd-item-section">' + p.section + '</span>'
+                    + '</div>';
+            });
+        }
+        document.getElementById('cmdResults').innerHTML = html;
+    }
+    function cmdGo(url) { window.location.href = url; }
+    function cmdMoveSel(dir) {
+        if (!cmdFiltered.length) return;
+        cmdSelIdx = Math.max(0, Math.min(cmdFiltered.length - 1, cmdSelIdx + dir));
+        document.querySelectorAll('.cmd-item').forEach(function(el, i) {
+            el.classList.toggle('cmd-sel', i === cmdSelIdx);
+            if (i === cmdSelIdx) el.scrollIntoView({ block: 'nearest' });
+        });
+    }
+    document.addEventListener('keydown', function(e) {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); cmdOpen ? closeCmd() : openCmd(); return; }
+        if (!cmdOpen) return;
+        if (e.key === 'Escape') { closeCmd(); return; }
+        if (e.key === 'ArrowDown') { e.preventDefault(); cmdMoveSel(1); return; }
+        if (e.key === 'ArrowUp')   { e.preventDefault(); cmdMoveSel(-1); return; }
+        if (e.key === 'Enter' && cmdFiltered[cmdSelIdx]) { cmdGo(cmdFiltered[cmdSelIdx].url); }
+    });
+    document.getElementById('cmdInput') && document.getElementById('cmdInput').addEventListener('input', function() {
+        renderCmd(this.value);
+    });
 </script>
 
 @yield('scripts')
