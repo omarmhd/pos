@@ -1354,6 +1354,10 @@ async function completeSale() {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                // تضمن أن Laravel يعيد JSON دائمًا (حتى عند فشل التحقق أو الاستثناءات)
+                // بدل صفحة HTML/إعادة توجيه تظهر كـ"خطأ في الاتصال بالخادم"
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
                 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
             },
             body: JSON.stringify({
@@ -1378,7 +1382,12 @@ async function completeSale() {
         }
 
         if (!res.ok || !data.success) {
-            showToast(data.error || 'حدث خطأ', 'danger');
+            // استخراج الرسالة الحقيقية: خطأ مخصص، أو رسالة عامة، أو أول خطأ تحقّق
+            const msg = data.error
+                || data.message
+                || (data.errors ? Object.values(data.errors)[0]?.[0] : null)
+                || 'حدث خطأ أثناء حفظ الفاتورة';
+            showToast(msg, 'danger');
             return;
         }
 
