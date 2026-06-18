@@ -487,7 +487,10 @@
         .mega-list {
             display: flex; align-items: stretch;
             list-style: none; margin: 0; padding: 0;
-            flex: 1; overflow: hidden;
+            flex: 1;
+            /* overflow-x clips horizontal item spill, but the y-axis MUST stay
+               visible so the dropdown panels (top:100%) are not clipped away. */
+            overflow-x: clip; overflow-y: visible;
         }
         .mega-item { position: relative; }
         .mega-link {
@@ -533,6 +536,15 @@
         .mega-item.open .mega-dropdown {
             opacity: 1; visibility: visible;
             transform: translateY(0); pointer-events: auto;
+        }
+        /* Pure-CSS hover fallback (desktop) so the menu still opens even if the
+           JS handler fails to bind for any reason. */
+        @media (min-width: 768px) {
+            .mega-item:hover > .mega-dropdown {
+                opacity: 1; visibility: visible;
+                transform: translateY(0); pointer-events: auto;
+            }
+            .mega-item:hover > .mega-link .mchev { transform: rotate(180deg); opacity: 1; }
         }
         /* Dropdown column */
         .mega-col {
