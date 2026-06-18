@@ -146,6 +146,18 @@ class PosController extends Controller
             'cheque_due_date'    => 'nullable|date',
         ]);
 
+        // ── فحص قفل الفترة المحاسبية مبكرًا ──────────────────────────────────
+        // يعطي الكاشير رسالة عربية واضحة (الفترة/السنة مقفلة) بدل "خطأ في الاتصال بالخادم".
+        // البيع يُرحَّل بتاريخ اليوم، لذا نفحص فترة اليوم قبل أي معالجة.
+        try {
+            \App\Services\PeriodLockService::assertOpen(now());
+        } catch (\Throwable $e) {
+            return response()->json([
+                'error' => $e->getMessage()
+                    . ' — لفتح الفترة: المحاسبة ← الفترات المحاسبية ← فتح.',
+            ], 422);
+        }
+
         // ── Load settings (authoritative for calculation) ──────────────────
         $vatEnabled    = (bool) Setting::get('vat_enabled',           0);
         $vatRate       = (float) Setting::get('vat_rate',             15);
