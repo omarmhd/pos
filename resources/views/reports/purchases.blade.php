@@ -112,7 +112,8 @@
 
             </table>
         </div>
-        @endif
+        @endif {{-- closes @if($purchases->count()) --}}
+        @endif {{-- closes @if($purchases->isEmpty()) / @else --}}
 
     </div>
 </div>

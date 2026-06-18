@@ -278,7 +278,7 @@
             <div class="dash-section-title">إجراءات سريعة</div>
             <div class="d-flex flex-column gap-2">
                 @can('sales.create')
-                <a href="{{ route('sales.create') }}" class="qa-btn"><i class="bi bi-plus-circle text-success"></i> فاتورة بيع جديدة</a>
+                <a href="{{ route('pos.index') }}" class="qa-btn"><i class="bi bi-plus-circle text-success"></i> فاتورة بيع جديدة</a>
                 @endcan
                 @can('purchases.create')
                 <a href="{{ route('purchases.create') }}" class="qa-btn"><i class="bi bi-plus-circle text-warning"></i> فاتورة شراء جديدة</a>

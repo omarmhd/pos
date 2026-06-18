@@ -14,7 +14,7 @@
                     <i class="bi bi-funnel"></i> تصفية
                 </button>
                 @if(request('branch_id'))
-                    <a href="{{ route('reports.ar_aging') }}" class="btn btn-outline-danger btn-sm ms-1">
+                    <a href="{{ route('reports.ar-aging') }}" class="btn btn-outline-danger btn-sm ms-1">
                         <i class="bi bi-x"></i>
                     </a>
                 @endif
