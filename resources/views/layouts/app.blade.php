@@ -488,9 +488,10 @@
             display: flex; align-items: stretch;
             list-style: none; margin: 0; padding: 0;
             flex: 1;
-            /* overflow-x clips horizontal item spill, but the y-axis MUST stay
-               visible so the dropdown panels (top:100%) are not clipped away. */
-            overflow-x: clip; overflow-y: visible;
+            /* Must stay fully visible so the dropdown panels (top:100%) are
+               never clipped — neither vertically nor horizontally. */
+            overflow: visible;
+            min-width: 0;
         }
         .mega-item { position: relative; }
         .mega-link {
