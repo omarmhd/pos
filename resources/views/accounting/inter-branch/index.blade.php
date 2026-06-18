@@ -29,7 +29,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                @forelse($transfers as $t)
+                @foreach($transfers as $t)
                 <tr>
                     <td>{{ $t->transfer_date->format('Y-m-d') }}</td>
                     <td><span class="badge bg-danger bg-opacity-75">{{ $t->fromBranch?->name }}</span></td>
@@ -55,11 +55,7 @@
                         </div>
                     </td>
                 </tr>
-                @empty
-                <tr><td colspan="8" class="text-center text-muted py-5">
-                    <i class="bi bi-inbox fs-1 d-block mb-2"></i>لا توجد تحويلات بينية
-                </td></tr>
-                @endforelse
+                @endforeach
                 </tbody>
             </table>
         </div>

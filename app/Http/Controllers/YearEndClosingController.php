@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Setting;
 use App\Services\FinancialStatementService;
 use App\Services\LedgerPostingService;
 use Carbon\Carbon;
@@ -26,8 +27,9 @@ class YearEndClosingController extends Controller
 
         // Check if a closing entry already exists for this year
         $alreadyClosed = \App\Models\JournalEntry::where('reference', "CLOSE-{$year}")->exists();
+        $currency = Setting::get('currency_symbol', 'ج.م');
 
-        return view('accounting.year_end_closing', array_merge($data, compact('year', 'alreadyClosed')));
+        return view('accounting.year_end_closing', array_merge($data, compact('year', 'alreadyClosed', 'currency')));
     }
 
     public function store(Request $request)

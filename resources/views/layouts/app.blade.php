@@ -106,6 +106,18 @@
         #sidebarSearch { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.03); color: #fff }
         .sidebar-compact-btn { border: none; background: rgba(255,255,255,0.03); color: #fff; padding:6px 8px; }
 
+        /* Sub-section group label inside a collapse */
+        .nav-section-label {
+            font-size: 0.67rem;
+            font-weight: 700;
+            letter-spacing: 0.6px;
+            text-transform: uppercase;
+            color: rgba(255,255,255,0.32);
+            padding: 8px 16px 3px;
+            display: block;
+            user-select: none;
+        }
+
         /* Section toggle buttons */
         .nav-section-toggle {
             display: flex;
@@ -405,34 +417,79 @@
                     </a>
                 </li>
                 {{-- ══════════════════════════════════════════════════════════════════ --}}
-                {{-- 1. POS — وصول سريع دائماً في الأعلى (مثل SAP Fiori LaunchPad)   --}}
+                {{-- 1. POS — نقطة البيع: الكاشير + الورديات + الأجهزة + الأسعار     --}}
                 {{-- ══════════════════════════════════════════════════════════════════ --}}
-                @can('sales.create')
+                @canany(['sales.create','pos.shifts.view','pos_terminals.view','price_lists.view','purchase_price_lists.view'])
+                @php $ns_pos = request()->routeIs('pos.index','pos.shifts.*','pos-terminals.*','price-lists.*','purchase-price-lists.*')
+                            || request()->is('pos','pos/*','pos-terminals*','price-lists*','purchase-price-lists*'); @endphp
                 <li class="nav-item">
-                    <a class="nav-link {{ request()->routeIs('pos.index') || request()->is('pos') ? 'active' : '' }}"
-                       href="{{ route('pos.index') }}">
-                        <i class="bi bi-cart-check-fill text-success"></i> <strong>نقطة البيع (POS)</strong>
-                    </a>
+                    <button class="nav-section-toggle {{ !$ns_pos ? 'collapsed' : '' }}"
+                            data-bs-toggle="collapse" data-bs-target="#ns-pos"
+                            aria-expanded="{{ $ns_pos ? 'true' : 'false' }}">
+                        <i class="bi bi-cart-check-fill sec-icon text-success"></i>
+                        <span>نقطة البيع (POS)</span>
+                        <i class="bi bi-chevron-down chevron"></i>
+                    </button>
                 </li>
-                @endcan
-                @can('pos.shifts.view')
-                <li class="nav-item">
-                    <a class="nav-link {{ request()->routeIs('pos.shifts.*') ? 'active' : '' }}"
-                       href="{{ route('pos.shifts.index') }}">
-                        <i class="bi bi-cash-register text-warning"></i> الورديات النقدية
-                        @php
-                            try {
-                                $myOpenShift = \App\Models\CashShift::activeForUser(auth()->id());
-                            } catch(\Throwable) {
-                                $myOpenShift = null;
-                            }
-                        @endphp
-                        @if($myOpenShift)
-                            <span class="badge bg-success ms-1" style="font-size:.65rem">مفتوحة</span>
-                        @endif
-                    </a>
-                </li>
-                @endcan
+                <div class="collapse {{ $ns_pos ? 'show' : '' }}" id="ns-pos">
+                    <ul class="nav flex-column sub-nav">
+                        @can('sales.create')
+                        <li class="nav-item">
+                            <a class="nav-link {{ request()->routeIs('pos.index') || request()->is('pos') ? 'active' : '' }}"
+                               href="{{ route('pos.index') }}">
+                                <i class="bi bi-cart-check-fill text-success"></i> <strong>الكاشير (POS)</strong>
+                            </a>
+                        </li>
+                        @endcan
+                        @can('pos.shifts.view')
+                        <li class="nav-item">
+                            <a class="nav-link {{ request()->routeIs('pos.shifts.*') ? 'active' : '' }}"
+                               href="{{ route('pos.shifts.index') }}">
+                                <i class="bi bi-cash-register text-warning"></i> الورديات النقدية
+                                @php
+                                    try {
+                                        $myOpenShift = \App\Models\CashShift::activeForUser(auth()->id());
+                                    } catch(\Throwable) {
+                                        $myOpenShift = null;
+                                    }
+                                @endphp
+                                @if($myOpenShift)
+                                    <span class="badge bg-success ms-1" style="font-size:.65rem">مفتوحة</span>
+                                @endif
+                            </a>
+                        </li>
+                        @endcan
+                        @can('pos_terminals.view')
+                        <li class="nav-item">
+                            <a class="nav-link {{ request()->routeIs('pos-terminals.*') ? 'active' : '' }}"
+                               href="{{ route('pos-terminals.index') }}">
+                                <i class="bi bi-display"></i> أجهزة البيع (Terminals)
+                            </a>
+                        </li>
+                        @endcan
+                        @canany(['price_lists.view','purchase_price_lists.view'])
+                        <div class="sidebar-sep"></div>
+                        <span class="nav-section-label">الأسعار والتسعير</span>
+                        @endcanany
+                        @can('price_lists.view')
+                        <li class="nav-item">
+                            <a class="nav-link {{ request()->routeIs('price-lists.*') ? 'active' : '' }}"
+                               href="{{ route('price-lists.index') }}">
+                                <i class="bi bi-tags-fill"></i> قوائم أسعار البيع
+                            </a>
+                        </li>
+                        @endcan
+                        @can('purchase_price_lists.view')
+                        <li class="nav-item">
+                            <a class="nav-link {{ request()->routeIs('purchase-price-lists.*') ? 'active' : '' }}"
+                               href="{{ route('purchase-price-lists.index') }}">
+                                <i class="bi bi-tags"></i> قوائم أسعار الشراء
+                            </a>
+                        </li>
+                        @endcan
+                    </ul>
+                </div>
+                @endcanany
 
                 {{-- ══════════════════════════════════════════════════════════════════ --}}
                 {{-- 2. المبيعات — Sales Cycle: Quote → Order → Invoice → Return → AR  --}}
@@ -584,9 +641,9 @@
                 {{-- ══════════════════════════════════════════════════════════════════ --}}
                 {{-- 4. المخزون — Inventory: Items, Locations, Transfers, Count        --}}
                 {{-- ══════════════════════════════════════════════════════════════════ --}}
-                @canany(['products.view','categories.view','inventory.view','inventory.adjust','inventory.count','stock_transfers.view'])
-                @php $ns_inv = request()->routeIs('products.*','categories.*','inventory.*','stock-transfers.*')
-                            || request()->is('products*','categories*','inventory*','stock-transfers*'); @endphp
+                @canany(['products.view','categories.view','inventory.view','inventory.adjust','inventory.count','stock_transfers.view','branches.view'])
+                @php $ns_inv = request()->routeIs('products.*','categories.*','inventory.*','stock-transfers.*','warehouses.*','assemblies.*')
+                            || request()->is('products*','categories*','inventory*','stock-transfers*','warehouses*','assemblies*'); @endphp
                 <li class="nav-item">
                     <button class="nav-section-toggle {{ !$ns_inv ? 'collapsed' : '' }}"
                             data-bs-toggle="collapse" data-bs-target="#ns-inv"
@@ -612,6 +669,14 @@
                             <a class="nav-link {{ request()->routeIs('categories.*') ? 'active' : '' }}"
                                href="{{ route('categories.index') }}">
                                 <i class="bi bi-diagram-3"></i> الفئات والتصنيفات
+                            </a>
+                        </li>
+                        @endcan
+                        @can('branches.view')
+                        <li class="nav-item">
+                            <a class="nav-link {{ request()->routeIs('warehouses.*') ? 'active' : '' }}"
+                               href="{{ route('warehouses.index') }}">
+                                <i class="bi bi-archive-fill"></i> المخازن والمعارض
                             </a>
                         </li>
                         @endcan
@@ -737,7 +802,9 @@
                 </li>
                 <div class="collapse {{ $ns_acc ? 'show' : '' }}" id="ns-acc">
                     <ul class="nav flex-column sub-nav">
-                        {{-- إدخال القيود --}}
+
+                        {{-- ── المجموعة 1: القيود والدفاتر ── --}}
+                        <span class="nav-section-label">القيود والدفاتر</span>
                         @can('accounts.view')
                         <li class="nav-item">
                             <a class="nav-link {{ request()->routeIs('accounting.index') ? 'active' : '' }}"
@@ -754,8 +821,14 @@
                             </a>
                         </li>
                         @endcan
-                        {{-- دفاتر وكشوف --}}
-                        <div class="sidebar-sep"></div>
+                        @can('reversals.view')
+                        <li class="nav-item">
+                            <a class="nav-link {{ request()->routeIs('reversals.*') ? 'active' : '' }}"
+                               href="{{ route('reversals.index') }}">
+                                <i class="bi bi-arrow-counterclockwise"></i> قيود التصحيح
+                            </a>
+                        </li>
+                        @endcan
                         @can('ledger.view')
                         <li class="nav-item">
                             <a class="nav-link {{ request()->routeIs('accounting.ledger.*') ? 'active' : '' }}"
@@ -772,9 +845,11 @@
                             </a>
                         </li>
                         @endcan
-                        {{-- القوائم المالية --}}
+
+                        {{-- ── المجموعة 2: القوائم المالية ── --}}
                         @can('financial_statements.view')
                         <div class="sidebar-sep"></div>
+                        <span class="nav-section-label">القوائم المالية</span>
                         <li class="nav-item">
                             <a class="nav-link {{ request()->routeIs('accounting.income-statement') ? 'active' : '' }}"
                                href="{{ route('accounting.income-statement') }}">
@@ -794,15 +869,31 @@
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link {{ request()->routeIs('accounting.consolidated-pl') ? 'active' : '' }}"
+                            <a class="nav-link {{ request()->routeIs('accounting.consolidated-pl*') ? 'active' : '' }}"
                                href="{{ route('accounting.consolidated-pl') }}">
-                                <i class="bi bi-diagram-3 text-success"></i> قائمة دخل موحدة
+                                <i class="bi bi-diagram-3 text-success"></i> قائمة دخل موحدة (فروع)
                             </a>
                         </li>
                         @endcan
-                        {{-- الأصول الثابتة — ينتمي للمحاسبة --}}
-                        @can('fixed_assets.view')
+
+                        {{-- ── المجموعة 3: الأصول والأطر المحاسبية ── --}}
                         <div class="sidebar-sep"></div>
+                        <span class="nav-section-label">الأصول والأطر</span>
+                        @can('accounts.view')
+                        <li class="nav-item">
+                            <a class="nav-link {{ request()->routeIs('accounts.*') ? 'active' : '' }}"
+                               href="{{ route('accounts.index') }}">
+                                <i class="bi bi-list-columns-reverse"></i> شجرة الحسابات
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {{ request()->routeIs('cost-centers.*') ? 'active' : '' }}"
+                               href="{{ route('cost-centers.index') }}">
+                                <i class="bi bi-diagram-2 text-info"></i> مراكز التكلفة
+                            </a>
+                        </li>
+                        @endcan
+                        @can('fixed_assets.view')
                         <li class="nav-item">
                             <a class="nav-link {{ request()->routeIs('fixed-assets.*') && !request()->routeIs('fixed-asset-categories.*') ? 'active' : '' }}"
                                href="{{ route('fixed-assets.index') }}">
@@ -818,13 +909,23 @@
                             </a>
                         </li>
                         @endcan
-                        {{-- إعداد وإغلاق --}}
-                        @can('accounts.view')
-                        <div class="sidebar-sep"></div>
+                        @can('financial_statements.view')
                         <li class="nav-item">
-                            <a class="nav-link {{ request()->routeIs('accounts.*') ? 'active' : '' }}"
-                               href="{{ route('accounts.index') }}">
-                                <i class="bi bi-list-columns-reverse"></i> شجرة الحسابات
+                            <a class="nav-link {{ request()->routeIs('budgets.*') ? 'active' : '' }}"
+                               href="{{ route('budgets.index') }}">
+                                <i class="bi bi-calculator text-primary"></i> الموازنات التقديرية
+                            </a>
+                        </li>
+                        @endcan
+
+                        {{-- ── المجموعة 4: الإعداد والإقفال ── --}}
+                        <div class="sidebar-sep"></div>
+                        <span class="nav-section-label">الإعداد والإقفال</span>
+                        @can('journal_entries.create')
+                        <li class="nav-item">
+                            <a class="nav-link {{ request()->routeIs('accounting.opening-balance*') ? 'active' : '' }}"
+                               href="{{ route('accounting.opening-balance') }}">
+                                <i class="bi bi-bank text-info"></i> الأرصدة الافتتاحية
                             </a>
                         </li>
                         @endcan
@@ -836,19 +937,11 @@
                             </a>
                         </li>
                         @endcan
-                        @can('journal_entries.create')
+                        @can('branches.manage')
                         <li class="nav-item">
-                            <a class="nav-link {{ request()->routeIs('accounting.opening-balance*') ? 'active' : '' }}"
-                               href="{{ route('accounting.opening-balance') }}">
-                                <i class="bi bi-bank text-info"></i> الأرصدة الافتتاحية
-                            </a>
-                        </li>
-                        @endcan
-                        @can('financial_statements.view')
-                        <li class="nav-item">
-                            <a class="nav-link {{ request()->routeIs('accounting.consolidated-pl*') ? 'active' : '' }}"
-                               href="{{ route('accounting.consolidated-pl') }}">
-                                <i class="bi bi-diagram-3 text-success"></i> قائمة دخل موحدة
+                            <a class="nav-link {{ request()->routeIs('inter-branch.*') ? 'active' : '' }}"
+                               href="{{ route('inter-branch.index') }}">
+                                <i class="bi bi-arrow-left-right text-primary"></i> التحويلات البينية
                             </a>
                         </li>
                         @endcan
@@ -860,38 +953,7 @@
                             </a>
                         </li>
                         @endcan
-                        @can('reversals.view')
-                        <li class="nav-item">
-                            <a class="nav-link {{ request()->routeIs('reversals.*') ? 'active' : '' }}"
-                               href="{{ route('reversals.index') }}">
-                                <i class="bi bi-arrow-counterclockwise"></i> قيود التصحيح
-                            </a>
-                        </li>
-                        @endcan
-                        @can('branches.manage')
-                        <li class="nav-item">
-                            <a class="nav-link {{ request()->routeIs('inter-branch.*') ? 'active' : '' }}"
-                               href="{{ route('inter-branch.index') }}">
-                                <i class="bi bi-arrow-left-right text-primary"></i> التحويلات البينية
-                            </a>
-                        </li>
-                        @endcan
-                        @can('accounts.view')
-                        <li class="nav-item">
-                            <a class="nav-link {{ request()->routeIs('cost-centers.*') ? 'active' : '' }}"
-                               href="{{ route('cost-centers.index') }}">
-                                <i class="bi bi-diagram-2 text-info"></i> مراكز التكلفة
-                            </a>
-                        </li>
-                        @endcan
-                        @can('financial_statements.view')
-                        <li class="nav-item">
-                            <a class="nav-link {{ request()->routeIs('budgets.*') ? 'active' : '' }}"
-                               href="{{ route('budgets.index') }}">
-                                <i class="bi bi-calculator text-primary"></i> الموازنات
-                            </a>
-                        </li>
-                        @endcan
+
                     </ul>
                 </div>
                 @endcanany
@@ -1075,9 +1137,9 @@
                 {{-- ══════════════════════════════════════════════════════════════════ --}}
                 {{-- 9. الإعدادات — System Administration Only                         --}}
                 {{-- ══════════════════════════════════════════════════════════════════ --}}
-                @canany(['users.view','roles.view','settings.view','branches.view','pos_terminals.view','price_lists.view','audit_logs.view'])
-                @php $ns_set = request()->routeIs('users.*','roles.*','permissions.*','settings.*','branches.*','warehouses.*','pos-terminals.*','price-lists.*','audit.*')
-                           || request()->is('users*','roles*','permissions*','settings*','branches*','warehouses*','pos-terminals*','price-lists*','audit-logs*'); @endphp
+                @canany(['users.view','roles.view','settings.view','branches.view','currencies.view','audit_logs.view'])
+                @php $ns_set = request()->routeIs('users.*','roles.*','permissions.*','settings.*','branches.*','currencies.*','audit.*','backup.*')
+                           || request()->is('users*','roles*','permissions*','settings*','branches*','currencies*','audit-logs*','backup*'); @endphp
                 <li class="nav-item">
                     <button class="nav-section-toggle {{ !$ns_set ? 'collapsed' : '' }}"
                             data-bs-toggle="collapse" data-bs-target="#ns-set"
@@ -1109,42 +1171,11 @@
                         {{-- البنية التشغيلية --}}
                         @can('branches.view')
                         <div class="sidebar-sep"></div>
+                        <span class="nav-section-label">الهيكل التشغيلي</span>
                         <li class="nav-item">
                             <a class="nav-link {{ request()->routeIs('branches.*') ? 'active' : '' }}"
                                href="{{ route('branches.index') }}">
                                 <i class="bi bi-building-fill-check"></i> الفروع
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link {{ request()->routeIs('warehouses.*') ? 'active' : '' }}"
-                               href="{{ route('warehouses.index') }}">
-                                <i class="bi bi-archive-fill"></i> المخازن والمعارض
-                            </a>
-                        </li>
-                        @endcan
-                        @can('pos_terminals.view')
-                        <li class="nav-item">
-                            <a class="nav-link {{ request()->routeIs('pos-terminals.*') ? 'active' : '' }}"
-                               href="{{ route('pos-terminals.index') }}">
-                                <i class="bi bi-cash-register"></i> نقاط البيع (Terminals)
-                            </a>
-                        </li>
-                        @endcan
-                        {{-- السياسات التجارية --}}
-                        @can('price_lists.view')
-                        <div class="sidebar-sep"></div>
-                        <li class="nav-item">
-                            <a class="nav-link {{ request()->routeIs('price-lists.*') ? 'active' : '' }}"
-                               href="{{ route('price-lists.index') }}">
-                                <i class="bi bi-tags-fill"></i> قوائم الأسعار
-                            </a>
-                        </li>
-                        @endcan
-                        @can('purchase_price_lists.view')
-                        <li class="nav-item">
-                            <a class="nav-link {{ request()->routeIs('purchase-price-lists.*') ? 'active' : '' }}"
-                               href="{{ route('purchase-price-lists.index') }}">
-                                <i class="bi bi-tags"></i> قوائم أسعار الشراء
                             </a>
                         </li>
                         @endcan
@@ -1157,8 +1188,11 @@
                         </li>
                         @endcan
                         {{-- إعدادات النظام --}}
-                        @can('settings.view')
+                        @canany(['settings.view','audit_logs.view','settings.manage'])
                         <div class="sidebar-sep"></div>
+                        <span class="nav-section-label">النظام والأمان</span>
+                        @endcanany
+                        @can('settings.view')
                         <li class="nav-item">
                             <a class="nav-link {{ request()->routeIs('settings.*') ? 'active' : '' }}"
                                href="{{ route('settings.edit') }}">
@@ -1166,9 +1200,7 @@
                             </a>
                         </li>
                         @endcan
-                        {{-- سجل التدقيق — هنا وليس في المحاسبة (SAP/Oracle: Administration → Security) --}}
                         @can('audit_logs.view')
-                        <div class="sidebar-sep"></div>
                         <li class="nav-item">
                             <a class="nav-link {{ request()->routeIs('audit.*') ? 'active' : '' }}"
                                href="{{ route('audit.logs.index') }}">

@@ -19,7 +19,7 @@
                 </tr>
             </thead>
             <tbody>
-            @forelse($budgets as $b)
+            @foreach($budgets as $b)
             <tr>
                 <td><strong>{{ $b->name }}</strong></td>
                 <td>{{ $b->year }}</td>
@@ -33,11 +33,7 @@
                     </a>
                 </td>
             </tr>
-            @empty
-            <tr><td colspan="6" class="text-center text-muted py-5">
-                <i class="bi bi-inbox fs-1 d-block mb-2"></i>لا توجد موازنات — ابدأ بإنشاء موازنة السنة الحالية
-            </td></tr>
-            @endforelse
+            @endforeach
             </tbody>
         </table>
     </div>

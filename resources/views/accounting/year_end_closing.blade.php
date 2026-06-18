@@ -65,7 +65,7 @@
     </div>
 
     {{-- Accounts to be closed --}}
-    @if($revenue || $cogs || $opex)
+    @if($grossRevenue || $contraRevenue || $otherIncome || $cogs || $opex)
     <div class="card mb-4">
         <div class="card-header bg-white">
             <h6 class="mb-0">الحسابات التي سيتم إقفالها</h6>
@@ -76,7 +76,7 @@
                     <tr><th>الكود</th><th>الحساب</th><th>النوع</th><th class="text-end">الرصيد</th><th>القيد</th></tr>
                 </thead>
                 <tbody>
-                    @foreach($revenue as $r)
+                    @foreach(array_merge($grossRevenue, $contraRevenue, $otherIncome) as $r)
                     <tr>
                         <td class="text-muted small">{{ $r['account']->code }}</td>
                         <td>{{ $r['account']->name }}</td>
