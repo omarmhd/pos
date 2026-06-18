@@ -429,7 +429,7 @@
 
         /* ── Print ── */
         @media print {
-            nav.sidebar, nav.navbar, .no-print,
+            nav.sidebar, nav.navbar, .no-print, .mega-nav,
             .dt-buttons, .dataTables_length, .dataTables_filter,
             .dataTables_info, .dataTables_paginate,
             form.row, .alert, .btn-close { display: none !important; }
@@ -439,6 +439,157 @@
             body { background: white !important; }
             .card { box-shadow: none !important; }
         }
+
+        /* ══════════════════════════════════════════
+           MEGA NAVIGATION BAR (desktop only ≥768px)
+           ══════════════════════════════════════════ */
+        .mega-nav {
+            background: linear-gradient(135deg, #1a2535 0%, #243447 100%);
+            box-shadow: 0 3px 20px rgba(0,0,0,.25);
+            position: sticky;
+            top: 0;
+            z-index: 1049;
+            direction: rtl;
+            width: 100%;
+        }
+        .mega-nav-inner {
+            display: flex;
+            align-items: stretch;
+            padding: 0 16px;
+            height: 52px;
+            gap: 0;
+        }
+        /* Brand */
+        .mega-brand {
+            display: flex; align-items: center; gap: 8px;
+            color: #fff; text-decoration: none;
+            font-size: .9rem; font-weight: 800;
+            padding: 0 18px 0 14px;
+            border-left: 1px solid rgba(255,255,255,.1);
+            white-space: nowrap; letter-spacing: .2px; flex-shrink: 0;
+        }
+        .mega-brand:hover { color: #fff; text-decoration: none; }
+        .mega-brand i { font-size: 1.1rem; opacity: .9; }
+        /* Dashboard home link */
+        .mega-home-link {
+            display: flex; align-items: center; gap: 5px;
+            height: 52px; padding: 0 12px;
+            color: rgba(255,255,255,.72);
+            font-size: .8rem; text-decoration: none;
+            border-bottom: 3px solid transparent;
+            transition: all .15s; flex-shrink: 0;
+        }
+        .mega-home-link:hover, .mega-home-link.active-home {
+            color: #fff; background: rgba(255,255,255,.07);
+            border-bottom-color: #2ecc71; text-decoration: none;
+        }
+        /* Items list */
+        .mega-list {
+            display: flex; align-items: stretch;
+            list-style: none; margin: 0; padding: 0;
+            flex: 1; overflow: hidden;
+        }
+        .mega-item { position: relative; }
+        .mega-link {
+            display: flex; align-items: center; gap: 5px;
+            height: 52px; padding: 0 11px;
+            color: rgba(255,255,255,.72);
+            font-size: .8rem; font-weight: 600;
+            text-decoration: none;
+            border-bottom: 3px solid transparent;
+            transition: color .15s, background .15s, border-color .15s;
+            white-space: nowrap; cursor: pointer; user-select: none;
+        }
+        .mega-link:hover,
+        .mega-link.active-section,
+        .mega-item.open > .mega-link {
+            color: #fff; background: rgba(255,255,255,.07);
+            border-bottom-color: #3498db; text-decoration: none;
+        }
+        .mega-link.active-section { border-bottom-color: #2ecc71; }
+        .mega-link .mchev {
+            font-size: .58rem; opacity: .45;
+            transition: transform .2s, opacity .2s;
+        }
+        .mega-item.open > .mega-link .mchev { transform: rotate(180deg); opacity: 1; }
+        /* Dropdown panel */
+        .mega-dropdown {
+            position: absolute;
+            top: 100%; right: 0;
+            background: #fff;
+            border-radius: 0 0 12px 12px;
+            box-shadow: 0 16px 48px rgba(0,0,0,.18);
+            display: flex;
+            min-width: 240px;
+            opacity: 0; visibility: hidden;
+            transform: translateY(-6px);
+            transition: opacity .18s, transform .18s, visibility .18s;
+            z-index: 2000;
+            border: 1px solid rgba(0,0,0,.07);
+            border-top: 3px solid #3498db;
+            overflow: hidden;
+            pointer-events: none;
+        }
+        .mega-item.open .mega-dropdown {
+            opacity: 1; visibility: visible;
+            transform: translateY(0); pointer-events: auto;
+        }
+        /* Dropdown column */
+        .mega-col {
+            flex: 1; min-width: 170px;
+            padding: 8px 0 12px;
+        }
+        .mega-col + .mega-col { border-right: 1px solid #f0f2f5; }
+        .mega-col-hdr {
+            font-size: .65rem; font-weight: 800; color: #adb5bd;
+            text-transform: uppercase; letter-spacing: .5px;
+            padding: 8px 14px 6px;
+            display: flex; align-items: center; gap: 5px;
+        }
+        .mega-col-hdr i { font-size: .8rem; }
+        .mega-dropdown a {
+            display: flex; align-items: center; gap: 8px;
+            padding: 7px 14px;
+            color: #2c3e50; font-size: .82rem;
+            text-decoration: none;
+            transition: background .1s, color .1s;
+        }
+        .mega-dropdown a:hover { background: #f0f7ff; color: #2980b9; }
+        .mega-dropdown a i {
+            font-size: .88rem; width: 18px;
+            text-align: center; opacity: .6; flex-shrink: 0;
+        }
+        .mega-dropdown a:hover i { opacity: 1; }
+        .mega-dropdown a.active-page {
+            background: #ebf5fb; color: #2980b9; font-weight: 700;
+        }
+        .mega-dropdown a.active-page i { opacity: 1; }
+        /* Divider inside column */
+        .mega-div { border-top: 1px solid #f0f2f5; margin: 5px 14px; }
+        /* Right-edge items: flip dropdown */
+        .mega-item.flip-left .mega-dropdown { right: auto; left: 0; }
+        /* Right side bar */
+        .mega-right {
+            display: flex; align-items: center; gap: 6px;
+            padding: 0 0 0 8px;
+            border-right: 1px solid rgba(255,255,255,.08);
+            margin-right: auto; flex-shrink: 0;
+        }
+        .mega-user-badge {
+            display: flex; align-items: center; gap: 5px;
+            background: rgba(255,255,255,.07);
+            border: 1px solid rgba(255,255,255,.1);
+            border-radius: 8px; padding: 4px 9px;
+            color: rgba(255,255,255,.7); font-size: .75rem;
+        }
+        .mega-user-badge strong { color: #fff; font-size: .78rem; }
+        .mega-logout-btn {
+            display: flex; align-items: center; gap: 4px;
+            color: rgba(255,255,255,.45); font-size: .8rem;
+            text-decoration: none; padding: 5px 8px;
+            border-radius: 6px; transition: .15s; border: none; background: none; cursor: pointer;
+        }
+        .mega-logout-btn:hover { color: #e74c3c; background: rgba(231,76,60,.1); }
     </style>
 
     @vite(['resources/css/theme.css', 'resources/css/app.css', 'resources/js/app.js'])
@@ -460,11 +611,582 @@
 <!-- Mobile sidebar overlay -->
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
 
+{{-- ══ MEGA MENU — Desktop Navigation Bar (hidden on mobile) ══ --}}
+@auth
+<nav class="mega-nav d-none d-md-flex">
+    <div class="mega-nav-inner">
+
+        {{-- Brand --}}
+        <a href="{{ route('dashboard') }}" class="mega-brand">
+            <i class="bi bi-shop-window"></i>
+            {{ \App\Models\Setting::get('system_name', 'الميّزان') }}
+        </a>
+
+        {{-- Dashboard --}}
+        <a href="{{ route('dashboard') }}"
+           class="mega-home-link {{ request()->routeIs('dashboard') ? 'active-home' : '' }}">
+            <i class="bi bi-speedometer2"></i> الرئيسية
+        </a>
+
+        <ul class="mega-list">
+
+            {{-- ── 1. نقطة البيع ── --}}
+            @canany(['sales.create','pos.shifts.view','pos_terminals.view','price_lists.view','purchase_price_lists.view'])
+            @php $_inPOS = request()->routeIs('pos.index','pos.shifts.*','pos-terminals.*','price-lists.*','purchase-price-lists.*') || request()->is('pos','pos/*','pos-terminals*','price-lists*','purchase-price-lists*'); @endphp
+            <li class="mega-item">
+                <a class="mega-link {{ $_inPOS ? 'active-section' : '' }}" href="{{ route('pos.index') }}">
+                    <i class="bi bi-cart-check-fill" style="color:#2ecc71"></i>
+                    الكاشير
+                    <i class="bi bi-chevron-down mchev"></i>
+                </a>
+                <div class="mega-dropdown" style="min-width:240px">
+                    <div class="mega-col">
+                        @can('sales.create')
+                        <a href="{{ route('pos.index') }}" class="{{ (request()->routeIs('pos.index')||request()->is('pos')) ? 'active-page':'' }}">
+                            <i class="bi bi-cart-check-fill text-success"></i> <strong>الكاشير (POS)</strong>
+                        </a>
+                        @endcan
+                        @can('pos.shifts.view')
+                        <a href="{{ route('pos.shifts.index') }}" class="{{ request()->routeIs('pos.shifts.*') ? 'active-page':'' }}">
+                            <i class="bi bi-cash-register"></i> الورديات النقدية
+                        </a>
+                        @endcan
+                        @can('pos_terminals.view')
+                        <a href="{{ route('pos-terminals.index') }}" class="{{ request()->routeIs('pos-terminals.*') ? 'active-page':'' }}">
+                            <i class="bi bi-display"></i> أجهزة البيع (Terminals)
+                        </a>
+                        @endcan
+                        @canany(['price_lists.view','purchase_price_lists.view'])
+                        <div class="mega-div"></div>
+                        @endcanany
+                        @can('price_lists.view')
+                        <a href="{{ route('price-lists.index') }}" class="{{ request()->routeIs('price-lists.*') ? 'active-page':'' }}">
+                            <i class="bi bi-tags-fill"></i> قوائم أسعار البيع
+                        </a>
+                        @endcan
+                        @can('purchase_price_lists.view')
+                        <a href="{{ route('purchase-price-lists.index') }}" class="{{ request()->routeIs('purchase-price-lists.*') ? 'active-page':'' }}">
+                            <i class="bi bi-tags"></i> قوائم أسعار الشراء
+                        </a>
+                        @endcan
+                    </div>
+                </div>
+            </li>
+            @endcanany
+
+            {{-- ── 2. المبيعات ── --}}
+            @canany(['quotations.view','sales_orders.view','sales.view','sales.returns.view','customers.view','services.view'])
+            @php $_inSales = request()->routeIs('sales-quotations.*','sales-orders.*','sales.*','sale-returns.*','service-invoices.*','customers.*','customer-payments.*') || request()->is('sales-quotations*','sales-orders*','sale-returns*','service-invoices*','customers*'); @endphp
+            <li class="mega-item">
+                <a class="mega-link {{ $_inSales ? 'active-section':'' }}" href="#">
+                    <i class="bi bi-graph-up-arrow" style="color:#3498db"></i>
+                    المبيعات
+                    <i class="bi bi-chevron-down mchev"></i>
+                </a>
+                <div class="mega-dropdown" style="min-width:460px">
+                    <div class="mega-col">
+                        <div class="mega-col-hdr"><i class="bi bi-receipt" style="color:#3498db"></i> دورة البيع</div>
+                        @can('quotations.view')
+                        <a href="{{ route('sales-quotations.index') }}" class="{{ request()->routeIs('sales-quotations.*') ? 'active-page':'' }}">
+                            <i class="bi bi-file-earmark-richtext"></i> عروض الأسعار
+                        </a>
+                        @endcan
+                        @can('sales_orders.view')
+                        <a href="{{ route('sales-orders.index') }}" class="{{ request()->routeIs('sales-orders.*') ? 'active-page':'' }}">
+                            <i class="bi bi-bag-check"></i> أوامر البيع
+                        </a>
+                        @endcan
+                        @can('sales.view')
+                        <a href="{{ route('sales.index') }}" class="{{ request()->routeIs('sales.*') ? 'active-page':'' }}">
+                            <i class="bi bi-receipt"></i> فواتير البيع
+                        </a>
+                        @endcan
+                        @can('sales.returns.view')
+                        <a href="{{ route('sale-returns.index') }}" class="{{ request()->routeIs('sale-returns.*') ? 'active-page':'' }}">
+                            <i class="bi bi-arrow-return-left"></i> مرتجعات المبيعات
+                        </a>
+                        @endcan
+                        @can('services.view')
+                        <a href="{{ route('service-invoices.index') }}" class="{{ request()->routeIs('service-invoices.*') ? 'active-page':'' }}">
+                            <i class="bi bi-lightning-charge"></i> فواتير الخدمات
+                        </a>
+                        @endcan
+                    </div>
+                    @can('customers.view')
+                    <div class="mega-col">
+                        <div class="mega-col-hdr"><i class="bi bi-person-lines-fill" style="color:#27ae60"></i> العملاء والذمم</div>
+                        <a href="{{ route('customers.index') }}" class="{{ request()->routeIs('customers.*','customer-payments.*') ? 'active-page':'' }}">
+                            <i class="bi bi-person-lines-fill"></i> العملاء والذمم المدينة
+                        </a>
+                        @can('reports.view')
+                        <a href="{{ route('reports.ar-aging') }}" class="{{ request()->routeIs('reports.ar-aging') ? 'active-page':'' }}">
+                            <i class="bi bi-person-exclamation text-warning"></i> تقادم ذمم العملاء
+                        </a>
+                        @endcan
+                    </div>
+                    @endcan
+                </div>
+            </li>
+            @endcanany
+
+            {{-- ── 3. المشتريات ── --}}
+            @canany(['suppliers.view','purchase_orders.view','purchases.view','purchases.returns.view','expenses.view','customs.view'])
+            @php $_inPurch = request()->routeIs('suppliers.*','purchase-orders.*','purchases.*','purchase-returns.*','expense-invoices.*','customs-declarations.*') || request()->is('suppliers*','purchase-orders*','purchase-returns*','expense-invoices*','customs-declarations*'); @endphp
+            <li class="mega-item">
+                <a class="mega-link {{ $_inPurch ? 'active-section':'' }}" href="#">
+                    <i class="bi bi-truck" style="color:#e67e22"></i>
+                    المشتريات
+                    <i class="bi bi-chevron-down mchev"></i>
+                </a>
+                <div class="mega-dropdown" style="min-width:460px">
+                    <div class="mega-col">
+                        <div class="mega-col-hdr"><i class="bi bi-bag-plus" style="color:#e67e22"></i> دورة الشراء</div>
+                        @can('purchase_orders.view')
+                        <a href="{{ route('purchase-orders.index') }}" class="{{ request()->routeIs('purchase-orders.*') ? 'active-page':'' }}">
+                            <i class="bi bi-file-earmark-text"></i> أوامر الشراء
+                        </a>
+                        @endcan
+                        @can('purchases.view')
+                        <a href="{{ route('purchases.index') }}" class="{{ request()->routeIs('purchases.*') ? 'active-page':'' }}">
+                            <i class="bi bi-bag-plus"></i> فواتير الشراء
+                        </a>
+                        @endcan
+                        @can('purchases.returns.view')
+                        <a href="{{ route('purchase-returns.index') }}" class="{{ request()->routeIs('purchase-returns.*') ? 'active-page':'' }}">
+                            <i class="bi bi-arrow-return-right"></i> مرتجعات المشتريات
+                        </a>
+                        @endcan
+                        @can('expenses.view')
+                        <a href="{{ route('expense-invoices.index') }}" class="{{ request()->routeIs('expense-invoices.*') ? 'active-page':'' }}">
+                            <i class="bi bi-receipt-cutoff"></i> فواتير المصروفات
+                        </a>
+                        @endcan
+                        @can('customs.view')
+                        <a href="{{ route('customs-declarations.index') }}" class="{{ request()->routeIs('customs-declarations.*') ? 'active-page':'' }}">
+                            <i class="bi bi-box-arrow-in-down"></i> الإقرارات الجمركية
+                        </a>
+                        @endcan
+                    </div>
+                    @can('suppliers.view')
+                    <div class="mega-col">
+                        <div class="mega-col-hdr"><i class="bi bi-building-fill" style="color:#c0392b"></i> الموردون والذمم</div>
+                        <a href="{{ route('suppliers.index') }}" class="{{ request()->routeIs('suppliers.*') ? 'active-page':'' }}">
+                            <i class="bi bi-building-fill"></i> الموردون والذمم الدائنة
+                        </a>
+                        @can('reports.view')
+                        <a href="{{ route('reports.ap-aging') }}" class="{{ request()->routeIs('reports.ap-aging') ? 'active-page':'' }}">
+                            <i class="bi bi-building-exclamation text-warning"></i> تقادم ذمم الموردين
+                        </a>
+                        @endcan
+                    </div>
+                    @endcan
+                </div>
+            </li>
+            @endcanany
+
+            {{-- ── 4. المخزون ── --}}
+            @canany(['products.view','categories.view','inventory.view','inventory.adjust','inventory.count','stock_transfers.view','branches.view'])
+            @php $_inInv = request()->routeIs('products.*','categories.*','inventory.*','stock-transfers.*','warehouses.*','assemblies.*') || request()->is('products*','categories*','inventory*','stock-transfers*','warehouses*','assemblies*'); @endphp
+            <li class="mega-item">
+                <a class="mega-link {{ $_inInv ? 'active-section':'' }}" href="#">
+                    <i class="bi bi-boxes" style="color:#8e44ad"></i>
+                    المخزون
+                    <i class="bi bi-chevron-down mchev"></i>
+                </a>
+                <div class="mega-dropdown" style="min-width:460px">
+                    <div class="mega-col">
+                        <div class="mega-col-hdr"><i class="bi bi-box-seam" style="color:#8e44ad"></i> الأصناف</div>
+                        @can('products.view')
+                        <a href="{{ route('products.index') }}" class="{{ request()->routeIs('products.*') ? 'active-page':'' }}">
+                            <i class="bi bi-box-seam"></i> الأصناف والمنتجات
+                        </a>
+                        @endcan
+                        @can('categories.view')
+                        <a href="{{ route('categories.index') }}" class="{{ request()->routeIs('categories.*') ? 'active-page':'' }}">
+                            <i class="bi bi-diagram-3"></i> الفئات والتصنيفات
+                        </a>
+                        @endcan
+                        @can('branches.view')
+                        <a href="{{ route('warehouses.index') }}" class="{{ request()->routeIs('warehouses.*') ? 'active-page':'' }}">
+                            <i class="bi bi-archive-fill"></i> المخازن والمعارض
+                        </a>
+                        @endcan
+                        @can('assemblies.view')
+                        <a href="{{ route('assemblies.index') }}" class="{{ request()->routeIs('assemblies.*') ? 'active-page':'' }}">
+                            <i class="bi bi-gear-wide-connected"></i> التصنيع والتجميع
+                        </a>
+                        @endcan
+                    </div>
+                    <div class="mega-col">
+                        <div class="mega-col-hdr"><i class="bi bi-arrow-left-right" style="color:#16a085"></i> الحركات والجرد</div>
+                        @can('stock_transfers.view')
+                        <a href="{{ route('stock-transfers.index') }}" class="{{ request()->routeIs('stock-transfers.*') ? 'active-page':'' }}">
+                            <i class="bi bi-arrow-left-right"></i> تحويلات المخزون
+                        </a>
+                        @endcan
+                        @can('inventory.adjust')
+                        <a href="{{ route('inventory.adjustments.index') }}" class="{{ request()->routeIs('inventory.adjustments.*') ? 'active-page':'' }}">
+                            <i class="bi bi-pencil-square"></i> تعديلات المخزون
+                        </a>
+                        @endcan
+                        @can('inventory.count')
+                        <a href="{{ route('inventory.sessions.index') }}" class="{{ request()->routeIs('inventory.sessions.*') ? 'active-page':'' }}">
+                            <i class="bi bi-clipboard2-check"></i> الجرد الدوري
+                        </a>
+                        @endcan
+                        @can('inventory.view')
+                        <div class="mega-div"></div>
+                        <a href="{{ route('products.low-stock') }}" class="{{ request()->routeIs('products.low-stock') ? 'active-page':'' }}">
+                            <i class="bi bi-exclamation-triangle text-warning"></i> تنبيهات المخزون
+                        </a>
+                        <a href="{{ route('products.reorder') }}" class="{{ request()->routeIs('products.reorder') ? 'active-page':'' }}">
+                            <i class="bi bi-arrow-repeat text-warning"></i> حد إعادة الطلب
+                        </a>
+                        @endcan
+                    </div>
+                </div>
+            </li>
+            @endcanany
+
+            {{-- ── 5. الخزينة ── --}}
+            @canany(['vouchers.view','checks.view'])
+            @php $_inTreas = request()->is('vouchers*') || request()->is('checks*'); @endphp
+            <li class="mega-item">
+                <a class="mega-link {{ $_inTreas ? 'active-section':'' }}" href="#">
+                    <i class="bi bi-bank" style="color:#16a085"></i>
+                    الخزينة
+                    <i class="bi bi-chevron-down mchev"></i>
+                </a>
+                <div class="mega-dropdown" style="min-width:230px">
+                    <div class="mega-col">
+                        @can('vouchers.view')
+                        <a href="{{ route('vouchers.receipts.index') }}" class="{{ request()->is('vouchers/receipts*') ? 'active-page':'' }}">
+                            <i class="bi bi-arrow-down-circle-fill text-success"></i> سندات القبض (تحصيل)
+                        </a>
+                        <a href="{{ route('vouchers.payments.index') }}" class="{{ request()->is('vouchers/payments*') ? 'active-page':'' }}">
+                            <i class="bi bi-arrow-up-circle-fill text-danger"></i> سندات الصرف (دفعيات)
+                        </a>
+                        @endcan
+                        @can('vouchers.create')
+                        <a href="{{ route('vouchers.bulk.create') }}" class="{{ request()->is('vouchers/bulk*') ? 'active-page':'' }}">
+                            <i class="bi bi-stack text-primary"></i> السندات المتعددة (دفعي)
+                        </a>
+                        @endcan
+                        @can('checks.view')
+                        <div class="mega-div"></div>
+                        <a href="{{ route('checks.index') }}" class="{{ request()->is('checks*') ? 'active-page':'' }}">
+                            <i class="bi bi-bank2 text-primary"></i> الشيكات (واردة / صادرة)
+                        </a>
+                        @endcan
+                    </div>
+                </div>
+            </li>
+            @endcanany
+
+            {{-- ── 6. المحاسبة ── --}}
+            @canany(['accounts.view','journal_entries.view','ledger.view','trial_balance.view','financial_statements.view','accounting.year_end_close','accounting.periods.view','fixed_assets.view','reversals.view'])
+            @php $_inAcc = request()->routeIs('accounting.*','accounts.*','reversals.*','journal_entries.*','fixed-assets.*','fixed-asset-categories.*','cost-centers.*','budgets.*') || request()->is('accounting*','accounts*','journal-entries*','reversals*','fixed-assets*','cost-centers*','budgets*'); @endphp
+            <li class="mega-item">
+                <a class="mega-link {{ $_inAcc ? 'active-section':'' }}" href="#">
+                    <i class="bi bi-calculator" style="color:#2c3e50"></i>
+                    المحاسبة
+                    <i class="bi bi-chevron-down mchev"></i>
+                </a>
+                <div class="mega-dropdown" style="min-width:600px">
+                    <div class="mega-col">
+                        <div class="mega-col-hdr"><i class="bi bi-journal-text"></i> القيود والدفاتر</div>
+                        @can('accounts.view')
+                        <a href="{{ route('accounting.index') }}" class="{{ request()->routeIs('accounting.index') ? 'active-page':'' }}">
+                            <i class="bi bi-speedometer2"></i> لوحة المحاسبة
+                        </a>
+                        @endcan
+                        @can('journal_entries.view')
+                        <a href="{{ route('journal_entries.index') }}" class="{{ request()->routeIs('journal_entries.*') ? 'active-page':'' }}">
+                            <i class="bi bi-journal-text"></i> القيود اليومية
+                        </a>
+                        @endcan
+                        @can('reversals.view')
+                        <a href="{{ route('reversals.index') }}" class="{{ request()->routeIs('reversals.*') ? 'active-page':'' }}">
+                            <i class="bi bi-arrow-counterclockwise"></i> قيود التصحيح
+                        </a>
+                        @endcan
+                        @can('ledger.view')
+                        <a href="{{ route('accounting.ledger.index') }}" class="{{ request()->routeIs('accounting.ledger.*') ? 'active-page':'' }}">
+                            <i class="bi bi-journal-bookmark-fill"></i> دفتر الأستاذ العام
+                        </a>
+                        @endcan
+                        @can('trial_balance.view')
+                        <a href="{{ route('accounting.trial-balance') }}" class="{{ request()->routeIs('accounting.trial-balance') ? 'active-page':'' }}">
+                            <i class="bi bi-check2-square"></i> ميزان المراجعة
+                        </a>
+                        @endcan
+                        @can('accounts.view')
+                        <div class="mega-div"></div>
+                        <a href="{{ route('accounts.index') }}" class="{{ request()->routeIs('accounts.*') ? 'active-page':'' }}">
+                            <i class="bi bi-list-columns-reverse"></i> شجرة الحسابات
+                        </a>
+                        <a href="{{ route('cost-centers.index') }}" class="{{ request()->routeIs('cost-centers.*') ? 'active-page':'' }}">
+                            <i class="bi bi-diagram-2 text-info"></i> مراكز التكلفة
+                        </a>
+                        @endcan
+                    </div>
+                    @can('financial_statements.view')
+                    <div class="mega-col">
+                        <div class="mega-col-hdr"><i class="bi bi-bar-chart-line-fill" style="color:#2980b9"></i> القوائم المالية</div>
+                        <a href="{{ route('accounting.income-statement') }}" class="{{ request()->routeIs('accounting.income-statement') ? 'active-page':'' }}">
+                            <i class="bi bi-bar-chart-line-fill text-primary"></i> قائمة الدخل
+                        </a>
+                        <a href="{{ route('accounting.balance-sheet') }}" class="{{ request()->routeIs('accounting.balance-sheet') ? 'active-page':'' }}">
+                            <i class="bi bi-layout-split"></i> الميزانية العمومية
+                        </a>
+                        <a href="{{ route('accounting.cash-flow') }}" class="{{ request()->routeIs('accounting.cash-flow') ? 'active-page':'' }}">
+                            <i class="bi bi-cash-coin text-success"></i> التدفقات النقدية
+                        </a>
+                        <a href="{{ route('accounting.consolidated-pl') }}" class="{{ request()->routeIs('accounting.consolidated-pl*') ? 'active-page':'' }}">
+                            <i class="bi bi-diagram-3 text-success"></i> قائمة دخل موحدة (فروع)
+                        </a>
+                        <a href="{{ route('budgets.index') }}" class="{{ request()->routeIs('budgets.*') ? 'active-page':'' }}">
+                            <i class="bi bi-calculator text-primary"></i> الموازنات التقديرية
+                        </a>
+                    </div>
+                    @endcan
+                    <div class="mega-col">
+                        <div class="mega-col-hdr"><i class="bi bi-building-gear"></i> الأصول والإقفال</div>
+                        @can('fixed_assets.view')
+                        <a href="{{ route('fixed-assets.index') }}" class="{{ (request()->routeIs('fixed-assets.*')&&!request()->routeIs('fixed-asset-categories.*')) ? 'active-page':'' }}">
+                            <i class="bi bi-building-gear"></i> الأصول الثابتة
+                        </a>
+                        @endcan
+                        @can('fixed_assets.create')
+                        <a href="{{ route('fixed-asset-categories.index') }}" class="{{ request()->routeIs('fixed-asset-categories.*') ? 'active-page':'' }}">
+                            <i class="bi bi-tags"></i> فئات الأصول الثابتة
+                        </a>
+                        @endcan
+                        <div class="mega-div"></div>
+                        @can('journal_entries.create')
+                        <a href="{{ route('accounting.opening-balance') }}" class="{{ request()->routeIs('accounting.opening-balance*') ? 'active-page':'' }}">
+                            <i class="bi bi-bank text-info"></i> الأرصدة الافتتاحية
+                        </a>
+                        @endcan
+                        @can('accounting.periods.view')
+                        <a href="{{ route('accounting.periods.index') }}" class="{{ request()->routeIs('accounting.periods.*') ? 'active-page':'' }}">
+                            <i class="bi bi-calendar-lock"></i> إغلاق الفترات
+                        </a>
+                        @endcan
+                        @can('branches.manage')
+                        <a href="{{ route('inter-branch.index') }}" class="{{ request()->routeIs('inter-branch.*') ? 'active-page':'' }}">
+                            <i class="bi bi-arrow-left-right text-primary"></i> التحويلات البينية
+                        </a>
+                        @endcan
+                        @can('accounting.year_end_close')
+                        <a href="{{ route('accounting.year-end-closing') }}" class="{{ request()->routeIs('accounting.year-end-closing*') ? 'active-page':'' }}">
+                            <i class="bi bi-calendar-check-fill text-danger"></i> إقفال نهاية السنة
+                        </a>
+                        @endcan
+                    </div>
+                </div>
+            </li>
+            @endcanany
+
+            {{-- ── 7. الموارد البشرية ── --}}
+            @canany(['hr.view_employees','hr.view_payroll','hr.view_attendance','hr.view_shifts','hr.manage_loans'])
+            @php $_inHR = request()->routeIs('hr.*') || request()->is('hr/*','hr'); @endphp
+            <li class="mega-item">
+                <a class="mega-link {{ $_inHR ? 'active-section':'' }}" href="#">
+                    <i class="bi bi-person-badge" style="color:#e74c3c"></i>
+                    الموارد البشرية
+                    <i class="bi bi-chevron-down mchev"></i>
+                </a>
+                <div class="mega-dropdown" style="min-width:480px">
+                    <div class="mega-col">
+                        <div class="mega-col-hdr"><i class="bi bi-people-fill" style="color:#e74c3c"></i> الموظفون والحضور</div>
+                        @can('hr.view_employees')
+                        <a href="{{ route('hr.employees.index') }}" class="{{ request()->routeIs('hr.employees.*') ? 'active-page':'' }}">
+                            <i class="bi bi-people-fill"></i> الموظفون
+                        </a>
+                        @endcan
+                        @can('hr.view_shifts')
+                        <a href="{{ route('hr.shifts.index') }}" class="{{ request()->routeIs('hr.shifts.*') ? 'active-page':'' }}">
+                            <i class="bi bi-clock-history"></i> الورديات
+                        </a>
+                        @endcan
+                        @can('hr.view_attendance')
+                        <a href="{{ route('hr.attendance.daily') }}" class="{{ request()->routeIs('hr.attendance.daily') ? 'active-page':'' }}">
+                            <i class="bi bi-calendar-check"></i> الحضور اليومي
+                        </a>
+                        <a href="{{ route('hr.attendance.monthly') }}" class="{{ request()->routeIs('hr.attendance.monthly') ? 'active-page':'' }}">
+                            <i class="bi bi-calendar-month"></i> سجل الحضور الشهري
+                        </a>
+                        <a href="{{ route('hr.attendance.sync') }}" class="{{ request()->routeIs('hr.attendance.sync*') ? 'active-page':'' }}">
+                            <i class="bi bi-fingerprint"></i> مزامنة جهاز البصمة
+                        </a>
+                        @endcan
+                    </div>
+                    <div class="mega-col">
+                        <div class="mega-col-hdr"><i class="bi bi-cash-stack" style="color:#27ae60"></i> الرواتب والاستحقاقات</div>
+                        @can('hr.view_payroll')
+                        <a href="{{ route('hr.payroll.index') }}" class="{{ request()->routeIs('hr.payroll.*') ? 'active-page':'' }}">
+                            <i class="bi bi-cash-stack"></i> مسير الرواتب
+                        </a>
+                        @endcan
+                        @can('hr.manage_loans')
+                        <a href="{{ route('hr.loans.index') }}" class="{{ request()->routeIs('hr.loans.*') ? 'active-page':'' }}">
+                            <i class="bi bi-coin"></i> سلف الموظفين
+                        </a>
+                        @endcan
+                        @can('hr.leaves.view')
+                        <a href="{{ route('hr.leaves.index') }}" class="{{ request()->routeIs('hr.leaves.*') ? 'active-page':'' }}">
+                            <i class="bi bi-calendar-check text-success"></i> الإجازات
+                        </a>
+                        @endcan
+                        @can('hr.eosb.view')
+                        <a href="{{ route('hr.eosb.index') }}" class="{{ request()->routeIs('hr.eosb.*') ? 'active-page':'' }}">
+                            <i class="bi bi-person-badge text-warning"></i> مخصصات نهاية الخدمة
+                        </a>
+                        @endcan
+                    </div>
+                </div>
+            </li>
+            @endcanany
+
+            {{-- ── 8. التقارير (flip-left: dropdown opens to the left) ── --}}
+            @canany(['reports.view','res.view'])
+            @php $_inRep = request()->routeIs('reports.*','res.*') || request()->is('reports*','res*'); @endphp
+            <li class="mega-item flip-left">
+                <a class="mega-link {{ $_inRep ? 'active-section':'' }}" href="{{ route('reports.index') }}">
+                    <i class="bi bi-graph-up" style="color:#f39c12"></i>
+                    التقارير
+                    <i class="bi bi-chevron-down mchev"></i>
+                </a>
+                <div class="mega-dropdown" style="min-width:460px">
+                    <div class="mega-col">
+                        <div class="mega-col-hdr"><i class="bi bi-bar-chart" style="color:#f39c12"></i> التقارير الأساسية</div>
+                        <a href="{{ route('reports.index') }}" class="{{ request()->is('reports') ? 'active-page':'' }}">
+                            <i class="bi bi-grid-1x2"></i> جميع التقارير
+                        </a>
+                        <a href="{{ route('reports.sales') }}" class="{{ request()->routeIs('reports.sales') ? 'active-page':'' }}">
+                            <i class="bi bi-graph-up-arrow"></i> تقرير المبيعات
+                        </a>
+                        <a href="{{ route('reports.purchases') }}" class="{{ request()->routeIs('reports.purchases') ? 'active-page':'' }}">
+                            <i class="bi bi-graph-down-arrow"></i> تقرير المشتريات
+                        </a>
+                        <a href="{{ route('reports.profit') }}" class="{{ request()->routeIs('reports.profit') ? 'active-page':'' }}">
+                            <i class="bi bi-cash-coin"></i> تقرير الأرباح
+                        </a>
+                        <a href="{{ route('reports.inventory') }}" class="{{ request()->routeIs('reports.inventory') ? 'active-page':'' }}">
+                            <i class="bi bi-boxes"></i> تقرير المخزون
+                        </a>
+                    </div>
+                    <div class="mega-col">
+                        <div class="mega-col-hdr"><i class="bi bi-pie-chart-fill" style="color:#8e44ad"></i> التحليلات</div>
+                        <a href="{{ route('reports.ar-aging') }}" class="{{ request()->routeIs('reports.ar-aging') ? 'active-page':'' }}">
+                            <i class="bi bi-person-exclamation"></i> تقادم ذمم العملاء
+                        </a>
+                        <a href="{{ route('reports.ap-aging') }}" class="{{ request()->routeIs('reports.ap-aging') ? 'active-page':'' }}">
+                            <i class="bi bi-building-exclamation"></i> تقادم ذمم الموردين
+                        </a>
+                        <a href="{{ route('reports.top-products') }}" class="{{ request()->routeIs('reports.top-products') ? 'active-page':'' }}">
+                            <i class="bi bi-star-fill text-warning"></i> أعلى الأصناف مبيعاً
+                        </a>
+                        @can('res.view')
+                        <a href="{{ route('res.index') }}" class="{{ request()->routeIs('res.*') ? 'active-page':'' }}">
+                            <i class="bi bi-file-earmark-bar-graph"></i> كشوف الإيرادات والمصروفات
+                        </a>
+                        @endcan
+                    </div>
+                </div>
+            </li>
+            @endcanany
+
+            {{-- ── 9. الإعدادات ── --}}
+            @canany(['users.view','roles.view','settings.view','branches.view','currencies.view','audit_logs.view'])
+            @php $_inSet = request()->routeIs('users.*','roles.*','settings.*','branches.*','currencies.*','audit.*','backup.*') || request()->is('users*','roles*','settings*','branches*','currencies*','audit-logs*','backup*'); @endphp
+            <li class="mega-item flip-left">
+                <a class="mega-link {{ $_inSet ? 'active-section':'' }}" href="#">
+                    <i class="bi bi-gear-wide-connected" style="color:#95a5a6"></i>
+                    الإعدادات
+                    <i class="bi bi-chevron-down mchev"></i>
+                </a>
+                <div class="mega-dropdown" style="min-width:500px">
+                    @can('users.view')
+                    <div class="mega-col">
+                        <div class="mega-col-hdr"><i class="bi bi-person-gear" style="color:#e74c3c"></i> المستخدمون والصلاحيات</div>
+                        <a href="{{ route('users.index') }}" class="{{ request()->routeIs('users.*') ? 'active-page':'' }}">
+                            <i class="bi bi-person-gear"></i> المستخدمون
+                        </a>
+                        <a href="{{ route('roles.index') }}" class="{{ request()->routeIs('roles.*') ? 'active-page':'' }}">
+                            <i class="bi bi-shield-lock-fill"></i> الأدوار والصلاحيات
+                        </a>
+                    </div>
+                    @endcan
+                    <div class="mega-col">
+                        <div class="mega-col-hdr"><i class="bi bi-building-fill-check" style="color:#3498db"></i> الهيكل التشغيلي</div>
+                        @can('branches.view')
+                        <a href="{{ route('branches.index') }}" class="{{ request()->routeIs('branches.*') ? 'active-page':'' }}">
+                            <i class="bi bi-building-fill-check"></i> الفروع
+                        </a>
+                        @endcan
+                        @can('currencies.view')
+                        <a href="{{ route('currencies.index') }}" class="{{ request()->routeIs('currencies.*') ? 'active-page':'' }}">
+                            <i class="bi bi-currency-exchange"></i> العملات
+                        </a>
+                        @endcan
+                    </div>
+                    @canany(['settings.view','audit_logs.view','settings.manage'])
+                    <div class="mega-col">
+                        <div class="mega-col-hdr"><i class="bi bi-sliders" style="color:#7f8c8d"></i> النظام والأمان</div>
+                        @can('settings.view')
+                        <a href="{{ route('settings.edit') }}" class="{{ request()->routeIs('settings.*') ? 'active-page':'' }}">
+                            <i class="bi bi-sliders"></i> إعدادات النظام
+                        </a>
+                        @endcan
+                        @can('audit_logs.view')
+                        <a href="{{ route('audit.logs.index') }}" class="{{ request()->routeIs('audit.*') ? 'active-page':'' }}">
+                            <i class="bi bi-shield-check"></i> سجل التدقيق
+                        </a>
+                        @endcan
+                        @can('settings.manage')
+                        <a href="{{ route('backup.index') }}" class="{{ request()->routeIs('backup.*') ? 'active-page':'' }}">
+                            <i class="bi bi-cloud-arrow-up text-info"></i> النسخ الاحتياطي
+                        </a>
+                        @endcan
+                    </div>
+                    @endcanany
+                </div>
+            </li>
+            @endcanany
+
+        </ul>
+
+        {{-- Right side: search + user info + logout --}}
+        <div class="mega-right">
+            <button class="cmd-trigger" onclick="openCmd()" title="بحث سريع (Ctrl+K)" style="padding:4px 9px;font-size:11px">
+                <i class="bi bi-search"></i>
+                <span>بحث...</span>
+                <kbd>K</kbd>
+            </button>
+            <div class="mega-user-badge d-none d-lg-flex">
+                <i class="bi bi-person-circle"></i>
+                <strong>{{ auth()->user()->name }}</strong>
+                <span class="badge bg-primary" style="font-size:.6rem">{{ auth()->user()->getRoleNames()->first() ?? auth()->user()->role ?? '' }}</span>
+            </div>
+            <a href="{{ route('logout') }}"
+               onclick="event.preventDefault(); document.getElementById('logout-form').submit();"
+               class="mega-logout-btn" title="تسجيل الخروج">
+                <i class="bi bi-box-arrow-right"></i>
+            </a>
+        </div>
+
+    </div>
+</nav>
+@endauth
+{{-- ══ END MEGA MENU ══ --}}
+
 <div class="container-fluid">
     <div class="row">
 
         <!-- ═══════════════ SIDEBAR ═══════════════ -->
-        <nav class="col-md-3 col-lg-2 d-md-block sidebar p-0">
+        <nav class="col-md-3 col-lg-2 d-none sidebar p-0">
             <div class="position-sticky pt-0" style="top:0; overflow-y:auto; max-height:100dvh;">
 
                 <!-- Mobile close button -->
@@ -1330,7 +2052,7 @@
         </nav>
 
         <!-- ═══════════════ MAIN CONTENT ═══════════════ -->
-        <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+        <main class="col-12 px-md-4">
 
             <!-- Top bar -->
             <nav class="navbar navbar-light bg-light mb-4 mt-3 rounded">
@@ -1895,6 +2617,79 @@
     document.getElementById('cmdInput') && document.getElementById('cmdInput').addEventListener('input', function() {
         renderCmd(this.value);
     });
+</script>
+
+{{-- ══ Mega Menu JS ══ --}}
+<script>
+(function(){
+    var items = [].slice.call(document.querySelectorAll('.mega-item'));
+    var isDesktop = function(){ return window.innerWidth >= 768; };
+
+    // Fix dropdown overflow against viewport edges
+    function fixPos(item) {
+        var dd = item.querySelector('.mega-dropdown');
+        if (!dd) return;
+        // reset
+        dd.style.right = ''; dd.style.left = '';
+        setTimeout(function(){
+            var r = dd.getBoundingClientRect();
+            // In RTL, 'right:0' aligns dropdown's right with item's right.
+            // If it overflows left edge, push it right by using left:0
+            if (r.left < 4) { dd.style.right = 'auto'; dd.style.left = '0'; }
+            // If it overflows right edge (unlikely in RTL but possible)
+            if (r.right > window.innerWidth - 4) { dd.style.left = 'auto'; dd.style.right = '0'; }
+        }, 8);
+    }
+
+    function closeAll() {
+        items.forEach(function(i){ i.classList.remove('open'); });
+    }
+
+    // ── Desktop: hover to open ──
+    if (window.matchMedia('(min-width:768px)').matches) {
+        items.forEach(function(item){
+            if (!item.querySelector('.mega-dropdown')) return;
+            item.addEventListener('mouseenter', function(){
+                closeAll();
+                item.classList.add('open');
+                fixPos(item);
+            });
+            item.addEventListener('mouseleave', function(){
+                item.classList.remove('open');
+            });
+        });
+    }
+
+    // ── Click toggle (also works on mobile for sidebar-less sections) ──
+    items.forEach(function(item){
+        var link = item.querySelector('.mega-link');
+        if (!link || !item.querySelector('.mega-dropdown')) return;
+        link.addEventListener('click', function(e){
+            // Only preventDefault for items that have a dropdown (not plain links)
+            var href = link.getAttribute('href');
+            if (!href || href === '#') e.preventDefault();
+            if (isDesktop()) return; // hover handles it on desktop
+            var wasOpen = item.classList.contains('open');
+            closeAll();
+            if (!wasOpen) { item.classList.add('open'); fixPos(item); }
+        });
+    });
+
+    // ── Close on outside click ──
+    document.addEventListener('click', function(e){
+        if (!e.target.closest('.mega-nav')) closeAll();
+    });
+
+    // ── Escape closes ──
+    document.addEventListener('keydown', function(e){
+        if (e.key === 'Escape') closeAll();
+    });
+
+    // ── Re-check on resize ──
+    window.addEventListener('resize', function(){
+        closeAll();
+    });
+})();
 </script>
 
 @yield('scripts')
