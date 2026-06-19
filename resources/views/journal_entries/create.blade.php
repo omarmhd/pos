@@ -125,12 +125,21 @@
                                 @foreach($oldLines as $i => $line)
                                 <tr class="line-row">
                                     <td>
-                                        <select name="lines[{{ $i }}][selection]"
-                                                class="form-select form-select-sm party-select"
-                                                data-selected="{{ old("lines.{$i}.selection") }}" required>
-                                            {!! $selectionInner !!}
-                                        </select>
-                                        <div class="emp-account-wrap">
+                                        <div class="d-flex gap-1">
+                                            <select class="form-select form-select-sm type-select" style="max-width:120px"
+                                                    data-selected="{{ old("lines.{$i}.selection") }}">
+                                                <option value="acc">حساب</option>
+                                                <option value="customer">عميل</option>
+                                                <option value="supplier">مورّد</option>
+                                                <option value="employee">موظف</option>
+                                            </select>
+                                            <select name="lines[{{ $i }}][selection]"
+                                                    class="form-select form-select-sm party-select"
+                                                    data-selected="{{ old("lines.{$i}.selection") }}" required>
+                                                <option value="">— اختر —</option>
+                                            </select>
+                                        </div>
+                                        <div class="emp-account-wrap mt-1">
                                             <select name="lines[{{ $i }}][employee_account_id]"
                                                     class="form-select form-select-sm emp-account-select"
                                                     data-selected="{{ old("lines.{$i}.employee_account_id") }}">
@@ -189,30 +198,55 @@
 @section('scripts')
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
-const selectionInner  = `{!! str_replace('`', '', $selectionInner) !!}`;
 const empAccountInner = `{!! str_replace('`', '', $empAccountInner) !!}`;
 
-// تهيئة مربّع البحث المجمّع + إظهار حساب الموظف عند اختيار موظف
-function initPartySelect(row) {
-    const sel = row.querySelector('.party-select');
-    if (sel && window.jQuery && jQuery.fn.select2) {
-        const $sel = jQuery(sel);
-        if (!$sel.hasClass('select2-hidden-accessible')) {
-            $sel.select2({ theme: 'bootstrap-5', dir: 'rtl', placeholder: '— اختر الحساب أو الجهة —' });
-            if (sel.dataset.selected) { $sel.val(sel.dataset.selected).trigger('change'); }
-            $sel.on('change', () => toggleEmpAccount(row));
-        }
+// خيارات كل نوع: حساب / عميل / مورّد / موظف
+const partyOptions = {
+    acc:      `<option value="">— اختر الحساب —</option>` + `{!! str_replace('`', '', $optAccounts) !!}`,
+    customer: `<option value="">— اختر العميل —</option>` + `{!! str_replace('`', '', $optCustomers) !!}`,
+    supplier: `<option value="">— اختر المورّد —</option>` + `{!! str_replace('`', '', $optSuppliers) !!}`,
+    employee: `<option value="">— اختر الموظف —</option>` + `{!! str_replace('`', '', $optEmployees) !!}`,
+};
+
+function detectType(token) {
+    if (!token) return 'acc';
+    if (token.indexOf('customer:') === 0) return 'customer';
+    if (token.indexOf('supplier:') === 0) return 'supplier';
+    if (token.indexOf('employee:') === 0) return 'employee';
+    return 'acc';
+}
+
+// تعبئة قائمة الجهة حسب النوع المختار + تهيئة Select2
+function populateParty(row, type, selectedToken) {
+    const party = row.querySelector('.party-select');
+    if (!party) return;
+    if (window.jQuery && jQuery(party).hasClass('select2-hidden-accessible')) jQuery(party).select2('destroy');
+    party.innerHTML = partyOptions[type] || partyOptions.acc;
+    if (selectedToken) party.value = selectedToken;
+    if (window.jQuery && jQuery.fn.select2) {
+        jQuery(party).select2({ theme: 'bootstrap-5', dir: 'rtl', placeholder: '— اختر —' });
     }
-    const emp = row.querySelector('.emp-account-select');
-    if (emp && emp.dataset.selected) emp.value = emp.dataset.selected;
     toggleEmpAccount(row);
 }
 
+function initPartySelect(row) {
+    const typeSel = row.querySelector('.type-select');
+    const party   = row.querySelector('.party-select');
+    if (!typeSel || !party) return;
+    const token = party.dataset.selected || '';
+    const t = detectType(token);
+    typeSel.value = t;
+    populateParty(row, t, token);
+    typeSel.addEventListener('change', () => populateParty(row, typeSel.value, ''));
+    const emp = row.querySelector('.emp-account-select');
+    if (emp && emp.dataset.selected) emp.value = emp.dataset.selected;
+}
+
 function toggleEmpAccount(row) {
-    const sel  = row.querySelector('.party-select');
-    const wrap = row.querySelector('.emp-account-wrap');
-    if (!sel || !wrap) return;
-    wrap.style.display = (sel.value || '').indexOf('employee:') === 0 ? 'block' : 'none';
+    const typeSel = row.querySelector('.type-select');
+    const wrap    = row.querySelector('.emp-account-wrap');
+    if (!typeSel || !wrap) return;
+    wrap.style.display = typeSel.value === 'employee' ? 'block' : 'none';
 }
 
 function reindex() {
@@ -251,8 +285,16 @@ document.getElementById('addLine').addEventListener('click', () => {
     tr.className = 'line-row';
     tr.innerHTML = `
         <td>
-            <select name="lines[${idx}][selection]" class="form-select form-select-sm party-select" data-selected="" required>${selectionInner}</select>
-            <div class="emp-account-wrap"><select name="lines[${idx}][employee_account_id]" class="form-select form-select-sm emp-account-select" data-selected="">${empAccountInner}</select></div>
+            <div class="d-flex gap-1">
+                <select class="form-select form-select-sm type-select" style="max-width:120px" data-selected="">
+                    <option value="acc">حساب</option><option value="customer">عميل</option>
+                    <option value="supplier">مورّد</option><option value="employee">موظف</option>
+                </select>
+                <select name="lines[${idx}][selection]" class="form-select form-select-sm party-select" data-selected="" required>
+                    <option value="">— اختر —</option>
+                </select>
+            </div>
+            <div class="emp-account-wrap mt-1"><select name="lines[${idx}][employee_account_id]" class="form-select form-select-sm emp-account-select" data-selected="">${empAccountInner}</select></div>
         </td>
         <td><input type="number" name="lines[${idx}][debit]"
                    class="form-control form-control-sm amount-input debit-input"
