@@ -78,20 +78,35 @@ class JournalEntryController extends Controller
         $branchId     = $this->effectiveBranchId(request());
         $branchLocked = $this->isBranchLocked();
 
-        return view('journal_entries.create', compact('accounts', 'branches', 'branchId', 'branchLocked'));
+        // الأطراف (أستاذ مساعد) لمربّع البحث المجمّع
+        $customers = \App\Models\Customer::orderBy('name')->get(['id', 'name']);
+        $suppliers = \App\Models\Supplier::orderBy('name')->get(['id', 'name']);
+        $employees = \App\Models\Employee::where('is_active', true)->orderBy('name')->get(['id', 'name']);
+
+        // حسابات الموظفين المتاحة للاختيار وقت الإدخال (سلف / رواتب مستحقة)
+        $employeeAccounts = Account::whereIn('code', [
+            Setting::get('account_employee_loans_code', '1250'),
+            Setting::get('account_salaries_payable_code', '2100'),
+        ])->get(['id', 'code', 'name']);
+
+        return view('journal_entries.create', compact(
+            'accounts', 'branches', 'branchId', 'branchLocked',
+            'customers', 'suppliers', 'employees', 'employeeAccounts'
+        ));
     }
 
     public function store(Request $request)
     {
         $request->validate([
-            'entry_date'               => 'required|date',
-            'description'              => 'required|string|max:500',
-            'reference'                => 'nullable|string|max:100',
-            'lines'                    => 'required|array|min:2',
-            'lines.*.account_id'       => 'required|exists:accounts,id',
-            'lines.*.debit'            => 'required|numeric|min:0',
-            'lines.*.credit'           => 'required|numeric|min:0',
-            'lines.*.line_description' => 'nullable|string|max:255',
+            'entry_date'                  => 'required|date',
+            'description'                 => 'required|string|max:500',
+            'reference'                   => 'nullable|string|max:100',
+            'lines'                       => 'required|array|min:2',
+            'lines.*.selection'           => 'required|string',
+            'lines.*.employee_account_id' => 'nullable|exists:accounts,id',
+            'lines.*.debit'               => 'required|numeric|min:0',
+            'lines.*.credit'              => 'required|numeric|min:0',
+            'lines.*.line_description'    => 'nullable|string|max:255',
         ]);
 
         // Period lock check (manual entries use the entry_date directly)
@@ -101,8 +116,29 @@ class JournalEntryController extends Controller
             return back()->withInput()->with('error', $e->getMessage());
         }
 
-        $totalDebit  = round(collect($request->lines)->sum('debit'),  2);
-        $totalCredit = round(collect($request->lines)->sum('credit'), 2);
+        // تحويل اختيار كل سطر إلى (حساب مراقبة + طرف اختياري)
+        $resolved = [];
+        foreach ($request->lines as $i => $line) {
+            try {
+                [$accountId, $partyType, $partyId] = $this->resolveSelection(
+                    (string) ($line['selection'] ?? ''),
+                    $line['employee_account_id'] ?? null
+                );
+            } catch (\RuntimeException $e) {
+                return back()->withInput()->withErrors(['lines' => $e->getMessage()]);
+            }
+            $resolved[] = [
+                'account_id'       => $accountId,
+                'party_type'       => $partyType,
+                'party_id'         => $partyId,
+                'debit'            => round((float) ($line['debit'] ?? 0),  2),
+                'credit'           => round((float) ($line['credit'] ?? 0), 2),
+                'line_description' => $line['line_description'] ?? null,
+            ];
+        }
+
+        $totalDebit  = round(collect($resolved)->sum('debit'),  2);
+        $totalCredit = round(collect($resolved)->sum('credit'), 2);
 
         if (abs($totalDebit - $totalCredit) > 0.005) {
             return back()->withInput()
@@ -114,21 +150,18 @@ class JournalEntryController extends Controller
                 ->withErrors(['lines' => 'يجب أن يحتوي القيد على مبالغ أكبر من صفر.']);
         }
 
-        $accountIds  = collect($request->lines)->pluck('account_id')->unique();
-        $headerCount = Account::whereIn('id', $accountIds)->where('is_header', true)->count();
-        if ($headerCount > 0) {
+        $accountIds = collect($resolved)->pluck('account_id')->unique();
+        if (Account::whereIn('id', $accountIds)->where('is_header', true)->exists()) {
             return back()->withInput()
                 ->withErrors(['lines' => 'لا يمكن الترحيل على حساب رئيسي (إجمالي). اختر حساباً تفصيلياً.']);
         }
 
         // Branch resolution (SAP: Company Code mandatory on every GL document)
-        // - Branch-locked users: always their own branch
-        // - Global users (admin/accountant): branch from form, then user's branch, then default
         $resolvedBranch = $this->isBranchLocked()
             ? (auth()->user()?->branch_id ?? \App\Models\Setting::get('default_branch_id'))
             : ($request->input('branch_id') ?: auth()->user()?->branch_id ?: Setting::get('default_branch_id'));
 
-        DB::transaction(function () use ($request, $resolvedBranch) {
+        DB::transaction(function () use ($request, $resolved, $resolvedBranch) {
             /** @var \App\Models\JournalEntry $entry */
             $entry = JournalEntry::create([
                 'entry_date'  => $request->entry_date,
@@ -141,14 +174,8 @@ class JournalEntryController extends Controller
                 'posted_at'   => now(),
             ]);
 
-            foreach ($request->lines as $line) {
-                JournalEntryLine::create([
-                    'journal_entry_id' => $entry->id,
-                    'account_id'       => $line['account_id'],
-                    'debit'            => round((float) $line['debit'],  2),
-                    'credit'           => round((float) $line['credit'], 2),
-                    'line_description' => $line['line_description'] ?? null,
-                ]);
+            foreach ($resolved as $line) {
+                JournalEntryLine::create(array_merge(['journal_entry_id' => $entry->id], $line));
             }
         });
 
@@ -156,9 +183,59 @@ class JournalEntryController extends Controller
             ->with('success', 'تم حفظ القيد اليومي بنجاح');
     }
 
+    /**
+     * تحويل قيمة اختيار السطر إلى [account_id, party_type, party_id].
+     *  - رقم فقط            → حساب عام من شجرة الحسابات.
+     *  - "customer:{id}"   → حساب مراقبة ذمم العملاء + ربط العميل.
+     *  - "supplier:{id}"   → حساب مراقبة ذمم الموردين + ربط المورّد.
+     *  - "employee:{id}"   → حساب الموظف المختار وقت الإدخال + ربط الموظف.
+     *
+     * @throws \RuntimeException عند نقص بيانات أو غياب حساب المراقبة
+     */
+    private function resolveSelection(string $selection, $employeeAccountId): array
+    {
+        if ($selection === '') {
+            throw new \RuntimeException('اختر الحساب أو الجهة لكل سطر.');
+        }
+
+        if (ctype_digit($selection)) {
+            return [(int) $selection, null, null];
+        }
+
+        [$kind, $rawId] = array_pad(explode(':', $selection, 2), 2, null);
+        $id = (int) $rawId;
+
+        if ($id <= 0) {
+            throw new \RuntimeException('جهة غير صحيحة في أحد الأسطر.');
+        }
+
+        return match ($kind) {
+            'customer' => [$this->controlAccountId(Setting::get('account_ar_code', '1200')), \App\Models\Customer::class, $id],
+            'supplier' => [$this->controlAccountId(Setting::get('account_ap_code', '2000')), \App\Models\Supplier::class, $id],
+            'employee' => [
+                (int) ($employeeAccountId ?: 0) > 0
+                    ? (int) $employeeAccountId
+                    : throw new \RuntimeException('اختر حساب الموظف (سلف/رواتب مستحقة) للسطر المرتبط بموظف.'),
+                \App\Models\Employee::class,
+                $id,
+            ],
+            default => throw new \RuntimeException('نوع جهة غير معروف في أحد الأسطر.'),
+        };
+    }
+
+    /** يعيد معرّف حساب المراقبة من الكود، ويرمي استثناءً إن لم يوجد. */
+    private function controlAccountId(string $code): int
+    {
+        $account = Account::where('code', $code)->first();
+        if (!$account) {
+            throw new \RuntimeException("حساب المراقبة بالكود ({$code}) غير موجود في شجرة الحسابات. أضِفه أو اضبطه من الإعدادات.");
+        }
+        return $account->id;
+    }
+
     public function show($id)
     {
-        $je = JournalEntry::with('user', 'lines.account')->findOrFail($id);
+        $je = JournalEntry::with('user', 'lines.account', 'lines.party')->findOrFail($id);
         return view('journal_entries.show', compact('je'));
     }
 

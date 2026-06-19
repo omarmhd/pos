@@ -14,6 +14,8 @@ class JournalEntryLine extends Model
     protected $fillable = [
         'journal_entry_id',
         'account_id',
+        'party_type',
+        'party_id',
         'debit',
         'credit',
         'line_description',
@@ -38,5 +40,25 @@ class JournalEntryLine extends Model
     public function costCenter()
     {
         return $this->belongsTo(CostCenter::class);
+    }
+
+    /** الطرف المرتبط (عميل/مورّد/موظف) — أستاذ مساعد فوق حساب المراقبة */
+    public function party()
+    {
+        return $this->morphTo();
+    }
+
+    /** اسم الطرف المختصر للعرض */
+    public function partyLabel(): ?string
+    {
+        if (!$this->party_type) return null;
+        $name = $this->party?->name ?? ('#' . $this->party_id);
+        $kind = match (class_basename($this->party_type)) {
+            'Customer' => 'عميل',
+            'Supplier' => 'مورّد',
+            'Employee' => 'موظف',
+            default    => 'طرف',
+        };
+        return $kind . ': ' . $name;
     }
 }

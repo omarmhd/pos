@@ -86,6 +86,7 @@
                         <tr>
                             <th style="width:12%">كود الحساب</th>
                             <th>اسم الحساب</th>
+                            <th>الجهة</th>
                             <th class="text-end" style="width:14%">مدين</th>
                             <th class="text-end" style="width:14%">دائن</th>
                             <th>البيان</th>
@@ -96,6 +97,13 @@
                     <tr>
                         <td class="font-monospace small">{{ $line->account?->code }}</td>
                         <td>{{ $line->account?->name }}</td>
+                        <td class="small">
+                            @if($line->partyLabel())
+                                <span class="badge bg-light text-dark border">{{ $line->partyLabel() }}</span>
+                            @else
+                                <span class="text-muted">—</span>
+                            @endif
+                        </td>
                         <td class="text-end font-monospace {{ $line->debit > 0 ? 'fw-semibold' : 'text-muted' }}">
                             {{ $line->debit > 0 ? number_format($line->debit, 2) : '—' }}
                         </td>
@@ -108,7 +116,7 @@
                     </tbody>
                     <tfoot class="table-light fw-bold">
                         <tr>
-                            <td colspan="2" class="text-end">الإجمالي</td>
+                            <td colspan="3" class="text-end">الإجمالي</td>
                             <td class="text-end font-monospace">{{ number_format($je->debit_total, 2) }}</td>
                             <td class="text-end font-monospace">{{ number_format($je->credit_total, 2) }}</td>
                             <td>

@@ -2,6 +2,23 @@
 @section('page-title', 'قيد يومي جديد')
 
 @section('content')
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.rtl.min.css" rel="stylesheet">
+<style>.select2-container{width:100%!important} .emp-account-wrap{display:none;margin-top:4px}</style>
+
+@php
+    $optAccounts  = $accounts->map(fn($a)  => "<option value='{$a->id}'>" . e($a->code.' — '.$a->name) . "</option>")->implode('');
+    $optCustomers = $customers->map(fn($c) => "<option value='customer:{$c->id}'>" . e($c->name) . "</option>")->implode('');
+    $optSuppliers = $suppliers->map(fn($s) => "<option value='supplier:{$s->id}'>" . e($s->name) . "</option>")->implode('');
+    $optEmployees = $employees->map(fn($e) => "<option value='employee:{$e->id}'>" . e($e->name) . "</option>")->implode('');
+    $selectionInner = "<option value=''>— اختر الحساب أو الجهة —</option>"
+        . "<optgroup label='الحسابات الرئيسية'>{$optAccounts}</optgroup>"
+        . "<optgroup label='العملاء'>{$optCustomers}</optgroup>"
+        . "<optgroup label='الموردون'>{$optSuppliers}</optgroup>"
+        . "<optgroup label='الموظفون'>{$optEmployees}</optgroup>";
+    $empAccountInner = "<option value=''>— حساب الموظف —</option>"
+        . $employeeAccounts->map(fn($a) => "<option value='{$a->id}'>" . e($a->code.' — '.$a->name) . "</option>")->implode('');
+@endphp
 <div class="row">
     <div class="col-lg-10 mx-auto">
         <div class="card">
@@ -108,16 +125,18 @@
                                 @foreach($oldLines as $i => $line)
                                 <tr class="line-row">
                                     <td>
-                                        <select name="lines[{{ $i }}][account_id]"
-                                                class="form-select form-select-sm account-select" required>
-                                            <option value="">— اختر الحساب —</option>
-                                            @foreach($accounts as $acc)
-                                            <option value="{{ $acc->id }}"
-                                                {{ old("lines.{$i}.account_id") == $acc->id ? 'selected' : '' }}>
-                                                {{ $acc->code }} — {{ $acc->name }}
-                                            </option>
-                                            @endforeach
+                                        <select name="lines[{{ $i }}][selection]"
+                                                class="form-select form-select-sm party-select"
+                                                data-selected="{{ old("lines.{$i}.selection") }}" required>
+                                            {!! $selectionInner !!}
                                         </select>
+                                        <div class="emp-account-wrap">
+                                            <select name="lines[{{ $i }}][employee_account_id]"
+                                                    class="form-select form-select-sm emp-account-select"
+                                                    data-selected="{{ old("lines.{$i}.employee_account_id") }}">
+                                                {!! $empAccountInner !!}
+                                            </select>
+                                        </div>
                                     </td>
                                     <td>
                                         <input type="number" name="lines[{{ $i }}][debit]"
@@ -168,8 +187,33 @@
 </div>
 
 @section('scripts')
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
-const accountOptions = `{!! $accounts->map(fn($a) => "<option value='{$a->id}'>{$a->code} — {$a->name}</option>")->implode('') !!}`;
+const selectionInner  = `{!! str_replace('`', '', $selectionInner) !!}`;
+const empAccountInner = `{!! str_replace('`', '', $empAccountInner) !!}`;
+
+// تهيئة مربّع البحث المجمّع + إظهار حساب الموظف عند اختيار موظف
+function initPartySelect(row) {
+    const sel = row.querySelector('.party-select');
+    if (sel && window.jQuery && jQuery.fn.select2) {
+        const $sel = jQuery(sel);
+        if (!$sel.hasClass('select2-hidden-accessible')) {
+            $sel.select2({ theme: 'bootstrap-5', dir: 'rtl', placeholder: '— اختر الحساب أو الجهة —' });
+            if (sel.dataset.selected) { $sel.val(sel.dataset.selected).trigger('change'); }
+            $sel.on('change', () => toggleEmpAccount(row));
+        }
+    }
+    const emp = row.querySelector('.emp-account-select');
+    if (emp && emp.dataset.selected) emp.value = emp.dataset.selected;
+    toggleEmpAccount(row);
+}
+
+function toggleEmpAccount(row) {
+    const sel  = row.querySelector('.party-select');
+    const wrap = row.querySelector('.emp-account-wrap');
+    if (!sel || !wrap) return;
+    wrap.style.display = (sel.value || '').indexOf('employee:') === 0 ? 'block' : 'none';
+}
 
 function reindex() {
     document.querySelectorAll('#linesBody .line-row').forEach((row, i) => {
@@ -207,10 +251,8 @@ document.getElementById('addLine').addEventListener('click', () => {
     tr.className = 'line-row';
     tr.innerHTML = `
         <td>
-            <select name="lines[${idx}][account_id]" class="form-select form-select-sm account-select" required>
-                <option value="">— اختر الحساب —</option>
-                ${accountOptions}
-            </select>
+            <select name="lines[${idx}][selection]" class="form-select form-select-sm party-select" data-selected="" required>${selectionInner}</select>
+            <div class="emp-account-wrap"><select name="lines[${idx}][employee_account_id]" class="form-select form-select-sm emp-account-select" data-selected="">${empAccountInner}</select></div>
         </td>
         <td><input type="number" name="lines[${idx}][debit]"
                    class="form-control form-control-sm amount-input debit-input"
@@ -242,6 +284,7 @@ document.getElementById('linesBody').addEventListener('click', e => {
 
 function attachListeners(row) {
     row.querySelectorAll('.amount-input').forEach(i => i.addEventListener('input', recalc));
+    initPartySelect(row);
 }
 document.querySelectorAll('#linesBody .line-row').forEach(attachListeners);
 
