@@ -7,9 +7,20 @@
     <div class="card-header bg-primary bg-opacity-10 text-primary py-2">
         <i class="bi bi-diagram-3-fill me-2"></i>
         <strong>التعيين التنظيمي</strong>
-        <small class="text-muted ms-2">— الفرع والمخزن الافتراضيان لهذا المستخدم</small>
+        <small class="text-muted ms-2">— اختياري: لتقييد المستخدم بفرع/مخزن معيّن</small>
     </div>
     <div class="card-body">
+
+        <div class="alert alert-info py-2 small">
+            <i class="bi bi-info-circle me-1"></i>
+            هذا القسم <strong>اختياري</strong> ويفيد المنشآت متعددة الفروع/المخازن. الغرض منه تحديد <strong>نطاق عمل المستخدم</strong>:
+            <ul class="mb-0 mt-1">
+                <li><strong>الفرع</strong>: يحصر ما يراه ويُرحّل عليه المستخدم في فرعه فقط (مثل كاشير/محاسب فرع). اتركه فارغًا للمدير/المحاسب العام ليرى كل الفروع.</li>
+                <li><strong>المخزن الافتراضي</strong>: المخزن الذي تُخصم/تُضاف منه الكميات تلقائيًا في عمليات هذا المستخدم (شراء، جرد، تسويات).</li>
+                <li><strong>نقطة البيع</strong>: تربط الكاشير بجهاز/مخزن بيع محدد (الأعلى أولوية).</li>
+            </ul>
+            في المنشأة ذات الفرع الواحد يمكن ترك الحقول الثلاثة فارغة.
+        </div>
 
         {{-- Row 1: Branch + Default Warehouse --}}
         <div class="row g-3 mb-3">

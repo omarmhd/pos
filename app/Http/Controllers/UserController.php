@@ -58,7 +58,7 @@ class UserController extends Controller
             'email'                => $request->email,
             'password'             => Hash::make($request->password),
             'role'                 => $request->roles[0],
-            'is_active'            => $request->has('is_active'),
+            'is_active'            => $request->boolean('is_active'),
             'branch_id'            => $request->input('branch_id')            ?: null,
             'pos_terminal_id'      => $request->input('pos_terminal_id')      ?: null,
             'default_warehouse_id' => $request->input('default_warehouse_id') ?: null,
@@ -106,7 +106,7 @@ class UserController extends Controller
             'branch_id'            => $request->input('branch_id')            ?: null,
             'pos_terminal_id'      => $request->input('pos_terminal_id')      ?: null,
             'default_warehouse_id' => $request->input('default_warehouse_id') ?: null,
-            'is_active'            => $request->has('is_active'),
+            'is_active'            => $request->boolean('is_active'),
         ];
         if ($request->filled('password')) {
             $data['password'] = Hash::make($request->password);

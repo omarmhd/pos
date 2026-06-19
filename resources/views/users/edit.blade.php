@@ -87,8 +87,9 @@
 
                     <div class="mb-4">
                         <div class="form-check">
+                            <input type="hidden" name="is_active" value="0">
                             <input class="form-check-input" type="checkbox"
-                                   name="is_active" id="isActive"
+                                   name="is_active" id="isActive" value="1"
                                    {{ old('is_active', $user->is_active) ? 'checked' : '' }}>
                             <label class="form-check-label" for="isActive">الحساب نشط</label>
                         </div>
