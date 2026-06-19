@@ -212,6 +212,8 @@ class LedgerPostingService
         if ($balanceUsed > 0) {
             $lines[] = [
                 'account_id'       => $this->account($depositsCode)->id,
+                'party_type'       => $sale->customer_id ? \App\Models\Customer::class : null,
+                'party_id'         => $sale->customer_id,
                 'debit'            => $balanceUsed,
                 'credit'           => 0,
                 'line_description' => 'خصم رصيد إيداع – ' . ($sale->customer?->name ?? 'عميل'),
@@ -224,6 +226,8 @@ class LedgerPostingService
             if ($arPortion > 0) {
                 $lines[] = [
                     'account_id'       => $this->account($arCode)->id,
+                    'party_type'       => $sale->customer_id ? \App\Models\Customer::class : null,
+                    'party_id'         => $sale->customer_id,
                     'debit'            => $arPortion,
                     'credit'           => 0,
                     'line_description' => 'ذمم عميل – ' . ($sale->customer?->name ?? 'عميل'),
@@ -500,6 +504,8 @@ class LedgerPostingService
         if ($unpaid > 0) {
             $lines[] = [
                 'account_id'       => $this->account($apCode)->id,
+                'party_type'       => $purchase->supplier_id ? \App\Models\Supplier::class : null,
+                'party_id'         => $purchase->supplier_id,
                 'debit'            => 0,
                 'credit'           => $unpaid,
                 'line_description' => 'ذمة مورد – ' . $supplierName,
@@ -903,6 +909,8 @@ class LedgerPostingService
 
         $lines[] = [
             'account_id'       => $this->account($apCode)->id,
+            'party_type'       => $invoice->supplier_id ? \App\Models\Supplier::class : null,
+            'party_id'         => $invoice->supplier_id,
             'debit'            => 0,
             'credit'           => $amount,
             'line_description' => 'فاتورة مصروف مستلمة — ' . $vendorName
