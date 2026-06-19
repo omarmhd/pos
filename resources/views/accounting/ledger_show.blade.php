@@ -10,14 +10,19 @@
             <span class="badge bg-primary ms-2">{{ $branch->name }}</span>
         @endif
     </h4>
-    <a href="{{ route('accounting.ledger.index') . (isset($branchId) && $branchId ? '?branch_id='.$branchId : '') }}"
-       class="btn btn-outline-secondary btn-sm">
-        <i class="bi bi-arrow-right"></i> قائمة الحسابات
-    </a>
+    <div class="d-flex gap-2 no-print">
+        <button type="button" class="btn btn-outline-primary btn-sm" onclick="window.print()">
+            <i class="bi bi-printer"></i> طباعة كشف الحساب
+        </button>
+        <a href="{{ route('accounting.ledger.index') . (isset($branchId) && $branchId ? '?branch_id='.$branchId : '') }}"
+           class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-right"></i> قائمة الحسابات
+        </a>
+    </div>
 </div>
 
 {{-- Date Filter --}}
-<div class="card mb-3 border-0 shadow-sm">
+<div class="card mb-3 border-0 shadow-sm no-print">
     <div class="card-body py-2">
         <form method="GET" class="row g-2 align-items-end">
             <div class="col-auto">
