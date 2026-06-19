@@ -63,6 +63,8 @@ Route::middleware(['auth'])->group(function () {
 
     // ── Suppliers ─────────────────────────────────────────────────────────────
     Route::resource('suppliers', SupplierController::class);
+    Route::get('suppliers/{supplier}/summary',
+        [SupplierController::class, 'summary'])->name('suppliers.summary');
     Route::get('suppliers/{supplier}/payments/create',
         [SupplierPaymentController::class, 'create'])->name('supplier-payments.create');
     Route::post('suppliers/{supplier}/payments',
@@ -76,6 +78,8 @@ Route::middleware(['auth'])->group(function () {
     Route::post('products/import',
         [ProductController::class, 'import'])->name('products.import');
     Route::resource('products', ProductController::class);
+    Route::get('products/{product}/summary',
+        [ProductController::class, 'summary'])->name('products.summary');
     Route::get('products-low-stock',
         [ProductController::class, 'lowStock'])->name('products.low-stock');
     Route::get('products-expiring',
@@ -153,6 +157,8 @@ Route::middleware(['auth'])->group(function () {
 
     // ── Customers ─────────────────────────────────────────────────────────────
     Route::resource('customers', CustomerController::class);
+    Route::get('customers/{customer}/summary',
+        [CustomerController::class, 'summary'])->name('customers.summary');
     Route::get('customers/{customer}/payments/create',
         [CustomerPaymentController::class, 'create'])->name('customer-payments.create');
     Route::post('customers/{customer}/payments',

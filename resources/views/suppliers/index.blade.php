@@ -11,6 +11,7 @@
             </a>
         </div>
         <div class="card-body">
+            <div class="text-muted small mb-2"><i class="bi bi-lightbulb"></i> تلميح: انقر مزدوجًا على أي صف لفتح بطاقة المورّد وكل حركاته.</div>
             <div class="table-responsive">
                 <table class="table table-hover dt-table" style="width:100%">
                     <thead class="table-light">
@@ -25,7 +26,7 @@
                     </thead>
                     <tbody>
                     @foreach($suppliers as $supplier)
-                        <tr>
+                        <tr style="cursor:pointer" ondblclick="openSupplierSummary('{{ $supplier->id }}')">
                             <td><strong>{{ $supplier->name }}</strong></td>
                             <td>{{ $supplier->company ?? '-' }}</td>
                             <td>{{ $supplier->phone }}</td>
@@ -57,4 +58,39 @@
             </div>
         </div>
     </div>
+
+{{-- Supplier Summary Modal --}}
+<div class="modal fade" id="supplierSummaryModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-truck me-1"></i> ملخص المورّد</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="supplierSummaryBody"></div>
+            <div class="modal-footer">
+                <a href="#" id="supplierSummaryDetailsBtn" class="btn btn-primary">
+                    <i class="bi bi-arrow-left-circle me-1"></i> كل التفاصيل
+                </a>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button>
+            </div>
+        </div>
+    </div>
+</div>
+@endsection
+
+@section('scripts')
+<script>
+function openSupplierSummary(id) {
+    var base = '{{ url('suppliers') }}';
+    var body = document.getElementById('supplierSummaryBody');
+    body.innerHTML = '<div class="text-center py-4 text-muted"><span class="spinner-border spinner-border-sm"></span> جارٍ التحميل…</div>';
+    document.getElementById('supplierSummaryDetailsBtn').href = base + '/' + id;
+    new bootstrap.Modal(document.getElementById('supplierSummaryModal')).show();
+    fetch(base + '/' + id + '/summary', { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        .then(function (r) { return r.text(); })
+        .then(function (html) { body.innerHTML = html; })
+        .catch(function () { body.innerHTML = '<div class="text-danger text-center py-3">تعذّر تحميل الملخص</div>'; });
+}
+</script>
 @endsection

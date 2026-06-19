@@ -45,7 +45,7 @@
             <li class="nav-item"><a class="nav-link {{ $c==='items' ? 'active' : '' }}" href="{{ route('products.index', ['class'=>'items']) }}"><i class="bi bi-box"></i> الأصناف (بضاعة/مواد خام)</a></li>
             <li class="nav-item"><a class="nav-link {{ $c==='manufactured' ? 'active' : '' }}" href="{{ route('products.index', ['class'=>'manufactured']) }}"><i class="bi bi-diagram-3"></i> المنتجات المصنّعة</a></li>
         </ul>
-        <div class="text-muted small mb-2"><i class="bi bi-lightbulb"></i> تلميح: انقر مزدوجًا على أي صف لفتح بطاقة المنتج وكل حركاته وعلاقاته.</div>
+        <div class="text-muted small mb-2"><i class="bi bi-lightbulb"></i> تلميح: انقر مزدوجًا على أي صف لعرض ملخص سريع، ومنه زر «كل التفاصيل».</div>
         <div class="table-responsive">
             <table id="products-table" class="table table-hover align-middle w-100">
                 <thead class="table-light">
@@ -62,6 +62,25 @@
                     </tr>
                 </thead>
             </table>
+        </div>
+    </div>
+</div>
+
+{{-- Product Summary Modal --}}
+<div class="modal fade" id="productSummaryModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-box-seam me-1"></i> ملخص المنتج</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="productSummaryBody"></div>
+            <div class="modal-footer">
+                <a href="#" id="productSummaryDetailsBtn" class="btn btn-primary">
+                    <i class="bi bi-arrow-left-circle me-1"></i> كل التفاصيل
+                </a>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button>
+            </div>
         </div>
     </div>
 </div>
@@ -131,11 +150,19 @@ $(function () {
         ]
     }));
 
-    // نقر مزدوج على أي صف → فتح بطاقة المنتج (كل الحركات والعلاقات)
+    // نقر مزدوج على أي صف → فتح مودال ملخص سريع، ومنه زر «كل التفاصيل»
+    var pModal = new bootstrap.Modal(document.getElementById('productSummaryModal'));
     $('#products-table tbody').on('dblclick', 'tr', function () {
         var id = this.id;
-        // تجاهل النقر المزدوج فوق الأزرار/الروابط داخل عمود الإجراءات
-        if (id) window.location = base + '/' + id;
+        if (!id) return;
+        var body = document.getElementById('productSummaryBody');
+        body.innerHTML = '<div class="text-center py-4 text-muted"><span class="spinner-border spinner-border-sm"></span> جارٍ التحميل…</div>';
+        document.getElementById('productSummaryDetailsBtn').href = base + '/' + id;
+        pModal.show();
+        fetch(base + '/' + id + '/summary', { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(function (r) { return r.text(); })
+            .then(function (html) { body.innerHTML = html; })
+            .catch(function () { body.innerHTML = '<div class="text-danger text-center py-3">تعذّر تحميل الملخص</div>'; });
     });
 });
 </script>

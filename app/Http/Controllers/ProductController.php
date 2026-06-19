@@ -229,6 +229,22 @@ class ProductController extends Controller
         }
     }
 
+    /** ملخّص سريع للمنتج (يُعرض في مودال عند النقر المزدوج على الصف) */
+    public function summary(Product $product)
+    {
+        $currency = \App\Models\Setting::get('currency_symbol', 'ج.م');
+
+        $purch = \Illuminate\Support\Facades\DB::table('purchase_items')->where('product_id', $product->id)
+            ->selectRaw('COUNT(*) as c, COALESCE(SUM(quantity * unit_price), 0) as t')->first();
+        $sales = \Illuminate\Support\Facades\DB::table('sale_items')->where('product_id', $product->id)
+            ->selectRaw('COUNT(*) as c, COALESCE(SUM(quantity * unit_price), 0) as t')->first();
+        $lastMove = \App\Models\StockMovement::where('product_id', $product->id)->latest()->value('created_at');
+
+        $product->loadMissing('category');
+
+        return view('products._summary', compact('product', 'currency', 'purch', 'sales', 'lastMove'));
+    }
+
     public function show(Product $product)
     {
         $product->load('category', 'purchaseItems.purchase.supplier', 'saleItems.sale.customer',

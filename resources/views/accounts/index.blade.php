@@ -237,6 +237,10 @@ $typeColor= ['asset'=>'primary','liability'=>'warning','equity'=>'info','revenue
                     </table>
                 </div>
             </div>
+            <div class="modal-footer">
+                <a href="#" id="accountLedgerBtn" class="btn btn-primary"><i class="bi bi-journal-text me-1"></i> دفتر الأستاذ الكامل</a>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button>
+            </div>
         </div>
     </div>
 </div>
@@ -274,6 +278,9 @@ document.addEventListener('DOMContentLoaded', function() {
     function openAccountTransactions(accountId, accountName) {
         var modalLabel = document.getElementById('accountTransactionsModalLabel');
         if (modalLabel) modalLabel.textContent = 'حركات الحساب — ' + accountName;
+
+        var ledgerBtn = document.getElementById('accountLedgerBtn');
+        if (ledgerBtn) ledgerBtn.href = '{{ url('accounting/ledger') }}/' + accountId;
 
         // Initialize or reload DataTable
         if ($.fn.dataTable.isDataTable('#account-transactions-table')) {

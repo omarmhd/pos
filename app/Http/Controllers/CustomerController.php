@@ -48,6 +48,7 @@ class CustomerController extends Controller
                     : "<span class='badge bg-secondary'>موقوف</span>")
                 ->addColumn('action', fn($c) => $this->actionButtons($c))
                 ->rawColumns(['status_badge', 'action'])
+                ->setRowId('id') // يتيح النقر المزدوج على الصف لفتح بطاقة العميل
                 ->make(true);
         }
 
@@ -77,6 +78,24 @@ class CustomerController extends Controller
         Customer::create($data);
 
         return redirect()->route('customers.index')->with('success', 'تم إضافة العميل بنجاح');
+    }
+
+    /** ملخّص سريع للعميل (مودال عند النقر المزدوج) */
+    public function summary(Customer $customer)
+    {
+        $currency        = \App\Models\Setting::get('currency_symbol', 'ج.م');
+        $totalBilled     = $customer->totalCreditBilled();
+        $totalPaid       = $customer->totalPaid();
+        $outstanding     = max(0, $totalBilled - $totalPaid);
+        $availableCredit = max(0, (float) $customer->credit_limit - $outstanding);
+        $depositBalance  = $customer->depositBalance();
+        $salesAgg        = \Illuminate\Support\Facades\DB::table('sales')->where('customer_id', $customer->id)
+            ->selectRaw('COUNT(*) as c, COALESCE(SUM(total_amount),0) as t')->first();
+
+        return view('customers._summary', compact(
+            'customer', 'currency', 'totalBilled', 'totalPaid',
+            'outstanding', 'availableCredit', 'depositBalance', 'salesAgg'
+        ));
     }
 
     public function show(Customer $customer)

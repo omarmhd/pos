@@ -45,6 +45,18 @@ class SupplierController extends Controller
             ->with('success', 'تم إضافة المورد بنجاح');
     }
 
+    /** ملخّص سريع للمورّد (مودال عند النقر المزدوج) */
+    public function summary(Supplier $supplier)
+    {
+        $currency = \App\Models\Setting::get('currency_symbol', 'ج.م');
+        $agg = \Illuminate\Support\Facades\DB::table('purchases')->where('supplier_id', $supplier->id)
+            ->selectRaw('COUNT(*) as c, COALESCE(SUM(total_amount),0) as t, COALESCE(SUM(paid_amount),0) as p')
+            ->first();
+        $outstanding = max(0, (float) $agg->t - (float) $agg->p);
+
+        return view('suppliers._summary', compact('supplier', 'currency', 'agg', 'outstanding'));
+    }
+
     public function show(Supplier $supplier)
     {
         $supplier->load(['purchases' => function($query) {
