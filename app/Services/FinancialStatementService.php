@@ -141,6 +141,34 @@ class FinancialStatementService
     }
 
     /**
+     * صافي الدخل غير المُقفَل حتى تاريخ معيّن (Unclosed retained net income).
+     *
+     * = مجموع (دائن − مدين) لكل حسابات الإيراد والمصروف حتى التاريخ.
+     * بعد قيد الإقفال السنوي تُصفَّر هذه الحسابات (يُرحَّل الصافي للأرباح المحتجزة)،
+     * فيعكس هذا الرقم فقط الأرباح/الخسائر غير المُقفَلة — وهو ما يجب إضافته لحقوق
+     * الملكية لتتوازن الميزانية بصرف النظر عن السنة المالية أو حالة الإقفال.
+     *
+     * البرهان (القيد المزدوج): الأصول = الخصوم + حقوق الملكية + هذا الرقم.
+     */
+    public function getUnclosedNetIncome(Carbon $asOf, ?int $branchId = null): float
+    {
+        $plAccountIds = Account::whereIn('type', ['revenue', 'expense'])->pluck('id');
+        if ($plAccountIds->isEmpty()) {
+            return 0.0;
+        }
+
+        $row = DB::table('journal_entry_lines as jel')
+            ->join('journal_entries as je', 'jel.journal_entry_id', '=', 'je.id')
+            ->whereDate('je.entry_date', '<=', $asOf->toDateString())
+            ->when($branchId, fn($q) => $q->where('je.branch_id', $branchId))
+            ->whereIn('jel.account_id', $plAccountIds)
+            ->selectRaw('SUM(jel.credit) as c, SUM(jel.debit) as d')
+            ->first();
+
+        return round((float) ($row->c ?? 0) - (float) ($row->d ?? 0), 2);
+    }
+
+    /**
      * Balance Sheet as of $asOf.
      *
      * Note: The Balance Sheet is typically consolidated (company-wide).

@@ -37,6 +37,23 @@ class SettingController extends Controller
             'account_tax_payable_code'       => 'nullable|string',
             'account_retained_earnings_code' => 'nullable|string',
             'account_input_vat_code'         => 'nullable|string',
+            // ── حسابات كانت تظهر في الصفحة دون أن تُحفظ (إصلاح فقدان صامت) ──
+            'account_checks_receivable_code' => 'nullable|string',
+            'account_checks_payable_code'    => 'nullable|string',
+            // ── حسابات يستخدمها النظام في الترحيل ولم تكن قابلة للاختيار ──
+            'account_customer_deposits_code' => 'nullable|string',
+            'account_sales_returns_code'     => 'nullable|string',
+            'account_service_revenue_code'   => 'nullable|string',
+            'account_source_discount_code'   => 'nullable|string',
+            'account_asset_gain_code'        => 'nullable|string',
+            'account_asset_loss_code'        => 'nullable|string',
+            'account_pos_cash_shortage_code' => 'nullable|string',
+            'account_pos_cash_overage_code'  => 'nullable|string',
+            'account_eosb_expense_code'      => 'nullable|string',
+            'account_eosb_provision_code'    => 'nullable|string',
+            'account_employee_loans_code'    => 'nullable|string',
+            'account_inventory_shortage_code'=> 'nullable|string',
+            'account_inventory_surplus_code' => 'nullable|string',
             // ── Store Identity ──────────────────────────────────────────────
             'store_name'                     => 'nullable|string|max:100',
             'store_address'                  => 'nullable|string|max:255',

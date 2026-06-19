@@ -21,10 +21,10 @@ class OpeningBalanceController extends Controller
     public function index()
     {
         // Diagnose current balance sheet state
+        // نستخدم صافي الدخل غير المُقفَل (المتّسق مع منطق الميزانية الصحيح)
         $fs       = new \App\Services\FinancialStatementService();
         $asOf     = now();
-        $ytdFrom  = $asOf->copy()->startOfYear();
-        $ni       = $fs->getIncomeStatement($ytdFrom, $asOf)['netIncome'];
+        $ni       = $fs->getUnclosedNetIncome($asOf);
         $bs       = $fs->getBalanceSheet($asOf, $ni);
 
         $currency = Setting::get('currency_symbol', 'ج.م');

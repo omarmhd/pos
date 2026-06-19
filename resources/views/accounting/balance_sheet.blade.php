@@ -44,7 +44,8 @@
                 <div class="col-12">
                     <small class="text-muted">
                         <i class="bi bi-info-circle"></i>
-                        صافي الربح محتسب من {{ $ytdFrom->format('Y/m/d') }} حتى {{ $asOf->format('Y/m/d') }}
+                        صافي الربح المُضاف لحقوق الملكية = الأرباح غير المُقفَلة حتى {{ $asOf->format('Y/m/d') }}
+                        (تُستبعد تلقائيًا أرباح السنوات المُقفَلة لأنها رُحِّلت للأرباح المحتجزة)
                     </small>
                 </div>
             </form>
@@ -284,9 +285,9 @@
                     <tr class="bs-row {{ $netIncome >= 0 ? 'text-success' : 'text-danger' }}">
                         <td class="ps-4">
                             <i class="bi bi-arrow-return-left me-1 opacity-50"></i>
-                            {{ $netIncome >= 0 ? 'صافي ربح الفترة' : 'صافي خسارة الفترة' }}
+                            {{ $netIncome >= 0 ? 'صافي ربح غير مُقفَل' : 'صافي خسارة غير مُقفَلة' }}
                             <small class="text-muted opacity-75">
-                                {{ $ytdFrom->format('Y/m/d') }}–{{ $asOf->format('Y/m/d') }}
+                                حتى {{ $asOf->format('Y/m/d') }}
                             </small>
                         </td>
                         <td class="text-end pe-3 fw-semibold {{ $netIncome >= 0 ? 'text-success' : 'text-danger' }}">

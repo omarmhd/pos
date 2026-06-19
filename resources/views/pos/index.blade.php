@@ -1350,6 +1350,21 @@ async function completeSale() {
     btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>جارٍ الحفظ…';
 
     try {
+        // جلب رمز CSRF طازج من الخادم قبل الإرسال — يمنع خطأ 419 (Page Expired)
+        // حتى لو كانت الصفحة محمّلة من كاش قديم برمز منتهٍ.
+        let csrfToken = document.querySelector('meta[name=csrf-token]')?.content || '';
+        try {
+            const tk = await fetch('{{ route("csrf.token") }}', {
+                headers: { 'Accept': 'application/json' },
+                cache: 'no-store',
+            }).then(r => r.ok ? r.json() : null);
+            if (tk && tk.token) {
+                csrfToken = tk.token;
+                const meta = document.querySelector('meta[name=csrf-token]');
+                if (meta) meta.content = tk.token;
+            }
+        } catch (e) { /* تجاهل — نستخدم الرمز الحالي (قد نكون دون اتصال) */ }
+
         const res = await fetch('{{ route("pos.store") }}', {
             method: 'POST',
             headers: {
@@ -1358,7 +1373,7 @@ async function completeSale() {
                 // بدل صفحة HTML/إعادة توجيه تظهر كـ"خطأ في الاتصال بالخادم"
                 'Accept': 'application/json',
                 'X-Requested-With': 'XMLHttpRequest',
-                'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
+                'X-CSRF-TOKEN': csrfToken,
             },
             body: JSON.stringify({
                 items:          cart.map(i => ({ product_id: i.id, quantity: i.qty, unit_price: i.price,

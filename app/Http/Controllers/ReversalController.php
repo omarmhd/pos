@@ -113,6 +113,13 @@ class ReversalController extends Controller
             return back()->withErrors(['original_id' => 'يوجد قيد عكسي لهذا السجل مسبقاً']);
         }
 
+        // فحص قفل الفترة برسالة ودودة قبل المعاملة (بدل خطأ 500 داخلها)
+        try {
+            \App\Services\PeriodLockService::assertOpen(now()->toDateString());
+        } catch (\RuntimeException $e) {
+            return back()->withErrors(['original_id' => $e->getMessage()]);
+        }
+
         DB::transaction(function () use ($original, $originalType, $originalId, $data) {
             \App\Services\PeriodLockService::assertOpen(now()->toDateString());
 

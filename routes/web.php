@@ -426,6 +426,10 @@ Route::middleware(['auth'])->group(function () {
     Route::post('session/ping', fn() => response()->json(['ok' => true]))->name('session.ping')
          ->middleware('throttle:session-ping');
 
+    // ── رمز CSRF طازج (تستخدمه نقطة البيع قبل الإرسال لتفادي خطأ 419) ──────────
+    Route::get('csrf-token', fn() => response()->json(['token' => csrf_token()]))
+         ->name('csrf.token');
+
     // ── Opening Balance Wizard ────────────────────────────────────────────────
     Route::get('accounting/opening-balance',       [\App\Http\Controllers\OpeningBalanceController::class, 'index']) ->name('accounting.opening-balance');
     Route::post('accounting/opening-balance',      [\App\Http\Controllers\OpeningBalanceController::class, 'store']) ->name('accounting.opening-balance.store');

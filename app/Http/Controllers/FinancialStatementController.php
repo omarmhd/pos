@@ -42,8 +42,10 @@ class FinancialStatementController extends Controller
         $branches     = Branch::where('is_active', true)->orderBy('name')->get(['id', 'name', 'code']);
         $branch       = $branchId ? Branch::find($branchId) : null;
 
-        $incomeData = $this->service->getIncomeStatement($ytdFrom, $asOf, $branchId);
-        $netIncome  = $incomeData['netIncome'];
+        // صافي الدخل المُضاف لحقوق الملكية = الأرباح غير المُقفَلة حتى التاريخ —
+        // مستقل عن شهر بداية السنة المالية، ويستبعد ما رُحِّل للأرباح المحتجزة عبر الإقفال.
+        // بالمعادلة المزدوجة: الأصول = الخصوم + حقوق الملكية + هذا الرقم (توازن مضمون).
+        $netIncome = $this->service->getUnclosedNetIncome($asOf, $branchId);
 
         $data = $this->service->getBalanceSheet($asOf, $netIncome, $branchId);
 

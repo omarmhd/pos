@@ -2783,9 +2783,11 @@
     }
 
     function ping() {
+        // استخدام الرمز الحيّ من الوسم (يُحدَّث بعد كل عملية) بدل الرمز المضمَّن وقت تحميل الصفحة
+        var liveToken = (document.querySelector('meta[name=csrf-token]') || {}).content || CSRF;
         fetch(PING_URL, {
             method: 'POST',
-            headers: { 'X-CSRF-TOKEN': CSRF, 'Content-Type': 'application/json' }
+            headers: { 'X-CSRF-TOKEN': liveToken, 'Content-Type': 'application/json' }
         }).catch(function() {});
         remaining = LIFETIME;
         hideWarning();

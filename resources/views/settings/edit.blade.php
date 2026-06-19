@@ -134,6 +134,27 @@ $sections = [
             ['key' => 'account_retained_earnings_code', 'label' => 'حساب الأرباح المحتجزة'],
         ],
     ],
+    // ── حسابات يستخدمها النظام تلقائيًا في الترحيل (تُضبط هنا بدل القيم الافتراضية) ──
+    'accounting_auto' => [
+        'title' => 'حسابات تلقائية إضافية (جرد، شيكات، أصول، نهاية خدمة، عملاء)',
+        'icon'  => 'bi-diagram-3',
+        'type'  => 'accounts',
+        'items' => [
+            ['key' => 'account_customer_deposits_code', 'label' => 'حساب إيداعات/سُلَف العملاء — التزام (افتراضي: 2050)'],
+            ['key' => 'account_sales_returns_code',     'label' => 'حساب مردودات المبيعات (افتراضي: 4200)'],
+            ['key' => 'account_service_revenue_code',   'label' => 'حساب إيراد الخدمات (افتراضي: 4400)'],
+            ['key' => 'account_source_discount_code',   'label' => 'حساب الخصم المكتسب من المورّد (افتراضي: 1250)'],
+            ['key' => 'account_employee_loans_code',    'label' => 'حساب سُلَف الموظفين — أصل (افتراضي: 1250)'],
+            ['key' => 'account_inventory_shortage_code','label' => 'حساب عجز الجرد — مصروف (افتراضي: 6510)'],
+            ['key' => 'account_inventory_surplus_code', 'label' => 'حساب فائض الجرد — إيراد (افتراضي: 4100)'],
+            ['key' => 'account_pos_cash_shortage_code', 'label' => 'حساب عجز نقدية الكاشير — مصروف (افتراضي: 6530)'],
+            ['key' => 'account_pos_cash_overage_code',  'label' => 'حساب زيادة نقدية الكاشير — إيراد (افتراضي: 4160)'],
+            ['key' => 'account_asset_gain_code',        'label' => 'حساب أرباح بيع الأصول الثابتة (افتراضي: 4150)'],
+            ['key' => 'account_asset_loss_code',        'label' => 'حساب خسائر بيع الأصول الثابتة (افتراضي: 6520)'],
+            ['key' => 'account_eosb_expense_code',      'label' => 'حساب مصروف مكافأة نهاية الخدمة (افتراضي: 6300)'],
+            ['key' => 'account_eosb_provision_code',    'label' => 'حساب مخصص مكافأة نهاية الخدمة — التزام (افتراضي: 2200)'],
+        ],
+    ],
 ];
 @endphp
 

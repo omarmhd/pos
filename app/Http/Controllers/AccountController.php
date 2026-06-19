@@ -76,7 +76,7 @@ class AccountController extends Controller
             }
             fclose($handle);
         }
-        return redirect()->route('accounts.index')->with('success', 'Imported accounts');
+        return redirect()->route('accounts.index')->with('success', 'تم استيراد الحسابات بنجاح');
     }
 
     public function create()
@@ -110,7 +110,7 @@ class AccountController extends Controller
             'new_values' => $data,
             'ip_address' => request()->ip() ?? null,
         ]);
-        return redirect()->route('accounts.index')->with('success', 'Account created');
+        return redirect()->route('accounts.index')->with('success', 'تم إنشاء الحساب بنجاح');
     }
 
     public function edit(Account $account)
@@ -147,11 +147,21 @@ class AccountController extends Controller
             'new_values' => $data,
             'ip_address' => request()->ip() ?? null,
         ]);
-        return redirect()->route('accounts.index')->with('success', 'Account updated');
+        return redirect()->route('accounts.index')->with('success', 'تم تحديث الحساب بنجاح');
     }
 
     public function destroy(Account $account)
     {
+        // سلامة محاسبية: منع حذف حساب له حركة في دفتر الأستاذ
+        $hasLines = DB::table('journal_entry_lines')->where('account_id', $account->id)->exists();
+        if ($hasLines) {
+            return back()->with('error', 'لا يمكن حذف حساب له قيود محاسبية مرحّلة. يمكنك تعطيله بدلاً من حذفه.');
+        }
+        // منع حذف حساب رئيسي له حسابات فرعية (تفادي يُتم الفروع)
+        if ($account->children()->exists()) {
+            return back()->with('error', 'لا يمكن حذف حساب رئيسي له حسابات فرعية. احذف الفروع أو انقلها أولاً.');
+        }
+
         $old = $account->toArray();
         $account->delete();
         \App\Models\AuditLog::create([
@@ -163,7 +173,7 @@ class AccountController extends Controller
             'new_values' => null,
             'ip_address' => request()->ip() ?? null,
         ]);
-        return redirect()->route('accounts.index')->with('success', 'Account deleted');
+        return redirect()->route('accounts.index')->with('success', 'تم حذف الحساب بنجاح');
     }
 
     /**
