@@ -1372,6 +1372,13 @@ async function completeSale() {
             }),
         });
 
+        // 419 = انتهت صلاحية الجلسة/رمز CSRF (Page Expired) — رسالة واضحة وإعادة تحميل لتجديد الرمز
+        if (res.status === 419) {
+            showToast('انتهت صلاحية الجلسة — يتم تحديث الصفحة، أعد المحاولة بعد ثوانٍ', 'warning', 6000);
+            setTimeout(() => location.reload(), 1500);
+            return;
+        }
+
         const data = await res.json();
 
         // Offline queued (202 from Service Worker)

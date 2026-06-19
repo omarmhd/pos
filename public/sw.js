@@ -8,7 +8,7 @@
  *   - All other requests: Network-First
  */
 
-const CACHE_NAME    = 'mizaan-pos-v1';
+const CACHE_NAME    = 'mizaan-pos-v2';
 const SYNC_TAG      = 'mizaan-pos-sync';
 const OFFLINE_QUEUE = 'offline-sales-queue';
 
@@ -52,18 +52,19 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // GET /pos → Cache-First (serve POS page offline)
+    // GET /pos → Network-First (تحميل أحدث صفحة برمز CSRF طازج؛ الكاش للطوارئ فقط)
+    // ملاحظة: الكاش-أولًا كان يقدّم صفحة قديمة برمز CSRF منتهٍ → خطأ 419 "Page Expired"
+    // عند حفظ البيع. الشبكة-أولًا تضمن رمزًا صالحًا دائمًا عند توفّر الاتصال.
     if (event.request.method === 'GET' && url.pathname === '/pos') {
         event.respondWith(
-            caches.match(event.request)
-                .then(cached => cached || fetch(event.request)
-                    .then(resp => {
-                        const clone = resp.clone();
-                        caches.open(CACHE_NAME).then(c => c.put(event.request, clone));
-                        return resp;
-                    })
-                    .catch(() => caches.match('/offline'))
-                )
+            fetch(event.request)
+                .then(resp => {
+                    const clone = resp.clone();
+                    caches.open(CACHE_NAME).then(c => c.put(event.request, clone));
+                    return resp;
+                })
+                .catch(() => caches.match(event.request)
+                    .then(cached => cached || caches.match('/offline')))
         );
         return;
     }
