@@ -50,6 +50,7 @@ class ProductController extends Controller
                 ->filterColumn('category_name', fn($q, $k) =>
                     $q->whereHas('category', fn($c) => $c->where('name', 'like', "%$k%")))
                 ->rawColumns(['image_html', 'stock_badge', 'expiry_badge', 'action'])
+                ->setRowId('id') // يتيح النقر المزدوج على الصف لفتح بطاقة المنتج
                 ->make(true);
         }
 
@@ -230,7 +231,7 @@ class ProductController extends Controller
 
     public function show(Product $product)
     {
-        $product->load('category', 'purchaseItems.purchase', 'saleItems.sale',
+        $product->load('category', 'purchaseItems.purchase.supplier', 'saleItems.sale.customer',
                        'units', 'components.component', 'currency');
         $costHistory = $product->costHistory()->with('changedBy:id,name')->limit(30)->get();
         $currency    = \App\Models\Setting::get('currency_symbol', 'ج.م');
@@ -261,10 +262,24 @@ class ProductController extends Controller
         $movementsCount   = \App\Models\StockMovement::where('product_id', $product->id)->count();
         $lastMovementDate = \App\Models\StockMovement::where('product_id', $product->id)->latest()->value('created_at');
 
+        // ── العلاقات المنظّمة (عرض 360°) ──────────────────────────────────────
+        // الرصيد لكل مستودع
+        $stockByWarehouse = \Illuminate\Support\Facades\DB::table('stock_levels as sl')
+            ->join('warehouses as w', 'w.id', '=', 'sl.warehouse_id')
+            ->where('sl.product_id', $product->id)
+            ->where('sl.quantity', '<>', 0)
+            ->select('w.name as warehouse', 'sl.quantity')
+            ->orderBy('w.name')->get();
+
+        // أحدث 100 حركة مخزون (وارد/صادر) مع المرجع
+        $recentMovements = \App\Models\StockMovement::where('product_id', $product->id)
+            ->latest()->limit(100)->get();
+
         return view('products.show', compact(
             'product', 'costHistory', 'currency',
             'chartLabels', 'chartIn', 'chartOut',
-            'movementsCount', 'lastMovementDate'
+            'movementsCount', 'lastMovementDate',
+            'stockByWarehouse', 'recentMovements'
         ));
     }
 

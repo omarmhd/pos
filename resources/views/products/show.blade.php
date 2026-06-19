@@ -221,6 +221,128 @@
     </div>
 </div>
 
+{{-- ── الحركات والعلاقات (عرض 360°) ── --}}
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-white">
+                <strong><i class="bi bi-diagram-3 text-primary me-1"></i> الحركات والعلاقات المرتبطة بالصنف</strong>
+            </div>
+            <div class="card-body">
+                <ul class="nav nav-tabs mb-3" role="tablist">
+                    <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tabStock" type="button">أرصدة المستودعات</button></li>
+                    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabPurch" type="button">المشتريات <span class="badge bg-secondary">{{ $product->purchaseItems->count() }}</span></button></li>
+                    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabSales" type="button">المبيعات <span class="badge bg-secondary">{{ $product->saleItems->count() }}</span></button></li>
+                    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabMoves" type="button">حركات المخزون</button></li>
+                </ul>
+                <div class="tab-content">
+
+                    {{-- أرصدة المستودعات --}}
+                    <div class="tab-pane fade show active" id="tabStock">
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover align-middle mb-0">
+                                <thead class="table-light"><tr><th>المستودع</th><th class="text-end">الرصيد</th><th class="text-end">القيمة بالتكلفة</th></tr></thead>
+                                <tbody>
+                                @forelse($stockByWarehouse as $sw)
+                                    <tr>
+                                        <td>{{ $sw->warehouse }}</td>
+                                        <td class="text-end font-monospace">{{ number_format($sw->quantity, 2) }}</td>
+                                        <td class="text-end font-monospace">{{ number_format($sw->quantity * $product->cost_price, 2) }} {{ $currency }}</td>
+                                    </tr>
+                                @empty
+                                    <tr><td colspan="3" class="text-center text-muted py-3">لا يوجد رصيد موزّع على المستودعات</td></tr>
+                                @endforelse
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    {{-- المشتريات --}}
+                    <div class="tab-pane fade" id="tabPurch">
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover align-middle mb-0">
+                                <thead class="table-light"><tr><th>التاريخ</th><th>الفاتورة</th><th>المورّد</th><th class="text-end">الكمية</th><th class="text-end">السعر</th><th class="text-end">الإجمالي</th></tr></thead>
+                                <tbody>
+                                @forelse($product->purchaseItems->sortByDesc('created_at')->take(100) as $pi)
+                                    <tr>
+                                        <td class="text-muted small">{{ optional($pi->purchase?->created_at)->format('Y-m-d') ?? '—' }}</td>
+                                        <td>
+                                            @if($pi->purchase)
+                                            <a href="{{ route('purchases.show', $pi->purchase_id) }}">{{ $pi->purchase->invoice_number }}</a>
+                                            @else — @endif
+                                        </td>
+                                        <td>{{ $pi->purchase?->supplier?->name ?? '—' }}</td>
+                                        <td class="text-end font-monospace">{{ number_format($pi->quantity, 2) }}</td>
+                                        <td class="text-end font-monospace">{{ number_format($pi->unit_price, 2) }}</td>
+                                        <td class="text-end font-monospace">{{ number_format($pi->quantity * $pi->unit_price, 2) }} {{ $currency }}</td>
+                                    </tr>
+                                @empty
+                                    <tr><td colspan="6" class="text-center text-muted py-3">لا توجد مشتريات لهذا الصنف</td></tr>
+                                @endforelse
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    {{-- المبيعات --}}
+                    <div class="tab-pane fade" id="tabSales">
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover align-middle mb-0">
+                                <thead class="table-light"><tr><th>التاريخ</th><th>الفاتورة</th><th>العميل</th><th class="text-end">الكمية</th><th class="text-end">السعر</th><th class="text-end">الإجمالي</th></tr></thead>
+                                <tbody>
+                                @forelse($product->saleItems->sortByDesc('created_at')->take(100) as $si)
+                                    <tr>
+                                        <td class="text-muted small">{{ optional($si->sale?->created_at)->format('Y-m-d') ?? '—' }}</td>
+                                        <td>
+                                            @if($si->sale)
+                                            <a href="{{ route('sales.show', $si->sale_id) }}">{{ $si->sale->invoice_number }}</a>
+                                            @else — @endif
+                                        </td>
+                                        <td>{{ $si->sale?->customer?->name ?? 'نقدي' }}</td>
+                                        <td class="text-end font-monospace">{{ number_format($si->quantity, 2) }}</td>
+                                        <td class="text-end font-monospace">{{ number_format($si->unit_price, 2) }}</td>
+                                        <td class="text-end font-monospace">{{ number_format($si->quantity * $si->unit_price, 2) }} {{ $currency }}</td>
+                                    </tr>
+                                @empty
+                                    <tr><td colspan="6" class="text-center text-muted py-3">لا توجد مبيعات لهذا الصنف</td></tr>
+                                @endforelse
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    {{-- حركات المخزون --}}
+                    <div class="tab-pane fade" id="tabMoves">
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover align-middle mb-0">
+                                <thead class="table-light"><tr><th>التاريخ</th><th>النوع</th><th class="text-end">الكمية</th><th>المرجع</th><th>ملاحظات</th></tr></thead>
+                                <tbody>
+                                @forelse($recentMovements as $m)
+                                    @php $in = $m->movement_type === 'in'; @endphp
+                                    <tr>
+                                        <td class="text-muted small">{{ $m->created_at->format('Y-m-d H:i') }}</td>
+                                        <td><span class="badge bg-{{ $in ? 'success' : 'danger' }}">{{ $in ? 'وارد' : 'صادر' }}</span></td>
+                                        <td class="text-end font-monospace {{ $in ? 'text-success' : 'text-danger' }}">{{ $in ? '+' : '−' }}{{ number_format($m->quantity, 2) }}</td>
+                                        <td class="small text-muted">{{ $m->reference_type ? class_basename($m->reference_type) . ' #' . $m->reference_id : '—' }}</td>
+                                        <td class="small text-muted">{{ \Illuminate\Support\Str::limit($m->notes, 60) ?: '—' }}</td>
+                                    </tr>
+                                @empty
+                                    <tr><td colspan="5" class="text-center text-muted py-3">لا توجد حركات</td></tr>
+                                @endforelse
+                                </tbody>
+                            </table>
+                        </div>
+                        @if($movementsCount > 100)
+                        <div class="text-muted small mt-2">يُعرض أحدث 100 حركة من إجمالي {{ number_format($movementsCount) }}.</div>
+                        @endif
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 {{-- Cost Price History --}}
 @if(isset($costHistory) && $costHistory->count())
 <div class="row mt-4">

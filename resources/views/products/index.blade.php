@@ -45,6 +45,7 @@
             <li class="nav-item"><a class="nav-link {{ $c==='items' ? 'active' : '' }}" href="{{ route('products.index', ['class'=>'items']) }}"><i class="bi bi-box"></i> الأصناف (بضاعة/مواد خام)</a></li>
             <li class="nav-item"><a class="nav-link {{ $c==='manufactured' ? 'active' : '' }}" href="{{ route('products.index', ['class'=>'manufactured']) }}"><i class="bi bi-diagram-3"></i> المنتجات المصنّعة</a></li>
         </ul>
+        <div class="text-muted small mb-2"><i class="bi bi-lightbulb"></i> تلميح: انقر مزدوجًا على أي صف لفتح بطاقة المنتج وكل حركاته وعلاقاته.</div>
         <div class="table-responsive">
             <table id="products-table" class="table table-hover align-middle w-100">
                 <thead class="table-light">
@@ -107,6 +108,7 @@
 @section('scripts')
 <script>
 $(function () {
+    var base = '{{ url('products') }}';
     $('#products-table').DataTable($.extend(true, {}, window.dtDefaults, {
         processing: true,
         serverSide: true,
@@ -115,6 +117,7 @@ $(function () {
             data: function (d) { d.class = '{{ $class ?? '' }}'; }
         },
         order: [[0, 'asc']],
+        createdRow: function (row) { row.style.cursor = 'pointer'; },
         columns: [
             { data: 'image_html',    name: 'image',         orderable: false, searchable: false },
             { data: 'name',          name: 'name' },
@@ -127,6 +130,13 @@ $(function () {
             { data: 'action',        name: 'action',        orderable: false, searchable: false },
         ]
     }));
+
+    // نقر مزدوج على أي صف → فتح بطاقة المنتج (كل الحركات والعلاقات)
+    $('#products-table tbody').on('dblclick', 'tr', function () {
+        var id = this.id;
+        // تجاهل النقر المزدوج فوق الأزرار/الروابط داخل عمود الإجراءات
+        if (id) window.location = base + '/' + id;
+    });
 });
 </script>
 @endsection
