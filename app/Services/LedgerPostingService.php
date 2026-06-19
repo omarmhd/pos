@@ -1053,7 +1053,14 @@ class LedgerPostingService
         $assetAccountId  = $asset->category->asset_account_id;
         $amount          = round((float) $asset->purchase_cost, 2);
         $assetBranchId   = $asset->branch_id ?? $this->resolveBranchId();
-        $crAccountId     = $this->cashOrBankId($paymentMethod, $assetBranchId);
+        // الطرف الدائن: نقد/بنك عند الدفع الفوري، أو ذمم دائنة (مورّد) عند الشراء بالآجل
+        if ($paymentMethod === 'credit') {
+            $crAccountId = $this->account(Setting::get('account_ap_code', '2000'))->id;
+            $crLabel     = 'شراء بالآجل (ذمم دائنة)';
+        } else {
+            $crAccountId = $this->cashOrBankId($paymentMethod, $assetBranchId);
+            $crLabel     = $paymentMethod === 'bank' ? 'دفع بنكي' : 'دفع نقدي';
+        }
 
         $lines = [
             [
@@ -1066,8 +1073,7 @@ class LedgerPostingService
                 'account_id'       => $crAccountId,
                 'debit'            => 0,
                 'credit'           => $amount,
-                'line_description' => ($paymentMethod === 'bank' ? 'دفع بنكي' : 'دفع نقدي')
-                                      . ' — ' . $asset->asset_code,
+                'line_description' => $crLabel . ' — ' . $asset->asset_code,
             ],
         ];
 
@@ -1282,6 +1288,65 @@ class LedgerPostingService
             'description' => 'إقفال وردية نقدية #' . $shift->id
                              . ' — ' . ($shift->user?->name ?? '')
                              . ' / ' . $this->varianceDirection($variance),
+        ], $lines);
+    }
+
+    /**
+     * تسوية فرق الوردية — إعادة تصنيف الفرق دون المساس بالصندوق.
+     * (الصندوق سُوِّي للمبلغ الفعلي عند الإقفال؛ هنا نُعيد تصنيف من يتحمّل الفرق فقط)
+     *
+     *   عجز  / charge_cashier      : مدين سلف/ذمم الموظف (1250) / دائن عجز نقدي (6530)
+     *   فائض / customer_liability  : مدين فائض نقدي (4160)       / دائن أمانات عملاء (2050)
+     *   accept_expense / accept_income : لا قيد (قبول الرصيد القائم)
+     */
+    public function postShiftVarianceSettlement(\App\Models\CashShift $shift, string $treatment): ?JournalEntry
+    {
+        $variance = round((float) $shift->variance_amount, 2);
+        if (abs($variance) < 0.01) {
+            return null;
+        }
+
+        $shift->loadMissing('user');
+        $branchId = $shift->branch_id ?? $this->resolveBranchId();
+        $cashier  = $shift->user?->name ?? ('#' . $shift->user_id);
+        $amount   = abs($variance);
+
+        $shortageCode = Setting::get('account_pos_cash_shortage_code', '6530');
+        $overageCode  = Setting::get('account_pos_cash_overage_code',  '4160');
+        $loanCode     = Setting::get('account_employee_loans_code',    '1250');
+        $custLiabCode = Setting::get('account_customer_deposits_code', '2050');
+
+        if ($variance < 0) {
+            // عجز
+            if ($treatment !== 'charge_cashier') {
+                return null; // accept_expense → يبقى مصروفًا، لا قيد
+            }
+            $lines = [
+                ['account_id' => $this->account($loanCode)->id,     'debit' => $amount, 'credit' => 0,
+                 'line_description' => 'تحميل عجز وردية #' . $shift->id . ' على الكاشير ' . $cashier],
+                ['account_id' => $this->account($shortageCode)->id, 'debit' => 0, 'credit' => $amount,
+                 'line_description' => 'إلغاء مصروف العجز — وردية #' . $shift->id],
+            ];
+        } else {
+            // فائض
+            if ($treatment !== 'customer_liability') {
+                return null; // accept_income → يبقى إيرادًا، لا قيد
+            }
+            $lines = [
+                ['account_id' => $this->account($overageCode)->id,  'debit' => $amount, 'credit' => 0,
+                 'line_description' => 'إلغاء إيراد الفائض — وردية #' . $shift->id],
+                ['account_id' => $this->account($custLiabCode)->id, 'debit' => 0, 'credit' => $amount,
+                 'line_description' => 'إثبات فائض وردية #' . $shift->id . ' كأمانة عميل'],
+            ];
+        }
+
+        return $this->buildEntry([
+            'entry_date'  => now()->toDateString(),
+            'reference'   => 'SHIFT-SETTLE-' . $shift->id,
+            'source_type' => \App\Models\CashShift::class,
+            'source_id'   => $shift->id,
+            'branch_id'   => $branchId,
+            'description' => 'تسوية فرق وردية #' . $shift->id . ' — ' . ($variance < 0 ? 'عجز (تحميل على الكاشير)' : 'فائض (أمانة عميل)'),
         ], $lines);
     }
 

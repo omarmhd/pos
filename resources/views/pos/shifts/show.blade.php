@@ -142,6 +142,70 @@
         </div>
     </div>
 
+    {{-- تسوية فرق الوردية --}}
+    @if($shift->status === 'closed' && $shift->variance_amount !== null && abs($shift->variance_amount) > 0.005)
+    @php $isShort = $shift->variance_amount < 0; @endphp
+    <div class="col-12">
+        <div class="card border-{{ $isShort ? 'danger' : 'info' }}">
+            <div class="card-header bg-{{ $isShort ? 'danger' : 'info' }} bg-opacity-10">
+                <strong><i class="bi bi-sliders me-1"></i> تسوية الفرق ({{ $isShort ? 'عجز' : 'فائض' }})</strong>
+            </div>
+            <div class="card-body">
+                @if($shift->variance_settled)
+                    <div class="alert alert-success mb-0">
+                        <i class="bi bi-check-circle me-1"></i> تمت التسوية:
+                        <strong>{{ [
+                            'charge_cashier'     => 'تحميل العجز على الكاشير (ذمة موظف)',
+                            'accept_expense'     => 'اعتماد العجز كمصروف على المحل',
+                            'customer_liability' => 'إثبات الفائض كأمانة عميل',
+                            'accept_income'      => 'اعتماد الفائض كإيراد للمحل',
+                        ][$shift->variance_settlement_type] ?? $shift->variance_settlement_type }}</strong>
+                        @if($shift->settledBy) — بواسطة {{ $shift->settledBy->name }} @endif
+                        @if($shift->variance_settled_at) ({{ $shift->variance_settled_at->format('Y-m-d H:i') }}) @endif
+                        @if($shift->settlementEntry)
+                            <a href="{{ route('journal_entries.show', $shift->variance_settlement_entry_id) }}"
+                               class="btn btn-sm btn-outline-success ms-2">{{ $shift->settlementEntry->entry_number }}</a>
+                        @endif
+                    </div>
+                @elseif(auth()->user()?->can('pos.shifts.close'))
+                    <form method="POST" action="{{ route('pos.shifts.settle-variance', $shift) }}">
+                        @csrf
+                        <p class="small text-muted mb-2">
+                            الفرق مُثبت حاليًا في حساب {{ $isShort ? 'العجز (مصروف)' : 'الفائض (إيراد)' }}.
+                            اختر المعالجة المحاسبية (لا تمسّ الصندوق — إعادة تصنيف فقط):
+                        </p>
+                        @if($isShort)
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="treatment" id="t1" value="charge_cashier" checked>
+                            <label class="form-check-label" for="t1">تحميل على الكاشير — ذمة موظف (مدين سلف الموظف 1250 / دائن العجز 6530)</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="treatment" id="t2" value="accept_expense">
+                            <label class="form-check-label" for="t2">اعتماد كمصروف على المحل (يبقى في حساب العجز — دون قيد إضافي)</label>
+                        </div>
+                        @else
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="treatment" id="t1" value="customer_liability" checked>
+                            <label class="form-check-label" for="t1">إثبات كأمانة عميل — التزام (مدين الفائض 4160 / دائن أمانات العملاء 2050)</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="treatment" id="t2" value="accept_income">
+                            <label class="form-check-label" for="t2">اعتماد كإيراد للمحل (يبقى في حساب الفائض — دون قيد إضافي)</label>
+                        </div>
+                        @endif
+                        <button type="submit" class="btn btn-primary btn-sm mt-3"
+                                onclick="return confirm('تأكيد تسوية الفرق؟');">
+                            <i class="bi bi-check2 me-1"></i> تنفيذ التسوية
+                        </button>
+                    </form>
+                @else
+                    <p class="text-muted mb-0">الفرق لم يُسوَّ بعد. تحتاج صلاحية إقفال الورديات لإجراء التسوية.</p>
+                @endif
+            </div>
+        </div>
+    </div>
+    @endif
+
     {{-- GL Entry --}}
     @if($shift->journalEntry)
     <div class="col-12">

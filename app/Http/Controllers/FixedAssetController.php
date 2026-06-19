@@ -102,14 +102,12 @@ class FixedAssetController extends Controller
                 'notes'                 => $request->notes,
             ]);
 
-            // Post GL entry for asset purchase (if cash or bank payment)
-            if ($request->payment_method !== 'credit') {
-                $entry = (new LedgerPostingService())->postAssetPurchase(
-                    $asset->load('category.assetAccount'),
-                    $request->payment_method
-                );
-                $asset->update(['journal_entry_id' => $entry->id]);
-            }
+            // ترحيل قيد شراء الأصل دائمًا — نقدًا/بنكًا (دائن نقد/بنك) أو آجلًا (دائن ذمم دائنة)
+            $entry = (new LedgerPostingService())->postAssetPurchase(
+                $asset->load('category.assetAccount'),
+                $request->payment_method
+            );
+            $asset->update(['journal_entry_id' => $entry->id]);
 
             DB::commit();
 

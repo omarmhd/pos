@@ -123,8 +123,50 @@
     </div>
     @endif
 
+    {{-- مكافأة نهاية الخدمة — تجاوز اختياري للموظف --}}
+    <div class="col-12 mt-2">
+        <h6 class="text-muted border-bottom pb-1">
+            مكافأة نهاية الخدمة <small class="fw-normal">(اختياري — اتركه فارغًا لاتّباع الإعداد العام)</small>
+        </h6>
+    </div>
+    <div class="col-md-4">
+        <label class="form-label">أساس الراتب (تجاوز)</label>
+        <select name="eosb_salary_base" class="form-select">
+            <option value="">— حسب الإعداد العام —</option>
+            <option value="basic" {{ old('eosb_salary_base', $emp?->eosb_salary_base) === 'basic' ? 'selected' : '' }}>الأساسي فقط</option>
+            <option value="gross" {{ old('eosb_salary_base', $emp?->eosb_salary_base) === 'gross' ? 'selected' : '' }}>الأساسي + البدلات</option>
+        </select>
+    </div>
+    <div class="col-12">
+        <label class="form-label small">شرائح خاصة بهذا الموظف (فارغة = استخدام الشرائح العامة)</label>
+        <table class="table table-sm align-middle" style="max-width:520px">
+            <thead class="table-light"><tr><th style="width:45%">حتى سنة (شاملة)</th><th style="width:40%">أيام/سنة</th><th></th></tr></thead>
+            <tbody id="empEosbBody">
+                @foreach((is_array($emp?->eosb_tiers) ? $emp->eosb_tiers : []) as $t)
+                <tr>
+                    <td><input type="number" min="1" name="eosb_tiers[][to_year]" class="form-control form-control-sm" value="{{ $t['to_year'] ?? '' }}" placeholder="فأكثر"></td>
+                    <td><input type="number" min="0" step="0.01" name="eosb_tiers[][days_per_year]" class="form-control form-control-sm" value="{{ $t['days_per_year'] ?? '' }}"></td>
+                    <td><button type="button" class="btn btn-sm btn-outline-danger" onclick="this.closest('tr').remove()"><i class="bi bi-x"></i></button></td>
+                </tr>
+                @endforeach
+            </tbody>
+        </table>
+        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="empEosbAdd()"><i class="bi bi-plus"></i> إضافة شريحة</button>
+    </div>
+
     <div class="col-12">
         <label class="form-label">ملاحظات</label>
         <textarea name="notes" class="form-control" rows="2">{{ old('notes', $emp?->notes) }}</textarea>
     </div>
 </div>
+
+<script>
+function empEosbAdd() {
+    var row = document.createElement('tr');
+    row.innerHTML =
+        '<td><input type="number" min="1" name="eosb_tiers[][to_year]" class="form-control form-control-sm" placeholder="فأكثر"></td>' +
+        '<td><input type="number" min="0" step="0.01" name="eosb_tiers[][days_per_year]" class="form-control form-control-sm" value="30"></td>' +
+        '<td><button type="button" class="btn btn-sm btn-outline-danger" onclick="this.closest(\'tr\').remove()"><i class="bi bi-x"></i></button></td>';
+    document.getElementById('empEosbBody').appendChild(row);
+}
+</script>

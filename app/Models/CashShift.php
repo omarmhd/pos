@@ -12,6 +12,8 @@ class CashShift extends Model
         'opening_amount', 'cash_sales', 'cash_returns',
         'expected_amount', 'closing_amount', 'variance_amount',
         'variance_reason', 'notes',
+        'variance_settled', 'variance_settlement_type',
+        'variance_settlement_entry_id', 'variance_settled_at', 'variance_settled_by',
     ];
 
     protected $casts = [
@@ -23,6 +25,8 @@ class CashShift extends Model
         'expected_amount' => 'decimal:2',
         'closing_amount'  => 'decimal:2',
         'variance_amount' => 'decimal:2',
+        'variance_settled'    => 'boolean',
+        'variance_settled_at' => 'datetime',
     ];
 
     // ── Relationships ────────────────────────────────────────────────────────
@@ -32,6 +36,8 @@ class CashShift extends Model
     public function closedBy()    { return $this->belongsTo(User::class, 'closed_by'); }
     public function posTerminal() { return $this->belongsTo(PosTerminal::class); }
     public function journalEntry(){ return $this->belongsTo(JournalEntry::class); }
+    public function settlementEntry(){ return $this->belongsTo(JournalEntry::class, 'variance_settlement_entry_id'); }
+    public function settledBy()   { return $this->belongsTo(User::class, 'variance_settled_by'); }
     public function sales()       { return $this->hasMany(Sale::class); }
 
     // ── Scopes ───────────────────────────────────────────────────────────────

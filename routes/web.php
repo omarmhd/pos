@@ -244,6 +244,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/{shift}',           [\App\Http\Controllers\CashShiftController::class, 'show'])       ->name('show');
         Route::get('/{shift}/close',     [\App\Http\Controllers\CashShiftController::class, 'createClose'])->name('close');
         Route::post('/{shift}/close',    [\App\Http\Controllers\CashShiftController::class, 'storeClose']) ->name('store-close');
+        Route::post('/{shift}/settle-variance', [\App\Http\Controllers\CashShiftController::class, 'settleVariance'])->name('settle-variance');
     });
 
     // ── Sales ─────────────────────────────────────────────────────────────────

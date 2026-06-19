@@ -265,10 +265,81 @@ $sections = [
     </div>
     @endforeach
 
+    {{-- ── مكافأة نهاية الخدمة (EOSB) — قاعدة قابلة للتخصيص ── --}}
+    @php
+        $eosbTiers = \App\Services\EosbCalculator::globalTiers();
+        $eosbBase  = \App\Models\Setting::get('eosb_salary_base', 'basic');
+        $eosbDays  = \App\Models\Setting::get('eosb_days_in_month', 30);
+    @endphp
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white py-2">
+            <span class="fw-semibold"><i class="bi bi-cash-coin me-1"></i> قاعدة مكافأة نهاية الخدمة</span>
+        </div>
+        <div class="card-body">
+            <div class="row g-3 mb-3">
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold small">أساس الراتب في الحساب</label>
+                    <select name="eosb_salary_base" class="form-select form-select-sm">
+                        <option value="basic" {{ $eosbBase === 'basic' ? 'selected' : '' }}>الراتب الأساسي فقط</option>
+                        <option value="gross" {{ $eosbBase === 'gross' ? 'selected' : '' }}>الأساسي + البدلات</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold small">أيام الشهر (مقسوم الأجر اليومي)</label>
+                    <input type="number" name="eosb_days_in_month" class="form-control form-control-sm"
+                           value="{{ $eosbDays }}" min="28" max="31">
+                </div>
+            </div>
+
+            <label class="form-label fw-semibold small">
+                الشرائح — عدد أيام الأجر المستحقة لكل سنة خدمة حسب مدة الخدمة
+            </label>
+            <div class="alert alert-info py-2 small mb-2">
+                مثال: «حتى 5 سنوات → 21 يومًا/سنة» ثم «فأكثر → 30 يومًا/سنة». اترك خانة «حتى سنة» فارغة للشريحة المفتوحة الأخيرة.
+            </div>
+
+            <table class="table table-sm align-middle" id="eosbTiersTable" style="max-width:560px">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width:45%">حتى سنة (شاملة)</th>
+                        <th style="width:40%">أيام/سنة</th>
+                        <th style="width:15%"></th>
+                    </tr>
+                </thead>
+                <tbody id="eosbTiersBody">
+                    @foreach($eosbTiers as $t)
+                    <tr>
+                        <td><input type="number" min="1" name="eosb_tiers[][to_year]" class="form-control form-control-sm"
+                                   value="{{ $t['to_year'] ?? '' }}" placeholder="فأكثر"></td>
+                        <td><input type="number" min="0" step="0.01" name="eosb_tiers[][days_per_year]" class="form-control form-control-sm"
+                                   value="{{ $t['days_per_year'] }}"></td>
+                        <td><button type="button" class="btn btn-sm btn-outline-danger" onclick="this.closest('tr').remove()">
+                            <i class="bi bi-x"></i></button></td>
+                    </tr>
+                    @endforeach
+                </tbody>
+            </table>
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="eosbAddTier()">
+                <i class="bi bi-plus"></i> إضافة شريحة
+            </button>
+        </div>
+    </div>
+
     <div class="d-flex gap-2 mb-4">
         <button type="submit" class="btn btn-primary">
             <i class="bi bi-save"></i> حفظ الإعدادات
         </button>
     </div>
 </form>
+
+<script>
+function eosbAddTier() {
+    var row = document.createElement('tr');
+    row.innerHTML =
+        '<td><input type="number" min="1" name="eosb_tiers[][to_year]" class="form-control form-control-sm" placeholder="فأكثر"></td>' +
+        '<td><input type="number" min="0" step="0.01" name="eosb_tiers[][days_per_year]" class="form-control form-control-sm" value="30"></td>' +
+        '<td><button type="button" class="btn btn-sm btn-outline-danger" onclick="this.closest(\'tr\').remove()"><i class="bi bi-x"></i></button></td>';
+    document.getElementById('eosbTiersBody').appendChild(row);
+}
+</script>
 @endsection

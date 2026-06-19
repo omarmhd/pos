@@ -11,6 +11,7 @@ class Employee extends Model
         'hire_date', 'termination_date', 'employment_type', 'pay_type',
         'base_salary', 'housing_allowance', 'transport_allowance', 'other_allowances',
         'bank_account', 'department', 'job_title', 'is_active', 'notes',
+        'eosb_tiers', 'eosb_salary_base',
     ];
 
     protected $casts = [
@@ -21,6 +22,7 @@ class Employee extends Model
         'transport_allowance'=> 'decimal:2',
         'other_allowances'   => 'decimal:2',
         'is_active'          => 'boolean',
+        'eosb_tiers'         => 'array',
     ];
 
     public function attendance()

@@ -16,7 +16,7 @@ class CashShiftController extends Controller
     {
         $this->middleware('can:pos.shifts.view')->only(['index', 'show', 'data']);
         $this->middleware('can:pos.shifts.open')->only(['createOpen', 'storeOpen']);
-        $this->middleware('can:pos.shifts.close')->only(['createClose', 'storeClose']);
+        $this->middleware('can:pos.shifts.close')->only(['createClose', 'storeClose', 'settleVariance']);
     }
 
     // ── Index ────────────────────────────────────────────────────────────────
@@ -178,7 +178,8 @@ class CashShiftController extends Controller
 
     public function show(CashShift $shift)
     {
-        $shift->load('user', 'closedBy', 'branch', 'posTerminal', 'journalEntry.lines.account');
+        $shift->load('user', 'closedBy', 'branch', 'posTerminal', 'journalEntry.lines.account',
+            'settlementEntry.lines.account', 'settledBy');
 
         // For open shifts: recalculate live from actual sales and persist so the view
         // always shows correct totals. Closed shifts already have saved values from storeClose().
@@ -197,6 +198,50 @@ class CashShiftController extends Controller
 
         $currency = Setting::get('currency_symbol', 'ج.م');
         return view('pos.shifts.show', compact('shift', 'salesSummary', 'currency'));
+    }
+
+    // ── Settle Variance (تسوية فرق الوردية) ───────────────────────────────────
+
+    public function settleVariance(Request $request, CashShift $shift)
+    {
+        abort_if($shift->status !== 'closed', 403, 'الوردية غير مغلقة');
+        abort_if(abs((float) $shift->variance_amount) < 0.01, 422, 'لا يوجد فرق لتسويته');
+        abort_if((bool) $shift->variance_settled, 422, 'سبق تسوية فرق هذه الوردية');
+
+        $variance = (float) $shift->variance_amount;
+        // العجز (سالب) → تحميل على الكاشير أو اعتماد كمصروف
+        // الفائض (موجب) → أمانة عميل أو اعتماد كإيراد
+        $allowed = $variance < 0
+            ? ['charge_cashier', 'accept_expense']
+            : ['customer_liability', 'accept_income'];
+
+        $data = $request->validate([
+            'treatment' => ['required', \Illuminate\Validation\Rule::in($allowed)],
+        ]);
+
+        DB::beginTransaction();
+        try {
+            // قد يُعيد null عند الاعتماد (لا قيد) — وقد يرمي استثناءً إن كانت الفترة مقفلة
+            $entry = (new LedgerPostingService())->postShiftVarianceSettlement($shift, $data['treatment']);
+
+            $shift->update([
+                'variance_settled'             => true,
+                'variance_settlement_type'     => $data['treatment'],
+                'variance_settlement_entry_id' => $entry?->id,
+                'variance_settled_at'          => now(),
+                'variance_settled_by'          => auth()->id(),
+            ]);
+
+            DB::commit();
+
+            return redirect()->route('pos.shifts.show', $shift)->with('success',
+                'تمت تسوية فرق الوردية'
+                . ($entry ? ' وترحيل القيد ' . $entry->entry_number : ' (اعتُمد دون قيد إضافي)'));
+
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return back()->with('error', 'تعذّرت التسوية: ' . $e->getMessage());
+        }
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────

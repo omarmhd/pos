@@ -76,29 +76,10 @@ class EosbController extends Controller
             ->orderBy('name')
             ->get();
 
-        $lines = $employees->map(function (Employee $e) use ($periodEnd) {
-            $hireDate      = Carbon::parse($e->hire_date);
-            $serviceMonths = max(0, $hireDate->diffInMonths($periodEnd));
-            $serviceYears  = round($serviceMonths / 12, 4);
-            $baseSalary    = (float) $e->base_salary;
-
-            // Standard Arab EOSB: 1 month salary per year of service (prorated monthly)
-            // Monthly accrual = base_salary / 12
-            $provision = round($baseSalary / 12, 2);
-
-            // Running cumulative = total previously posted + this month
-            $prevTotal = EosbProvision::where('employee_id', $e->id)->sum('provision_amount');
-            $cumulative = round((float) $prevTotal + $provision, 2);
-
-            return [
-                'employee'       => $e,
-                'service_months' => $serviceMonths,
-                'service_years'  => $serviceYears,
-                'base_salary'    => $baseSalary,
-                'provision'      => $provision,
-                'cumulative'     => $cumulative,
-            ];
-        })->filter(fn($l) => $l['provision'] > 0);
+        // الحساب وفق الشرائح القابلة للتخصيص (عام أو تجاوز الموظف) وأسلوب المطلوب التراكمي
+        $lines = $employees->map(fn(Employee $e) =>
+            (new \App\Services\EosbCalculator($e))->breakdown($year, $month)
+        )->filter(fn($l) => $l['provision'] > 0);
 
         $totalProvision = $lines->sum('provision');
 
@@ -131,35 +112,23 @@ class EosbController extends Controller
 
         DB::beginTransaction();
         try {
+            // الأقواس حاسمة: بدونها تنكسر أسبقية AND/OR ويُدرَج موظفون غير نشطين خطأً
+            // الصحيح: WHERE is_active=1 AND (termination IS NULL OR termination > date)
             $employees = Employee::where('is_active', true)
-                ->whereNull('termination_date')
-                ->orWhereDate('termination_date', '>', $periodEnd)
+                ->where(fn($q) => $q->whereNull('termination_date')
+                                   ->orWhereDate('termination_date', '>', $periodEnd))
                 ->get();
 
             $provisionRows = [];
             $totalProvision = 0.0;
 
             foreach ($employees as $e) {
-                $hireDate      = Carbon::parse($e->hire_date);
-                $serviceMonths = max(0, $hireDate->diffInMonths($periodEnd));
-                $serviceYears  = round($serviceMonths / 12, 4);
-                $baseSalary    = (float) $e->base_salary;
-                $provision     = round($baseSalary / 12, 2);
+                // الحساب وفق الشرائح وأسلوب المطلوب التراكمي (يعالج تغيّر الشريحة والراتب)
+                $b = (new \App\Services\EosbCalculator($e))->breakdown($year, $month);
+                if ($b['provision'] < 0.01) continue;
 
-                if ($provision < 0.01) continue;
-
-                $prevTotal  = EosbProvision::where('employee_id', $e->id)->sum('provision_amount');
-                $cumulative = round((float) $prevTotal + $provision, 2);
-                $totalProvision += $provision;
-
-                $provisionRows[] = [
-                    'employee'        => $e,
-                    'service_months'  => $serviceMonths,
-                    'service_years'   => $serviceYears,
-                    'base_salary'     => $baseSalary,
-                    'provision'       => $provision,
-                    'cumulative'      => $cumulative,
-                ];
+                $totalProvision += $b['provision'];
+                $provisionRows[] = $b;
             }
 
             if (empty($provisionRows)) {

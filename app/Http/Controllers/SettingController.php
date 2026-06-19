@@ -83,12 +83,31 @@ class SettingController extends Controller
             'default_min_stock_quantity'     => 'nullable|integer|min:0',
             'expiry_alert_days'              => 'nullable|integer|min:0',
             'default_credit_limit'           => 'nullable|numeric|min:0',
+            // ── مكافأة نهاية الخدمة (EOSB) ────────────────────────────────────
+            'eosb_salary_base'               => 'nullable|in:basic,gross',
+            'eosb_days_in_month'             => 'nullable|integer|min:28|max:31',
+            'eosb_tiers'                     => 'nullable|array',
+            'eosb_tiers.*.to_year'           => 'nullable|integer|min:1',
+            'eosb_tiers.*.days_per_year'     => 'nullable|numeric|min:0',
         ]);
 
         // Boolean toggle fields: hidden+checkbox sends '0' or '1'; ensure always stored.
         $boolFields = ['vat_enabled', 'vat_inclusive', 'allow_negative_stock', 'credit_sales_enabled'];
         foreach ($boolFields as $field) {
             $data[$field] = $request->input($field, '0') === '1' ? '1' : '0';
+        }
+
+        // شرائح EOSB: تُخزَّن كـ JSON منفصلة (تُستبعد من الحلقة العامة)
+        if (array_key_exists('eosb_tiers', $data)) {
+            $tiers = collect($data['eosb_tiers'] ?? [])
+                ->filter(fn($r) => isset($r['days_per_year']) && (float) $r['days_per_year'] > 0)
+                ->map(fn($r) => [
+                    'to_year'       => (($r['to_year'] ?? '') === '' || ($r['to_year'] ?? null) === null)
+                                        ? null : (int) $r['to_year'],
+                    'days_per_year' => (float) $r['days_per_year'],
+                ])->values()->all();
+            Setting::set('eosb_tiers', json_encode($tiers, JSON_UNESCAPED_UNICODE));
+            unset($data['eosb_tiers']);
         }
 
         foreach ($data as $k => $v) {

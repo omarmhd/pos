@@ -46,11 +46,16 @@ class EmployeeController extends Controller
             'department'          => 'nullable|string|max:100',
             'job_title'           => 'nullable|string|max:100',
             'notes'               => 'nullable|string',
+            'eosb_salary_base'           => 'nullable|in:basic,gross',
+            'eosb_tiers'                 => 'nullable|array',
+            'eosb_tiers.*.to_year'       => 'nullable|integer|min:1',
+            'eosb_tiers.*.days_per_year' => 'nullable|numeric|min:0',
         ]);
 
         $data['housing_allowance']   = $data['housing_allowance']   ?? 0;
         $data['transport_allowance'] = $data['transport_allowance'] ?? 0;
         $data['other_allowances']    = $data['other_allowances']    ?? 0;
+        $this->applyEosbOverride($data, $request);
 
         Employee::create($data);
 
@@ -94,15 +99,39 @@ class EmployeeController extends Controller
             'job_title'           => 'nullable|string|max:100',
             'is_active'           => 'nullable|boolean',
             'notes'               => 'nullable|string',
+            'eosb_salary_base'           => 'nullable|in:basic,gross',
+            'eosb_tiers'                 => 'nullable|array',
+            'eosb_tiers.*.to_year'       => 'nullable|integer|min:1',
+            'eosb_tiers.*.days_per_year' => 'nullable|numeric|min:0',
         ]);
 
         $data['is_active']           = $request->boolean('is_active');
         $data['housing_allowance']   = $data['housing_allowance']   ?? 0;
         $data['transport_allowance'] = $data['transport_allowance'] ?? 0;
         $data['other_allowances']    = $data['other_allowances']    ?? 0;
+        $this->applyEosbOverride($data, $request);
 
         $employee->update($data);
 
         return redirect()->route('hr.employees.show', $employee)->with('success', 'تم تحديث بيانات الموظف');
+    }
+
+    /**
+     * تطبيع تجاوز مكافأة نهاية الخدمة على مستوى الموظف.
+     * يترك القيم فارغة (null) ليتّبع الموظف الإعداد العام.
+     */
+    private function applyEosbOverride(array &$data, Request $request): void
+    {
+        $data['eosb_salary_base'] = $request->input('eosb_salary_base') ?: null;
+
+        $tiers = collect($request->input('eosb_tiers', []))
+            ->filter(fn($r) => isset($r['days_per_year']) && (float) $r['days_per_year'] > 0)
+            ->map(fn($r) => [
+                'to_year'       => (($r['to_year'] ?? '') === '' || ($r['to_year'] ?? null) === null)
+                                    ? null : (int) $r['to_year'],
+                'days_per_year' => (float) $r['days_per_year'],
+            ])->values()->all();
+
+        $data['eosb_tiers'] = empty($tiers) ? null : $tiers;
     }
 }
