@@ -6,6 +6,9 @@ use Illuminate\Database\Eloquent\Model;
 
 class CostPriceHistory extends Model
 {
+    // اسم الجدول الفعلي (مفرد) كما في الترحيل — وإلا بحث Eloquent عن cost_price_histories
+    protected $table = 'cost_price_history';
+
     protected $fillable = [
         'product_id', 'old_cost', 'new_cost', 'qty_received',
         'method', 'reference_type', 'reference_id',
