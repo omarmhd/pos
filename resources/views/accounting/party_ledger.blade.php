@@ -15,6 +15,14 @@
         @endif
     </h4>
     <div class="d-flex gap-2 no-print">
+        @if(in_array($type, ['customer', 'supplier']))
+        <div class="btn-group btn-group-sm" role="group">
+            <a href="{{ route('accounting.ledger.party', [$type, $party->id]) }}"
+               class="btn {{ $mode === 'amounts' ? 'btn-primary' : 'btn-outline-primary' }}">كشف الذمم</a>
+            <a href="{{ route('accounting.ledger.party', [$type, $party->id, 'mode' => 'full']) }}"
+               class="btn {{ $mode === 'full' ? 'btn-primary' : 'btn-outline-primary' }}">كشف كامل (نشاط)</a>
+        </div>
+        @endif
         <button type="button" class="btn btn-outline-primary btn-sm" onclick="window.print()">
             <i class="bi bi-printer"></i> طباعة الكشف
         </button>
@@ -26,7 +34,13 @@
 
 <div class="alert alert-light border small no-print">
     <i class="bi bi-info-circle"></i>
-    هذا كشف الأستاذ المساعد لهذا {{ $label }} — يُجمَّع من سطور القيود الموسومة به فوق حساب المراقبة.
+    @if($mode === 'full')
+        <strong>كشف حساب كامل (نشاط)</strong> لهذا {{ $label }} — يعرض كل الفواتير (نقدًا وآجلًا) والمدفوعات برصيد جارٍ.
+        الرصيد الختامي يساوي رصيد الذمم (المعاملات النقدية تُصافى لصفر فلا تغيّر الرصيد).
+    @else
+        <strong>كشف الأستاذ المساعد (دفتر الذمم)</strong> لهذا {{ $label }} — يعرض الحركات الآجلة والمدفوعات فقط،
+        ومجموعه يطابق حساب المراقبة في الأستاذ العام. المبيعات/المشتريات النقدية لا تظهر هنا (لا تُنشئ ذمة).
+    @endif
     الرصيد: <strong>مدين</strong> = يستحق عليه لصالحنا، <strong>دائن</strong> = مستحق له علينا.
 </div>
 
@@ -92,7 +106,7 @@
                 <thead class="table-light">
                     <tr>
                         <th style="width:100px">التاريخ</th>
-                        <th style="width:110px">رقم القيد</th>
+                        <th style="width:140px">المرجع / المستند</th>
                         <th>الوصف</th>
                         <th style="width:120px" class="text-end">مدين</th>
                         <th style="width:120px" class="text-end">دائن</th>
@@ -109,13 +123,15 @@
 
                 @forelse($items as $line)
                 <tr>
-                    <td class="text-nowrap">{{ \Illuminate\Support\Carbon::parse($line->entry_date)->toDateString() }}</td>
+                    <td class="text-nowrap">{{ $line->date }}</td>
                     <td>
-                        <a href="{{ route('journal_entries.show', $line->journal_entry_id) }}" class="font-monospace text-decoration-none">
-                            {{ $line->entry_number }}
-                        </a>
+                        @if($line->url)
+                            <a href="{{ $line->url }}" class="font-monospace text-decoration-none">{{ $line->ref }}</a>
+                        @else
+                            <span class="font-monospace">{{ $line->ref }}</span>
+                        @endif
                     </td>
-                    <td class="text-muted small">{{ $line->line_description ?: $line->je_description }}</td>
+                    <td class="text-muted small">{{ $line->desc }}</td>
                     <td class="text-end font-monospace">{{ $line->debit > 0 ? number_format($line->debit, 2) : '—' }}</td>
                     <td class="text-end font-monospace">{{ $line->credit > 0 ? number_format($line->credit, 2) : '—' }}</td>
                     <td class="text-end font-monospace {{ $line->running_balance >= 0 ? '' : 'text-danger' }}">

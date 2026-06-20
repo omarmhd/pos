@@ -2,6 +2,9 @@
 @section('page-title', 'دفتر الأستاذ العام')
 
 @section('content')
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.rtl.min.css" rel="stylesheet">
+<style>.select2-container{width:100%!important}</style>
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h4 class="mb-0">
         <i class="bi bi-journal-text"></i> دفتر الأستاذ العام
@@ -28,6 +31,36 @@
 </div>
 @endif
 
+{{-- منتقي كشف حساب طرف (الأستاذ المساعد) --}}
+@php
+    $optC = $customers->map(fn($c) => "<option value='customer:{$c->id}'>" . e($c->name) . "</option>")->implode('');
+    $optS = $suppliers->map(fn($s) => "<option value='supplier:{$s->id}'>" . e($s->name) . "</option>")->implode('');
+    $optE = $employees->map(fn($e) => "<option value='employee:{$e->id}'>" . e($e->name) . "</option>")->implode('');
+@endphp
+<div class="card mb-3 border-info shadow-sm no-print">
+    <div class="card-body py-2">
+        <div class="row g-2 align-items-end">
+            <div class="col-md-7">
+                <label class="form-label small mb-1 fw-semibold">
+                    <i class="bi bi-person-vcard text-info"></i> كشف حساب طرف (الأستاذ المساعد) — عميل / مورّد / موظف
+                </label>
+                <select id="partyPicker" class="form-select form-select-sm">
+                    <option value="">— ابحث واختر عميلًا أو مورّدًا أو موظفًا —</option>
+                    <optgroup label="العملاء">{!! $optC !!}</optgroup>
+                    <optgroup label="الموردون">{!! $optS !!}</optgroup>
+                    <optgroup label="الموظفون">{!! $optE !!}</optgroup>
+                </select>
+            </div>
+            <div class="col-auto">
+                <button type="button" id="btnPartyLedger" class="btn btn-info btn-sm text-white">
+                    <i class="bi bi-journal-bookmark"></i> عرض الكشف
+                </button>
+            </div>
+        </div>
+        <div class="form-text">يعرض حركة الطرف برصيد جارٍ من القيود — بينما الجدول أدناه هو الأستاذ العام (حسابات المراقبة الإجمالية).</div>
+    </div>
+</div>
+
 <div class="card border-0 shadow-sm">
     <div class="card-body p-0">
         <table id="ledger-table" class="table table-hover align-middle mb-0" style="width:100%">
@@ -48,8 +81,18 @@
 @endsection
 
 @section('scripts')
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
 $(function() {
+    // منتقي كشف حساب الطرف
+    if (jQuery.fn.select2) jQuery('#partyPicker').select2({ theme: 'bootstrap-5', dir: 'rtl' });
+    document.getElementById('btnPartyLedger').addEventListener('click', function () {
+        var v = document.getElementById('partyPicker').value;
+        if (!v) return;
+        var p = v.split(':');
+        window.location = '{{ url('accounting/ledger/party') }}/' + p[0] + '/' + p[1];
+    });
+
     var table = $('#ledger-table').DataTable($.extend(true, {}, window.dtDefaults, {
         processing: true,
         serverSide: true,
