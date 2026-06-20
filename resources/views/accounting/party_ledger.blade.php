@@ -15,14 +15,12 @@
         @endif
     </h4>
     <div class="d-flex gap-2 no-print">
-        @if(in_array($type, ['customer', 'supplier']))
         <div class="btn-group btn-group-sm" role="group">
             <a href="{{ route('accounting.ledger.party', [$type, $party->id]) }}"
                class="btn {{ $mode === 'amounts' ? 'btn-primary' : 'btn-outline-primary' }}">كشف الذمم</a>
             <a href="{{ route('accounting.ledger.party', [$type, $party->id, 'mode' => 'full']) }}"
                class="btn {{ $mode === 'full' ? 'btn-primary' : 'btn-outline-primary' }}">كشف كامل (نشاط)</a>
         </div>
-        @endif
         <button type="button" class="btn btn-outline-primary btn-sm" onclick="window.print()">
             <i class="bi bi-printer"></i> طباعة الكشف
         </button>

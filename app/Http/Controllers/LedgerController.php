@@ -184,7 +184,7 @@ class LedgerController extends Controller
         $dateTo   = $request->filled('date_to')   ? Carbon::parse($request->input('date_to'))->endOfDay()   : null;
 
         // وضع العرض: 'amounts' = كشف الذمم (افتراضي) | 'full' = كشف حساب كامل (نشاط)
-        $mode = ($request->input('mode') === 'full' && in_array($type, ['customer', 'supplier'])) ? 'full' : 'amounts';
+        $mode = $request->input('mode') === 'full' ? 'full' : 'amounts';
 
         // قائمة حركات موحّدة: [date, ref, desc, url, debit, credit]
         $moves = collect();
@@ -203,7 +203,7 @@ class LedgerController extends Controller
                     });
                 DB::table('customer_payments')->where('customer_id', $id)->get(['id', 'amount', 'received_at'])
                     ->each(fn($p) => $moves->push(['date' => $p->received_at, 'ref' => 'تحصيل دفعة', 'desc' => '', 'url' => null, 'debit' => 0, 'credit' => (float) $p->amount]));
-            } else {
+            } elseif ($type === 'supplier') {
                 DB::table('purchases')->where('supplier_id', $id)
                     ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
                     ->get(['id', 'invoice_number', 'total_amount', 'paid_amount', 'created_at'])
@@ -215,6 +215,25 @@ class LedgerController extends Controller
                     });
                 DB::table('supplier_payments')->where('supplier_id', $id)->get(['id', 'amount', 'paid_at'])
                     ->each(fn($p) => $moves->push(['date' => $p->paid_at ?? now(), 'ref' => 'سداد دفعة', 'desc' => '', 'url' => null, 'debit' => (float) $p->amount, 'credit' => 0]));
+            } else { // employee
+                // الرواتب (مستحق + مصروف يتعادلان) + استقطاع السلف + السلف + مكافأة نهاية الخدمة
+                DB::table('payroll_items as pi')
+                    ->join('payroll_runs as pr', 'pr.id', '=', 'pi.payroll_run_id')
+                    ->where('pi.employee_id', $id)
+                    ->where('pr.status', '!=', 'draft')
+                    ->when($branchId, fn($q) => $q->where('pr.branch_id', $branchId))
+                    ->get(['pi.net_pay', 'pi.loan_deduction', 'pr.pay_date'])
+                    ->each(function ($r) use ($moves) {
+                        $net = (float) $r->net_pay;
+                        $moves->push(['date' => $r->pay_date, 'ref' => 'راتب مستحق', 'desc' => '', 'url' => null, 'debit' => 0, 'credit' => $net]);
+                        $moves->push(['date' => $r->pay_date, 'ref' => 'صرف الراتب', 'desc' => '', 'url' => null, 'debit' => $net, 'credit' => 0]);
+                        if ((float) $r->loan_deduction > 0) $moves->push(['date' => $r->pay_date, 'ref' => 'سداد قسط سلفة', 'desc' => '', 'url' => null, 'debit' => 0, 'credit' => (float) $r->loan_deduction]);
+                    });
+                DB::table('employee_loans')->where('employee_id', $id)->get(['id', 'amount', 'loan_date'])
+                    ->each(fn($l) => $moves->push(['date' => $l->loan_date, 'ref' => 'صرف سلفة', 'desc' => '', 'url' => null, 'debit' => (float) $l->amount, 'credit' => 0]));
+                DB::table('eosb_provisions')->where('employee_id', $id)->where('status', 'posted')
+                    ->get(['id', 'provision_amount', 'period_year', 'period_month', 'created_at'])
+                    ->each(fn($e) => $moves->push(['date' => $e->created_at, 'ref' => 'مخصص نهاية خدمة', 'desc' => $e->period_month . '/' . $e->period_year, 'url' => null, 'debit' => 0, 'credit' => (float) $e->provision_amount]));
             }
         } else {
             // كشف الذمم: من سطور القيود الموسومة بالطرف (يطابق حساب المراقبة)
