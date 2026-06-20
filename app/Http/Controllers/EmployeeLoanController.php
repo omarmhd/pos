@@ -88,6 +88,8 @@ class EmployeeLoanController extends Controller
             $lines = [
                 [
                     'account_id'       => $loanAcct->id,
+                    'party_type'       => \App\Models\Employee::class,
+                    'party_id'         => $employee->id,
                     'debit'            => $amount,
                     'credit'           => 0,
                     'line_description' => 'سلفة موظف – ' . $employee->name,

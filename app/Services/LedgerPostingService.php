@@ -1381,6 +1381,7 @@ class LedgerPostingService
                        9=>'سبتمبر',10=>'أكتوبر',11=>'نوفمبر',12=>'ديسمبر'];
         $periodLabel = ($monthNames[$month] ?? $month) . ' ' . $year;
 
+        // مصروف إجمالي + سطر مخصّص لكل موظف (موسوم به) ليظهر في كشف الأستاذ المساعد للموظف
         $entryLines = [
             [
                 'account_id'       => $this->account($expCode)->id,
@@ -1388,13 +1389,22 @@ class LedgerPostingService
                 'credit'           => 0,
                 'line_description' => 'مصروف نهاية خدمة — ' . $periodLabel,
             ],
-            [
-                'account_id'       => $this->account($provCode)->id,
-                'debit'            => 0,
-                'credit'           => round($total, 2),
-                'line_description' => 'مخصص نهاية خدمة — ' . $periodLabel . ' (' . count($lines) . ' موظف)',
-            ],
         ];
+
+        $provAccId = $this->account($provCode)->id;
+        foreach ($lines as $row) {
+            $emp = $row['employee'] ?? null;
+            $amt = round((float) ($row['provision'] ?? 0), 2);
+            if ($amt <= 0) continue;
+            $entryLines[] = [
+                'account_id'       => $provAccId,
+                'party_type'       => $emp ? \App\Models\Employee::class : null,
+                'party_id'         => $emp?->id,
+                'debit'            => 0,
+                'credit'           => $amt,
+                'line_description' => 'مخصص نهاية خدمة — ' . ($emp?->name ?? '') . ' / ' . $periodLabel,
+            ];
+        }
 
         return $this->buildEntry([
             'entry_date'  => \Carbon\Carbon::create($year, $month, 1)->endOfMonth()->toDateString(),
