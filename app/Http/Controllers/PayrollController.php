@@ -143,7 +143,7 @@ class PayrollController extends Controller
                 return $account;
             };
 
-            $payrollRun->loadMissing('items');
+            $payrollRun->loadMissing('items.employee');
 
             $gross          = round((float) $payrollRun->total_gross, 2);
             $net            = round((float) $payrollRun->total_net,   2);
@@ -177,14 +177,23 @@ class PayrollController extends Controller
                 ];
             }
 
-            // CR سلف الموظفين (يُقلّل الرصيد المدين على الموظف)
+            // CR سلف الموظفين — سطر مخصّص لكل موظف موسوم به (ليظهر في كشف الأستاذ المساعد للموظف)
             if ($totalLoanDeduct > 0.005) {
-                $lines[] = [
-                    'account_id'       => $resolveAccount($loanCode)->id,
-                    'debit'            => 0,
-                    'credit'           => $totalLoanDeduct,
-                    'line_description' => 'استقطاع أقساط سلف – ' . $payrollRun->periodLabel(),
-                ];
+                $loanAccId = $resolveAccount($loanCode)->id;
+                foreach ($payrollRun->items as $item) {
+                    $ded = round((float) $item->loan_deduction, 2);
+                    if ($ded <= 0.005) continue;
+                    $lines[] = [
+                        'account_id'       => $loanAccId,
+                        'party_type'       => \App\Models\Employee::class,
+                        'party_id'         => $item->employee_id,
+                        'debit'            => 0,
+                        'credit'           => $ded,
+                        'line_description' => 'استقطاع قسط سلفة – '
+                            . ($item->employee->name ?? ('#' . $item->employee_id))
+                            . ' / ' . $payrollRun->periodLabel(),
+                    ];
+                }
             }
 
             $entry = (new \App\Services\LedgerPostingService())->postPayrollRun($payrollRun, $lines);
