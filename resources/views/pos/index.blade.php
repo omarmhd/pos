@@ -508,6 +508,45 @@
                          style="display:none; top:100%; z-index:1000; max-height:250px; overflow-y:auto;">
                     </div>
                 </div>
+                {{-- Quick Add Customer Modal --}}
+                <div class="modal fade" id="quickCustomerModal" tabindex="-1">
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content">
+                            <div class="modal-header py-2">
+                                <h6 class="modal-title"><i class="bi bi-person-plus me-1"></i> إضافة عميل سريع</h6>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div id="qcError" class="alert alert-danger py-1 px-2 small d-none"></div>
+                                <div class="mb-2">
+                                    <label class="form-label small mb-1">الاسم <span class="text-danger">*</span></label>
+                                    <input type="text" id="qcName" class="form-control form-control-sm">
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label small mb-1">الهاتف</label>
+                                    <input type="text" id="qcPhone" class="form-control form-control-sm">
+                                </div>
+                                <div class="row g-2">
+                                    <div class="col-6">
+                                        <label class="form-label small mb-1">الرقم الضريبي</label>
+                                        <input type="text" id="qcTax" class="form-control form-control-sm">
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label small mb-1">حد الائتمان</label>
+                                        <input type="number" id="qcLimit" class="form-control form-control-sm" value="0" min="0" step="0.01">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="modal-footer py-2">
+                                <button type="button" class="btn btn-success btn-sm" id="qcSaveBtn" onclick="saveQuickCustomer()">
+                                    <i class="bi bi-check-lg"></i> حفظ واختيار
+                                </button>
+                                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">إلغاء</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 {{-- Deposit balance badge --}}
                 <div id="depositBadge" class="d-none alert alert-success py-1 px-2 mb-1 small d-flex align-items-center gap-2" style="border-radius:6px; cursor:default;" title="سيُعرض خيار استخدام الرصيد عند الضغط على إتمام البيع">
                     <i class="bi bi-piggy-bank"></i>
@@ -1650,8 +1689,12 @@ customerSearch.addEventListener('input', e => {
         fetch(`{{ route('pos.customers.search') }}?q=${encodeURIComponent(query)}`)
             .then(r => r.json())
             .then(customers => {
+                const addBtn = `<div class="p-2 text-center border-top">
+                    <button type="button" class="btn btn-sm btn-success" onclick="openQuickCustomer('${esc(query)}')">
+                        <i class="bi bi-person-plus"></i> إضافة عميل جديد${query ? ' «' + esc(query) + '»' : ''}
+                    </button></div>`;
                 if (!customers.length) {
-                    customerDropdown.innerHTML = '<div class="p-2 text-muted text-center">لم يتم العثور على نتائج</div>';
+                    customerDropdown.innerHTML = '<div class="p-2 text-muted text-center">لم يتم العثور على نتائج</div>' + addBtn;
                     customerDropdown.style.display = 'block';
                     return;
                 }
@@ -1665,7 +1708,7 @@ customerSearch.addEventListener('input', e => {
                             ? `<span class="float-start ms-2 text-primary small"><i class="bi bi-piggy-bank"></i> ${parseFloat(c.deposit_balance).toFixed(2)}</span>`
                             : ''}
                     </div>`
-                ).join('');
+                ).join('') + addBtn;
                 customerDropdown.style.display = 'block';
             })
             .catch(err => {
@@ -1675,6 +1718,55 @@ customerSearch.addEventListener('input', e => {
             });
     }, 300);
 });
+
+let quickCustomerModal;
+function openQuickCustomer(name) {
+    customerDropdown.style.display = 'none';
+    document.getElementById('qcName').value  = name || '';
+    document.getElementById('qcPhone').value = '';
+    document.getElementById('qcTax').value   = '';
+    document.getElementById('qcLimit').value = '0';
+    document.getElementById('qcError').classList.add('d-none');
+    if (!quickCustomerModal) quickCustomerModal = new bootstrap.Modal(document.getElementById('quickCustomerModal'));
+    quickCustomerModal.show();
+    setTimeout(() => document.getElementById('qcName').focus(), 300);
+}
+
+function saveQuickCustomer() {
+    const name  = document.getElementById('qcName').value.trim();
+    const errEl = document.getElementById('qcError');
+    if (!name) { errEl.textContent = 'الاسم مطلوب'; errEl.classList.remove('d-none'); return; }
+    const btn = document.getElementById('qcSaveBtn');
+    btn.disabled = true;
+    fetch('{{ route('pos.customers.quick-create') }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
+        },
+        body: JSON.stringify({
+            name:         name,
+            phone:        document.getElementById('qcPhone').value.trim(),
+            tax_number:   document.getElementById('qcTax').value.trim(),
+            credit_limit: parseFloat(document.getElementById('qcLimit').value) || 0,
+        }),
+    })
+    .then(r => r.json().then(d => ({ ok: r.ok, d })))
+    .then(({ ok, d }) => {
+        if (!ok) {
+            errEl.textContent = d.error || d.message || (d.errors ? Object.values(d.errors)[0][0] : 'تعذّر الحفظ');
+            errEl.classList.remove('d-none');
+            return;
+        }
+        if (quickCustomerModal) quickCustomerModal.hide();
+        selectCustomer(d.id, d.name, parseFloat(d.credit_limit) || 0, parseFloat(d.deposit_balance) || 0);
+        if (typeof showToast === 'function') showToast('تمت إضافة العميل: ' + d.name, 'success');
+    })
+    .catch(() => { errEl.textContent = 'خطأ في الاتصال'; errEl.classList.remove('d-none'); })
+    .finally(() => { btn.disabled = false; });
+}
 
 function selectCustomer(id, name, limit, depositBal) {
     // ── Fix: <select> only stores values that have a matching <option>.

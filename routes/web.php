@@ -241,6 +241,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/pos',             [PosController::class, 'store'])  ->name('pos.store')->middleware('throttle:pos');
     Route::get('/pos/receipt/{id}', [PosController::class, 'receipt'])->name('pos.receipt');
     Route::get('/pos/customers/search', [PosController::class, 'searchCustomers'])->name('pos.customers.search');
+    Route::post('/pos/customers/quick-create', [PosController::class, 'quickCreateCustomer'])->name('pos.customers.quick-create');
 
     // ── Cash Shifts (وردية الكاشير) ───────────────────────────────────────────
     Route::prefix('pos/shifts')->name('pos.shifts.')->group(function () {

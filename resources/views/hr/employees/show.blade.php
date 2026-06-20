@@ -24,6 +24,11 @@
                     </div>
                 </div>
                 <div class="d-flex gap-2">
+                    @can('ledger.view')
+                    <a href="{{ route('accounting.ledger.party', ['employee', $employee->id]) }}" class="btn btn-outline-dark btn-sm">
+                        <i class="bi bi-journal-bookmark"></i> كشف الأستاذ المساعد
+                    </a>
+                    @endcan
                     <a href="{{ route('hr.attendance.daily', ['date' => today()->toDateString()]) }}" class="btn btn-outline-primary btn-sm">
                         <i class="bi bi-calendar-check"></i> سجل الحضور
                     </a>

@@ -92,6 +92,35 @@ class PosController extends Controller
     }
 
     /**
+     * إنشاء سريع لعميل من نقطة البيع (مودال) ثم اختياره مباشرةً.
+     */
+    public function quickCreateCustomer(Request $request)
+    {
+        $data = $request->validate([
+            'name'         => 'required|string|max:255',
+            'phone'        => 'nullable|string|max:30',
+            'tax_number'   => 'nullable|string|max:50',
+            'credit_limit' => 'nullable|numeric|min:0',
+        ]);
+
+        $customer = Customer::create([
+            'name'         => $data['name'],
+            'phone'        => $data['phone'] ?? null,
+            'tax_number'   => $data['tax_number'] ?? null,
+            'credit_limit' => $data['credit_limit'] ?? 0,
+            'is_active'    => true,
+        ]);
+
+        return response()->json([
+            'id'              => $customer->id,
+            'name'            => $customer->name,
+            'phone'           => $customer->phone,
+            'credit_limit'    => (float) $customer->credit_limit,
+            'deposit_balance' => 0,
+        ]);
+    }
+
+    /**
      * AJAX: resolve prices for a list of product IDs under a given customer/price_list context.
      * Called by POS JS when the customer changes, to refresh cart prices.
      *
