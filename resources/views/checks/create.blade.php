@@ -2,6 +2,9 @@
 @section('page-title', 'تسجيل شيك جديد')
 
 @section('content')
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.rtl.min.css" rel="stylesheet">
+<style>.select2-container{width:100%!important}</style>
 <div class="row justify-content-center">
 <div class="col-xl-8 col-lg-10">
 
@@ -44,8 +47,13 @@
 
                 {{-- الطرف الآخر — عميل أو مورد --}}
                 <div class="col-md-6" id="customerSection">
-                    <label class="form-label">العميل</label>
-                    <select name="customer_id" class="form-select @error('customer_id') is-invalid @enderror" id="customerSelect">
+                    <label class="form-label d-flex justify-content-between align-items-center">
+                        <span>العميل</span>
+                        <button type="button" class="btn btn-sm btn-outline-success py-0 px-1" onclick="openQuickParty('customer')">
+                            <i class="bi bi-plus"></i> إضافة عميل
+                        </button>
+                    </label>
+                    <select name="customer_id" class="form-select party-select @error('customer_id') is-invalid @enderror" id="customerSelect">
                         <option value="">— اختر عميلاً (اختياري) —</option>
                         @foreach($customers as $c)
                             <option value="{{ $c->id }}" {{ old('customer_id') == $c->id ? 'selected' : '' }}>
@@ -57,8 +65,13 @@
                 </div>
 
                 <div class="col-md-6" id="supplierSection" style="display:none">
-                    <label class="form-label">المورد</label>
-                    <select name="supplier_id" class="form-select @error('supplier_id') is-invalid @enderror" id="supplierSelect">
+                    <label class="form-label d-flex justify-content-between align-items-center">
+                        <span>المورد</span>
+                        <button type="button" class="btn btn-sm btn-outline-success py-0 px-1" onclick="openQuickParty('supplier')">
+                            <i class="bi bi-plus"></i> إضافة مورّد
+                        </button>
+                    </label>
+                    <select name="supplier_id" class="form-select party-select @error('supplier_id') is-invalid @enderror" id="supplierSelect">
                         <option value="">— اختر مورداً (اختياري) —</option>
                         @foreach($suppliers as $s)
                             <option value="{{ $s->id }}" {{ old('supplier_id') == $s->id ? 'selected' : '' }}>
@@ -199,11 +212,87 @@
 
 </div>
 </div>
+
+{{-- Quick Add Party Modal --}}
+<div class="modal fade" id="quickPartyModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header py-2"><h6 class="modal-title" id="qpTitle">إضافة</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body">
+        <div id="qpError" class="alert alert-danger py-1 px-2 small d-none"></div>
+        <input type="hidden" id="qpType">
+        <div class="mb-2"><label class="form-label small mb-1">الاسم <span class="text-danger">*</span></label>
+          <input type="text" id="qpName" class="form-control form-control-sm"></div>
+        <div class="mb-2"><label class="form-label small mb-1">الهاتف</label>
+          <input type="text" id="qpPhone" class="form-control form-control-sm"></div>
+        <div class="row g-2">
+          <div class="col-6"><label class="form-label small mb-1">الرقم الضريبي</label>
+            <input type="text" id="qpTax" class="form-control form-control-sm"></div>
+          <div class="col-6" id="qpCompanyWrap"><label class="form-label small mb-1">الشركة</label>
+            <input type="text" id="qpCompany" class="form-control form-control-sm"></div>
+        </div>
+      </div>
+      <div class="modal-footer py-2">
+        <button type="button" class="btn btn-success btn-sm" id="qpSave" onclick="saveQuickParty()"><i class="bi bi-check-lg"></i> حفظ واختيار</button>
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">إلغاء</button>
+      </div>
+    </div>
+  </div>
+</div>
 @endsection
 
 @section('scripts')
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
+let quickPartyModal;
+function openQuickParty(type) {
+    document.getElementById('qpType').value = type;
+    document.getElementById('qpTitle').textContent = type === 'customer' ? 'إضافة عميل' : 'إضافة مورّد';
+    document.getElementById('qpCompanyWrap').style.display = type === 'supplier' ? 'block' : 'none';
+    ['qpName','qpPhone','qpTax','qpCompany'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('qpError').classList.add('d-none');
+    if (!quickPartyModal) quickPartyModal = new bootstrap.Modal(document.getElementById('quickPartyModal'));
+    quickPartyModal.show();
+    setTimeout(() => document.getElementById('qpName').focus(), 300);
+}
+
+function saveQuickParty() {
+    const type = document.getElementById('qpType').value;
+    const name = document.getElementById('qpName').value.trim();
+    const errEl = document.getElementById('qpError');
+    if (!name) { errEl.textContent = 'الاسم مطلوب'; errEl.classList.remove('d-none'); return; }
+    const url = type === 'customer'
+        ? '{{ route('pos.customers.quick-create') }}'
+        : '{{ route('suppliers.quick-create') }}';
+    const body = {
+        name:       name,
+        phone:      document.getElementById('qpPhone').value.trim(),
+        tax_number: document.getElementById('qpTax').value.trim(),
+    };
+    if (type === 'supplier') body.company = document.getElementById('qpCompany').value.trim();
+    const btn = document.getElementById('qpSave'); btn.disabled = true;
+    fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json',
+                   'X-Requested-With': 'XMLHttpRequest',
+                   'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
+        body: JSON.stringify(body),
+    })
+    .then(r => r.json().then(d => ({ ok: r.ok, d })))
+    .then(({ ok, d }) => {
+        if (!ok) { errEl.textContent = d.message || (d.errors ? Object.values(d.errors)[0][0] : 'تعذّر الحفظ'); errEl.classList.remove('d-none'); return; }
+        const sel = type === 'customer' ? $('#customerSelect') : $('#supplierSelect');
+        sel.append(new Option(d.name, d.id, true, true)).trigger('change');
+        quickPartyModal.hide();
+    })
+    .catch(() => { errEl.textContent = 'خطأ في الاتصال'; errEl.classList.remove('d-none'); })
+    .finally(() => { btn.disabled = false; });
+}
+
 $(function() {
+    // بحث Select2 للعميل/المورّد
+    $('#customerSelect, #supplierSelect').select2({ theme: 'bootstrap-5', dir: 'rtl', placeholder: '— ابحث واختر —', allowClear: true });
     var glHints = {
         receivable: '<strong>القيد:</strong> مدين: شيكات تحت التحصيل &nbsp;/&nbsp; دائن: ذمم العملاء',
         payable:    '<strong>القيد:</strong> مدين: ذمم الموردين &nbsp;/&nbsp; دائن: شيكات مستحقة الدفع',

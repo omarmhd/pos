@@ -45,6 +45,21 @@ class SupplierController extends Controller
             ->with('success', 'تم إضافة المورد بنجاح');
     }
 
+    /** إنشاء سريع لمورّد من أي شاشة (Select2 + زر إضافة) */
+    public function quickCreate(Request $request)
+    {
+        $data = $request->validate([
+            'name'       => 'required|string|max:255',
+            'phone'      => 'nullable|string|max:20',
+            'company'    => 'nullable|string|max:255',
+            'tax_number' => 'nullable|string|max:50',
+        ]);
+
+        $supplier = Supplier::create($data);
+
+        return response()->json(['id' => $supplier->id, 'name' => $supplier->name]);
+    }
+
     /** ملخّص سريع للمورّد (مودال عند النقر المزدوج) */
     public function summary(Supplier $supplier)
     {

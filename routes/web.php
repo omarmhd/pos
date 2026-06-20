@@ -65,6 +65,8 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('suppliers', SupplierController::class);
     Route::get('suppliers/{supplier}/summary',
         [SupplierController::class, 'summary'])->name('suppliers.summary');
+    Route::post('suppliers/quick-create',
+        [SupplierController::class, 'quickCreate'])->name('suppliers.quick-create');
     Route::get('suppliers/{supplier}/payments/create',
         [SupplierPaymentController::class, 'create'])->name('supplier-payments.create');
     Route::post('suppliers/{supplier}/payments',
