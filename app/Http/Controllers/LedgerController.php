@@ -145,4 +145,68 @@ class LedgerController extends Controller
             'branches', 'branchId', 'branch', 'branchLocked'
         ));
     }
+
+    /**
+     * كشف حساب الأستاذ المساعد لطرف (عميل/مورّد/موظف) — من القيود الموسومة بالطرف.
+     * الرصيد بنمط المدين الموجب: (مدين − دائن) تراكمي.
+     */
+    public function party(Request $request, string $type, int $id)
+    {
+        $map = [
+            'customer' => [\App\Models\Customer::class, 'عميل'],
+            'supplier' => [\App\Models\Supplier::class, 'مورّد'],
+            'employee' => [\App\Models\Employee::class, 'موظف'],
+        ];
+        abort_unless(isset($map[$type]), 404);
+        [$class, $label] = $map[$type];
+        $party = $class::findOrFail($id);
+
+        $branchId     = $this->effectiveBranchId($request);
+        $branchLocked = $this->isBranchLocked();
+        $branches     = Branch::where('is_active', true)->orderBy('name')->get(['id', 'name', 'code']);
+        $branch       = $branchId ? Branch::find($branchId) : null;
+
+        $dateFrom = $request->filled('date_from')
+            ? Carbon::parse($request->input('date_from'))->startOfDay() : null;
+        $dateTo = $request->filled('date_to')
+            ? Carbon::parse($request->input('date_to'))->endOfDay() : null;
+
+        $base = fn() => DB::table('journal_entry_lines as jel')
+            ->join('journal_entries as je', 'jel.journal_entry_id', '=', 'je.id')
+            ->where('jel.party_type', $class)
+            ->where('jel.party_id', $id)
+            ->when($branchId, fn($q) => $q->where('je.branch_id', $branchId));
+
+        // رصيد افتتاحي قبل تاريخ البداية
+        $openingBalance = 0.0;
+        if ($dateFrom) {
+            $ob = $base()->whereDate('je.entry_date', '<', $dateFrom->toDateString())
+                ->selectRaw('SUM(jel.debit) as d, SUM(jel.credit) as c')->first();
+            $openingBalance = (float) ($ob->d ?? 0) - (float) ($ob->c ?? 0);
+        }
+
+        $q = $base()->orderBy('je.entry_date')->orderBy('jel.id')
+            ->select('jel.id', 'jel.debit', 'jel.credit', 'jel.line_description',
+                     'je.id as journal_entry_id', 'je.entry_number', 'je.entry_date',
+                     'je.description as je_description');
+        if ($dateFrom) $q->whereDate('je.entry_date', '>=', $dateFrom->toDateString());
+        if ($dateTo)   $q->whereDate('je.entry_date', '<=', $dateTo->toDateString());
+        $allLines = $q->get();
+
+        $running = $openingBalance;
+        $items   = $allLines->map(function ($line) use (&$running) {
+            $running += (float) $line->debit - (float) $line->credit;
+            return (object) array_merge((array) $line, ['running_balance' => $running]);
+        });
+
+        $periodDebit    = $allLines->sum(fn($l) => (float) $l->debit);
+        $periodCredit   = $allLines->sum(fn($l) => (float) $l->credit);
+        $closingBalance = $running;
+
+        return view('accounting.party_ledger', compact(
+            'party', 'label', 'type', 'items', 'openingBalance', 'closingBalance',
+            'periodDebit', 'periodCredit', 'dateFrom', 'dateTo',
+            'branches', 'branchId', 'branch', 'branchLocked'
+        ));
+    }
 }

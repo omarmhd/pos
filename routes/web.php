@@ -324,6 +324,10 @@ Route::middleware(['auth'])->group(function () {
     Route::prefix('accounting')->name('accounting.')->group(function () {
         Route::get('/ledger',
             [App\Http\Controllers\LedgerController::class, 'index'])->name('ledger.index');
+        Route::get('/ledger/party/{type}/{id}',
+            [App\Http\Controllers\LedgerController::class, 'party'])
+            ->whereIn('type', ['customer', 'supplier', 'employee'])
+            ->name('ledger.party');
         Route::get('/ledger/{account}',
             [App\Http\Controllers\LedgerController::class, 'show'])->name('ledger.show');
         Route::get('/trial-balance',

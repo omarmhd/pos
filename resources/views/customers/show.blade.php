@@ -20,6 +20,11 @@
                     @endif
                 </div>
                 <div class="d-flex gap-2 flex-wrap">
+                    @can('ledger.view')
+                    <a href="{{ route('accounting.ledger.party', ['customer', $customer->id]) }}" class="btn btn-outline-dark btn-sm">
+                        <i class="bi bi-journal-bookmark"></i> كشف الأستاذ المساعد
+                    </a>
+                    @endcan
                     @if($outstanding > 0)
                     <a href="{{ route('customer-payments.create', $customer) }}" class="btn btn-success btn-sm">
                         <i class="bi bi-cash-coin"></i> تسجيل دفعة

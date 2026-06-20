@@ -10,6 +10,11 @@
                 <div class="card-header bg-white d-flex justify-content-between align-items-center">
                     <h5 class="mb-0"><i class="bi bi-truck"></i> تفاصيل المورد</h5>
                     <div class="d-flex gap-2">
+                        @can('ledger.view')
+                        <a href="{{ route('accounting.ledger.party', ['supplier', $supplier->id]) }}" class="btn btn-outline-dark btn-sm">
+                            <i class="bi bi-journal-bookmark"></i> كشف الأستاذ المساعد
+                        </a>
+                        @endcan
                         <a href="{{ route('supplier-payments.create', $supplier) }}" class="btn btn-success btn-sm">
                             <i class="bi bi-cash-coin"></i> تسجيل دفعة
                         </a>

@@ -556,6 +556,8 @@ class LedgerPostingService
         $lines = [
             [
                 'account_id'       => $this->account($apCode)->id,
+                'party_type'       => $payment->supplier_id ? \App\Models\Supplier::class : null,
+                'party_id'         => $payment->supplier_id,
                 'debit'            => $amount,
                 'credit'           => 0,
                 'line_description' => 'سداد ذمة مورد – ' . $supplierName,
@@ -605,6 +607,8 @@ class LedgerPostingService
             ],
             [
                 'account_id'       => $this->account($arCode)->id,
+                'party_type'       => $payment->customer_id ? \App\Models\Customer::class : null,
+                'party_id'         => $payment->customer_id,
                 'debit'            => 0,
                 'credit'           => $amount,
                 'line_description' => 'تسوية ذمة عميل – ' . $customerName,
